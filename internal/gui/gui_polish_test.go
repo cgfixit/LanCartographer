@@ -7,10 +7,47 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/local/lancartographer/internal/model"
 )
+
+func TestTapBoxPrimaryTapFiresHandler(t *testing.T) {
+	box := newTapBox(widget.NewLabel("x"))
+	fired := false
+	box.onPrimary = func() { fired = true }
+	test.Tap(box)
+	if !fired {
+		t.Fatal("onPrimary did not fire on Tapped")
+	}
+
+	// A nil onPrimary (panel children) must not panic.
+	test.Tap(newTapBox(widget.NewLabel("y")))
+}
+
+func TestTablePrimaryTapHitsCellAndSelectsRow(t *testing.T) {
+	u := newTestUI(t)
+	setTwoHosts(u)
+
+	pos := nameCellTapPos(t, u, 0)
+	hit := tapCellAt(t, u, pos)
+
+	box, ok := hit.(*tapBox)
+	if !ok {
+		t.Fatalf("primary tap dispatched to %T, want the *tapBox cell", hit)
+	}
+	if box.onPrimary == nil {
+		t.Fatal("table cell tapBox has no onPrimary wired")
+	}
+	if u.selectedIP != "192.168.1.10" {
+		t.Fatalf("selectedIP = %q, want 192.168.1.10", u.selectedIP)
+	}
+	title, ok := u.panel.Objects[0].(*widget.Label)
+	if !ok || title.Text != "alpha" {
+		t.Fatalf("panel did not switch to the tapped host (first object %v)", u.panel.Objects[0])
+	}
+}
 
 func TestEmptyHintIdleThenHiddenWithHosts(t *testing.T) {
 	u := newTestUI(t)

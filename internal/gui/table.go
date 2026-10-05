@@ -118,6 +118,7 @@ func (u *ui) buildTable() {
 			circle := canvas.NewCircle(transparent)
 			box := newTapBox(container.NewStack(label, container.NewCenter(
 				container.NewGridWrap(fyne.NewSize(12, 12), circle))))
+			box.onPrimary = func() { u.table.Select(box.id) }
 			box.onSecondary = func(e *fyne.PointEvent) { u.showRowMenu(box.id, e) }
 			return box
 		},

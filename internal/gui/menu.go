@@ -11,17 +11,27 @@ import (
 	"github.com/local/lancartographer/internal/model"
 )
 
-// tapBox wraps a canvas object so it can carry a right-click (secondary
-// tap) context menu. The table cell template and every side-panel child
-// use it. It is a real fyne widget (BaseWidget + CreateRenderer): a raw
-// embedded fyne.CanvasObject has no renderer, so Fyne draws nothing.
+// tapBox wraps a canvas object so it can carry primary (left-click) and
+// secondary (right-click) tap handlers. The table cell template and every
+// side-panel child use it. It is a real fyne widget (BaseWidget +
+// CreateRenderer): a raw embedded fyne.CanvasObject has no renderer, so
+// Fyne draws nothing.
 type tapBox struct {
 	widget.BaseWidget
 	content     fyne.CanvasObject
 	id          widget.TableCellID
 	hostIP      string
+	onPrimary   func()
 	onSecondary func(*fyne.PointEvent)
 }
+
+// tapBox must satisfy both tap interfaces: the glfw driver records the
+// deepest object matching ANY tap interface at mouse-press and only
+// delivers the primary tap if that same object is fyne.Tappable at release.
+var (
+	_ fyne.Tappable          = (*tapBox)(nil)
+	_ fyne.SecondaryTappable = (*tapBox)(nil)
+)
 
 // newTapBox wraps obj so TappedSecondary dispatches to onSecondary.
 func newTapBox(obj fyne.CanvasObject) *tapBox {
@@ -37,6 +47,14 @@ func (b *tapBox) CreateRenderer() fyne.WidgetRenderer {
 
 // MinSize delegates to the wrapped content.
 func (b *tapBox) MinSize() fyne.Size { return b.content.MinSize() }
+
+// Tapped implements fyne.Tappable (desktop left-click). Panel children
+// leave onPrimary nil — they need no left-click action.
+func (b *tapBox) Tapped(*fyne.PointEvent) {
+	if b.onPrimary != nil {
+		b.onPrimary()
+	}
+}
 
 // TappedSecondary implements fyne.SecondaryTappable (desktop right-click).
 func (b *tapBox) TappedSecondary(e *fyne.PointEvent) {
