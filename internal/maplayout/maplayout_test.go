@@ -111,8 +111,8 @@ func TestLayoutAngleOrderByLastOctet(t *testing.T) {
 	center := mustIP(t, "192.168.1.1")
 	hosts := []model.Host{
 		host(center),
-		host(mustIP(t, "10.0.0.30")),  // last octet 30
-		host(mustIP(t, "10.0.0.10")),  // last octet 10
+		host(mustIP(t, "10.0.0.30")),    // last octet 30
+		host(mustIP(t, "10.0.0.10")),    // last octet 10
 		host(mustIP(t, "192.168.1.20")), // last octet 20
 	}
 	m := Layout(hosts, center)

@@ -53,11 +53,11 @@ type ui struct {
 	sorted []model.Host // snapshot behind the table, ordered per sort state
 	local  []netip.Prefix
 
-	topBar    *fyne.Container
-	subnet    *widget.SelectEntry
-	scanBtn   *widget.Button
-	stopBtn   *widget.Button
-	mapBtn    *widget.Button
+	topBar     *fyne.Container
+	subnet     *widget.SelectEntry
+	scanBtn    *widget.Button
+	stopBtn    *widget.Button
+	mapBtn     *widget.Button
 	elevateBtn *widget.Button
 
 	progress *widget.ProgressBar
@@ -66,7 +66,7 @@ type ui struct {
 	panel    *fyne.Container
 	mapView  *fyne.Container
 
-	statusBar  *fyne.Container
+	statusBar   *fyne.Container
 	statusHosts *widget.Label
 	statusPorts *widget.Label
 	statusShare *widget.Label

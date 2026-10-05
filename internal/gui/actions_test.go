@@ -27,9 +27,9 @@ func TestExplorerPath(t *testing.T) {
 func TestBrowserScheme(t *testing.T) {
 	open := func(n int) model.Port { return model.Port{Number: n, State: model.PortOpen, Service: "svc"} }
 	cases := []struct {
-		name string
+		name  string
 		ports []model.Port
-		want string
+		want  string
 	}{
 		{"no ports", nil, ""},
 		{"only closed 80", []model.Port{{Number: 80, State: model.PortClosed}}, ""},
@@ -68,10 +68,10 @@ func TestCanWOL(t *testing.T) {
 
 func TestBroadcastAddr(t *testing.T) {
 	cases := map[string]string{
-		"10.0.0.0/24": "10.0.0.255:9",
-		"10.0.0.0/22": "10.0.3.255:9",
+		"10.0.0.0/24":    "10.0.0.255:9",
+		"10.0.0.0/22":    "10.0.3.255:9",
 		"192.168.7.9/30": "192.168.7.11:9",
-		"10.7.0.0/16": "10.7.255.255:9",
+		"10.7.0.0/16":    "10.7.255.255:9",
 	}
 	for cidr, want := range cases {
 		p := netip.MustParsePrefix(cidr)
