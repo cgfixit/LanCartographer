@@ -2,13 +2,18 @@
 
 ## Supported Versions
 
-Only the **latest release tag** receives security fixes. Older tags and
-arbitrary commits on `main` between releases are not maintained — if a fix
-ships, upgrade to the newest release.
+Until the first version tag is published, no release exists yet: during that
+period only `main` is supported, on a best-effort basis. The policy below
+applies from v1.0.0 onward.
+
+From v1.0.0 onward, only the **latest release tag** receives security fixes.
+Older tags and arbitrary commits on `main` between releases are not
+maintained — if a fix ships, upgrade to the newest release.
 
 | Version | Supported |
 | ------- | --------- |
-| Latest release tag | Yes |
+| Latest release tag (from v1.0.0) | Yes |
+| `main` before the first tag | Best-effort only |
 | Anything older | No |
 
 ## Reporting a Vulnerability

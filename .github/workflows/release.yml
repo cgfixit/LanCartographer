@@ -15,12 +15,14 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     name: Build and release
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -73,7 +75,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LanCartographer-windows
-          path: dist/
+          path: |
+            dist/LanCartographer.exe
+            dist/lancartographer-cli.exe
+            dist/SHA256SUMS.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

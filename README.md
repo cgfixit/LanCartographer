@@ -23,7 +23,7 @@ networks you do not control.
 | Sortable table | Seven columns (status, Name, IP, MAC, Vendor, Ports, Shares); click any header to sort; column widths are computed from window width with per-column minimums |
 | Port states | Every probed port reports `open`, `closed`, or `timeout`; open ports carry a service label (smb, http, rdp, …), and open ports with an unrecognized service get a 1-second HTTP probe that promotes web devices and captures the page `<title>` |
 | Share enumeration | SMB shares listed as name, type (disk/print/ipc), and remark via `NetShareEnum` level 1; a host that denies the enumeration shows an explicit "access denied" marker instead of an empty list |
-| Name resolution | NetBIOS, mDNS, and reverse DNS (PTR) queried concurrently for each host, first answer wins; resolved names are persisted in a MAC-keyed cache so silent devices keep their names across scans |
+| Name resolution | NetBIOS, mDNS, and reverse DNS (PTR) queried concurrently for each host, highest-priority answer wins (NetBIOS → mDNS → PTR; probes run concurrently); resolved names are persisted in a MAC-keyed cache so silent devices keep their names across scans |
 | Right-click actions | Open host or share in Explorer, open its web interface in the default browser, start a Remote Desktop session, run a visible Ping, or send Wake-on-LAN (WOL asks for confirmation first) |
 | Export | Save the inventory as CSV or JSON from the File menu (the CLI has a `--json` flag) |
 | Favorites | Save and reload the current host list as favorites |
@@ -34,9 +34,9 @@ networks you do not control.
 ## How it works
 
 - **Subnet discovery:** local IPv4 subnets are enumerated from your adapters via `GetAdaptersAddresses`, then expanded into candidate host addresses.
-- **Concurrent sweep:** hosts are probed by a worker pool whose concurrency is bounded by the global dial limiter (default 128, clamped to 256).
+- **Concurrent sweep:** the sweep runs up to 64 host workers at once, and a separate global dial budget (default 128, hard cap 256) bounds how many TCP dials may be in flight — two different knobs.
 - **Port probes:** each port gets a TCP connect with an exact result — `open`, `closed`, or `timeout`; open ports carry a service label, and unrecognized ones get a 1-second HTTP probe that captures the page `<title>`.
-- **Enrichment:** SMB shares are listed via `NetShareEnum` level 1, and names are resolved by racing NetBIOS, mDNS, and DNS PTR (first answer wins), persisted in a MAC-keyed cache.
+- **Enrichment:** SMB shares are listed via `NetShareEnum` level 1, and names are resolved by querying NetBIOS, mDNS, and DNS PTR concurrently (highest-priority answer wins: NetBIOS → mDNS → PTR), persisted in a MAC-keyed cache.
 - **Live events:** the engine streams per-host events over a channel, so the Fyne GUI table fills in while the scan is still running.
 
 ## Why LanCartographer
@@ -51,6 +51,9 @@ networks you do not control.
 
 `lancartographer-cli.exe` drives the same engine as the GUI and prints a table
 (IP, NAME, MAC, VENDOR, PORTS, SHARES) to stdout. Diagnostics go to stderr.
+The CLI build auto-detects from its own file name (any exe whose base name
+contains "cli", case-insensitive); passing `--cli` as the first argument also
+selects CLI mode and is accepted on both binaries.
 
 | Flag | Meaning | Default |
 |---|---|---|
@@ -76,23 +79,28 @@ Examples:
 
 ```bash
 # Inventory every local subnet (no admin needed)
-lancartographer-cli.exe
+lancartographer-cli.exe --cli
 
 # Sweep one subnet, save JSON
-lancartographer-cli.exe --range 192.168.1.0/24 --json inventory.json
+lancartographer-cli.exe --cli --range 192.168.1.0/24 --json inventory.json
 
 # Wider sweep with explicit authorization
-lancartographer-cli.exe --range 10.0.0.0/20 --i-am-authorized
+lancartographer-cli.exe --cli --range 10.0.0.0/20 --i-am-authorized
 
 # Just a few ports, faster timeout
-lancartographer-cli.exe --range 192.168.1.0/24 --ports 22,80,443,3389 --timeout 250ms
+lancartographer-cli.exe --cli --range 192.168.1.0/24 --ports 22,80,443,3389 --timeout 250ms
+
+# Same invocations via the GUI binary's --cli token
+lancartographer.exe --cli --range 192.168.1.0/24 --json inventory.json
 ```
 
 ## Quick start
 
-1. Grab `dist/LanCartographer.exe` (or build it below) and double-click it.
-   There is no installer and no admin rights are needed to start — the
-   executable runs `asInvoker`.
+1. Download `LanCartographer.exe` from the [GitHub Releases page](https://github.com/cgfixit/LanCartographer/releases)
+   (built by the release workflow on version tags) — or build it below — and
+   double-click it. Note that `dist/` is build output, not committed to the
+   repository. There is no installer and no admin rights are needed to start —
+   the executable runs `asInvoker`.
 2. Read and acknowledge the authorization dialog on first launch.
 3. Click **Scan**. Local subnets are discovered from your network adapters and
    swept; rows appear live.
@@ -130,9 +138,10 @@ Then, from a Git Bash shell:
 bash build.sh
 ```
 
-`build.sh` runs `go generate ./...` (regenerates the icon, `app.manifest`,
-and the `versioninfo.json`-driven `resource.syso` version resources) and
-builds:
+`build.sh` runs `go generate ./...` (regenerates the icon via `tools/icongen`
+and the `versioninfo.json`-driven `resource.syso` via goversioninfo, which
+consumes the checked-in `app.manifest` — the manifest itself is not
+regenerated) and builds:
 
 - `dist/LanCartographer.exe` — the GUI (`-trimpath -ldflags "-s -w -H windowsgui"`)
 - `dist/lancartographer-cli.exe` — the console build for scripting and CI
@@ -153,8 +162,10 @@ builds:
   Windows denies the request, the UI shows "access denied" and moves on. When
   Explorer opens a share UNC, Windows enforces the token — not us.
 - **No shell strings.** External programs (Explorer, browser, RDP, Ping,
-  Wake-on-LAN broadcast) are launched with argv lists only, never a composed
-  command line, so there is no injection surface.
+  Wake-on-LAN broadcast) are launched as argv lists only. The Ping and
+  browser actions use `cmd /c start` argv vectors whose variable parts are
+  validated IP literals from `netip` — never composed command strings — so
+  there is no injection surface.
 - **No phone-home.** Zero telemetry, zero analytics, no OUI-database downloads
   at runtime — the MAC-vendor (OUI) database is embedded in the binary and was
   current when generated. The only network traffic the tool generates is the
