@@ -117,10 +117,10 @@ func Run() error {
 // harness. Behavior is identical to what Run() used to inline.
 func newUI(a fyne.App, w fyne.Window, deps guiDeps) *ui {
 	u := &ui{
-		app:   a,
-		win:   w,
-		store: newHostStore(),
-		deps:  deps,
+		app:     a,
+		win:     w,
+		store:   newHostStore(),
+		deps:    deps,
 		sortCol: 2,
 		sortAsc: true,
 	}
