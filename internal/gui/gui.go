@@ -101,14 +101,26 @@ func Run() error {
 	w := a.NewWindow("LanCartographer")
 	w.Resize(fyne.NewSize(1120, 680))
 
+	u := newUI(a, w, guiDeps{
+		localSubnets: discover.LocalSubnets,
+		isElevated:   winutil.IsElevated,
+	})
+
+	u.win.Show()
+	u.maybeFirstRun()
+	a.Run()
+	return nil
+}
+
+// newUI builds the full window content without showing it or running the
+// event loop, so tests can construct and drive the UI with fyne's test
+// harness. Behavior is identical to what Run() used to inline.
+func newUI(a fyne.App, w fyne.Window, deps guiDeps) *ui {
 	u := &ui{
 		app:   a,
 		win:   w,
 		store: newHostStore(),
-		deps: guiDeps{
-			localSubnets: discover.LocalSubnets,
-			isElevated:   winutil.IsElevated,
-		},
+		deps:  deps,
 		sortCol: 2,
 		sortAsc: true,
 	}
@@ -129,10 +141,7 @@ func Run() error {
 		u.statusBar, nil, nil,
 		stack))
 	u.win.SetMainMenu(u.mainMenu())
-	u.win.Show()
-	u.maybeFirstRun()
-	a.Run()
-	return nil
+	return u
 }
 
 // captureLocalSubnets records the local physical subnets once; they feed
