@@ -1,0 +1,144 @@
+package gui
+
+import (
+	"os/exec"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/widget"
+
+	"github.com/local/lancartographer/internal/authz"
+	"github.com/local/lancartographer/internal/model"
+)
+
+// tapBox wraps a canvas object so it can carry a right-click (secondary
+// tap) context menu. The table cell template and every side-panel child
+// use it.
+type tapBox struct {
+	fyne.CanvasObject
+	id          widget.TableCellID
+	hostIP      string
+	onSecondary func(*fyne.PointEvent)
+}
+
+// newTapBox wraps obj so TappedSecondary dispatches to onSecondary.
+func newTapBox(obj fyne.CanvasObject) *tapBox {
+	return &tapBox{CanvasObject: obj}
+}
+
+// TappedSecondary implements fyne.SecondaryTappable (desktop right-click).
+func (b *tapBox) TappedSecondary(e *fyne.PointEvent) {
+	if b.onSecondary != nil {
+		b.onSecondary(e)
+	}
+}
+
+// wrapHostMenu wraps a panel child so right-click shows the host menu.
+func (u *ui) wrapHostMenu(obj fyne.CanvasObject, h model.Host) fyne.CanvasObject {
+	box := newTapBox(obj)
+	box.onSecondary = func(e *fyne.PointEvent) { u.showHostMenu(h, e) }
+	return box
+}
+
+// wrapShareMenu wraps a share row so right-click shows the share menu.
+func (u *ui) wrapShareMenu(obj fyne.CanvasObject, h model.Host, s model.Share) fyne.CanvasObject {
+	box := newTapBox(obj)
+	box.onSecondary = func(e *fyne.PointEvent) { u.showShareMenu(h, s, e) }
+	return box
+}
+
+// showRowMenu is the table cell's right-click entry point.
+func (u *ui) showRowMenu(id widget.TableCellID, e *fyne.PointEvent) {
+	if id.Row >= len(u.sorted) {
+		return
+	}
+	u.showHostMenu(u.sorted[id.Row], e)
+}
+
+// showHostMenu pops the per-host context menu at the event position.
+func (u *ui) showHostMenu(h model.Host, e *fyne.PointEvent) {
+	items := []*fyne.MenuItem{
+		u.copyItem("Copy IP", h.IP.String()),
+		u.copyItem("Copy MAC", h.MAC),
+		u.copyItem("Copy name", h.Name),
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("Open in Explorer", func() {
+			u.launch(explorerArgv(explorerPath(h.IP, "")))
+		}),
+	}
+	if scheme := browserScheme(h); scheme != "" {
+		scheme := scheme
+		items = append(items, fyne.NewMenuItem("Open in browser", func() {
+			u.launch(browserArgv(h.IP, scheme))
+		}))
+	}
+	if h.HasRDP() {
+		items = append(items, fyne.NewMenuItem("Remote Desktop", func() {
+			u.launch(rdpArgv(h.IP))
+		}))
+	}
+	items = append(items, fyne.NewMenuItem("Ping", func() {
+		u.launch(pingArgv(h.IP))
+	}))
+	if canWOL(h) {
+		items = append(items, fyne.NewMenuItem("Wake-on-LAN", func() {
+			u.confirmWOL(h)
+		}))
+	}
+	u.popupMenu(fyne.NewMenu("Host", items...), e)
+}
+
+// showShareMenu pops the per-share context menu.
+func (u *ui) showShareMenu(h model.Host, s model.Share, e *fyne.PointEvent) {
+	items := []*fyne.MenuItem{
+		u.copyItem("Copy UNC", s.UNC),
+		u.copyItem("Copy name", s.Name),
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("Open in Explorer", func() {
+			u.launch(explorerArgv(explorerPath(h.IP, s.Name)))
+		}),
+	}
+	u.popupMenu(fyne.NewMenu("Share", items...), e)
+}
+
+// copyItem builds a menu item that copies text when the value is non-empty.
+func (u *ui) copyItem(label, text string) *fyne.MenuItem {
+	return fyne.NewMenuItem(label, func() {
+		if text == "" {
+			return
+		}
+		u.win.Clipboard().SetContent(text)
+	})
+}
+
+// popupMenu shows menu at the absolute event position.
+func (u *ui) popupMenu(menu *fyne.Menu, e *fyne.PointEvent) {
+	widget.NewPopUpMenu(menu, u.win.Canvas()).ShowAtPosition(e.AbsolutePosition)
+}
+
+// launch starts argv[0] with argv[1:] as an ARGV LIST — never a shell
+// string. Launch failures land in the status bar.
+func (u *ui) launch(argv []string) {
+	if len(argv) == 0 {
+		return
+	}
+	if err := exec.Command(argv[0], argv[1:]...).Start(); err != nil {
+		u.statusErr.SetText("launch: " + err.Error())
+	}
+}
+
+// confirmWOL gates Wake-on-LAN behind a dialog restating the authorization
+// notice plus the target MAC and broadcast address. OFF by default.
+func (u *ui) confirmWOL(h model.Host) {
+	broadcast := "255.255.255.255:9"
+	if u.lastPrefix.IsValid() {
+		broadcast = broadcastAddr(u.lastPrefix)
+	}
+	dialog.ShowConfirm("Wake-on-LAN",
+		authz.Notice+"\n\nSend a magic packet to "+h.MAC+" via "+broadcast+"?",
+		func(ok bool) {
+			if ok {
+				u.sendWOL(h)
+			}
+		}, u.win)
+}
