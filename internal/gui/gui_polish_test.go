@@ -7,6 +7,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/local/lancartographer/internal/model"
@@ -45,6 +46,67 @@ func TestEmptyHintScanningState(t *testing.T) {
 	u.updateEmptyHint()
 	if u.emptyTitle.Text != "No hosts yet" {
 		t.Fatalf("empty title after scan end = %q, want %q", u.emptyTitle.Text, "No hosts yet")
+	}
+}
+
+// findRect walks the object tree for the first *canvas.Rectangle.
+func findRect(obj fyne.CanvasObject) *canvas.Rectangle {
+	if r, ok := obj.(*canvas.Rectangle); ok {
+		return r
+	}
+	for _, c := range children(obj) {
+		if r := findRect(c); r != nil {
+			return r
+		}
+	}
+	return nil
+}
+
+func TestEmptyHintCardBackgroundTracksTheme(t *testing.T) {
+	u := newTestUI(t)
+
+	card := findRect(u.emptyHint)
+	if card == nil {
+		t.Fatal("empty hint tree has no card rectangle")
+	}
+	if card != u.emptyCard {
+		t.Fatal("hint card is not the registered u.emptyCard")
+	}
+	if got, want := card.FillColor, theme.Color(theme.ColorNameBackground); got != want {
+		t.Fatalf("card fill = %v, want theme background %v", got, want)
+	}
+
+	u.applyTheme("dark")
+	if got, want := u.emptyCard.FillColor, theme.Color(theme.ColorNameBackground); got != want {
+		t.Fatalf("card fill after dark toggle = %v, want %v", got, want)
+	}
+	u.applyTheme("light")
+	if got, want := u.emptyCard.FillColor, theme.Color(theme.ColorNameBackground); got != want {
+		t.Fatalf("card fill after light toggle = %v, want %v", got, want)
+	}
+}
+
+func TestEmptyHintLayersOverTableBody(t *testing.T) {
+	u := newTestUI(t)
+
+	// The hint must be a sibling layer over u.table inside one stack — that
+	// stack is what tableAreaLayout sizes into the body region.
+	body, ok := u.split.Leading.(*fyne.Container)
+	if !ok {
+		t.Fatalf("split leading is %T, want *fyne.Container", u.split.Leading)
+	}
+	var stack *fyne.Container
+	for _, obj := range body.Objects {
+		c, ok := obj.(*fyne.Container)
+		if !ok || len(c.Objects) < 2 {
+			continue
+		}
+		if c.Objects[0] == u.table && c.Objects[1] == u.emptyHint {
+			stack = c
+		}
+	}
+	if stack == nil {
+		t.Fatal("no table-below-hint stack layer found in the table area")
 	}
 }
 

@@ -78,10 +78,11 @@ type ui struct {
 	// status-bar rule rectangles, live-recolored by applyTheme
 	statusSeparators []*canvas.Rectangle
 
-	// empty-table guidance overlay stacked over the table area
+	// empty-table guidance overlay layered over the table body
 	emptyHint  *fyne.Container
 	emptyTitle *widget.Label
 	emptySub   *widget.Label
+	emptyCard  *canvas.Rectangle
 
 	// clickable table header buttons (index-aligned with tableColumns)
 	headerBtns []*widget.Button
@@ -375,8 +376,8 @@ func themeModeLabel(mode string) string {
 }
 
 // applyTheme switches the app-wide theme; anything but "dark" means light.
-// Status-bar separators captured their color at build time, so re-resolve
-// them here after the switch.
+// Status-bar separators and the empty-hint card captured their colors at
+// build time, so re-resolve them here after the switch.
 func (u *ui) applyTheme(mode string) {
 	if mode == "dark" {
 		fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
@@ -386,6 +387,10 @@ func (u *ui) applyTheme(mode string) {
 	for _, rule := range u.statusSeparators {
 		rule.FillColor = theme.Color(theme.ColorNameSeparator)
 		rule.Refresh()
+	}
+	if u.emptyCard != nil {
+		u.emptyCard.FillColor = theme.Color(theme.ColorNameBackground)
+		u.emptyCard.Refresh()
 	}
 }
 

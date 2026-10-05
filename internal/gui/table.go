@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/local/lancartographer/internal/model"
@@ -65,12 +66,15 @@ const (
 	tableTopOffset  = headerRowHeight + 2
 )
 
-// tableAreaLayout lays out the header row above the table and re-derives
-// the table's column widths from the area's actual width on every layout
-// pass, so the columns track window resizes instead of staying fixed.
+// tableAreaLayout lays out the header row above the table body and
+// re-derives the table's column widths from the area's actual width on
+// every layout pass, so the columns track window resizes instead of
+// staying fixed. body is the table plus its empty-state overlay stack; it
+// is moved and sized exactly where the bare table used to sit.
 type tableAreaLayout struct {
 	header []fyne.CanvasObject
 	table  *widget.Table
+	body   fyne.CanvasObject
 	minSum float32
 }
 
@@ -81,7 +85,7 @@ func (l *tableAreaLayout) MinSize(_ []fyne.CanvasObject) fyne.Size {
 }
 
 // Layout positions the header cells to match the freshly computed column
-// widths and sizes the table to fill the rest of the area.
+// widths and sizes the body (table + overlay) to fill the rest of the area.
 func (l *tableAreaLayout) Layout(_ []fyne.CanvasObject, size fyne.Size) {
 	widths := computeColWidths(size.Width)
 	x := float32(0)
@@ -93,8 +97,8 @@ func (l *tableAreaLayout) Layout(_ []fyne.CanvasObject, size fyne.Size) {
 		x += widths[i]
 		l.table.SetColumnWidth(i, widths[i])
 	}
-	l.table.Move(fyne.NewPos(0, tableTopOffset))
-	l.table.Resize(fyne.NewSize(size.Width, fyne.Max(size.Height-tableTopOffset, 0)))
+	l.body.Move(fyne.NewPos(0, tableTopOffset))
+	l.body.Resize(fyne.NewSize(size.Width, fyne.Max(size.Height-tableTopOffset, 0)))
 }
 
 // aliveGreen / deadRed paint the status circle.
@@ -172,17 +176,22 @@ func (u *ui) buildTable() {
 	for _, m := range colMins {
 		minSum += m
 	}
-	area := container.New(
-		&tableAreaLayout{header: header, table: u.table, minSum: minSum},
-		append(append([]fyne.CanvasObject{}, header...), u.table)...)
 
-	// Empty-state guidance stacked over the table area (same Stack pattern
-	// as the map toggle): visible only while the store holds no hosts.
+	// Empty-state guidance layered over the TABLE BODY only (stacked
+	// table-below-hint), so it centers within the body region rather than
+	// below the header row. A solid card behind the text keeps the table's
+	// column separators from showing through; applyTheme recolors it.
 	u.emptyTitle = widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	u.emptySub = widget.NewLabel("")
 	u.emptySub.Alignment = fyne.TextAlignCenter
-	u.emptyHint = container.NewCenter(container.NewVBox(u.emptyTitle, u.emptySub))
-	area = container.NewStack(area, u.emptyHint)
+	u.emptyCard = canvas.NewRectangle(theme.Color(theme.ColorNameBackground))
+	u.emptyHint = container.NewCenter(container.NewStack(u.emptyCard,
+		container.NewPadded(container.NewVBox(u.emptyTitle, u.emptySub))))
+	body := container.NewStack(u.table, u.emptyHint)
+
+	area := container.New(
+		&tableAreaLayout{header: header, table: u.table, body: body, minSum: minSum},
+		append(append([]fyne.CanvasObject{}, header...), body)...)
 
 	u.split = container.NewHSplit(area, container.NewVScroll(u.panel))
 	u.split.SetOffset(0.7)
