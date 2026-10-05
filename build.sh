@@ -22,6 +22,13 @@ if [ "$(uname -s)" = "Darwin" ]; then
     echo "==> go generate ./... (icon only; version resources are Windows-only)"
     go generate ./...
 
+    # The checked-in resource.syso is a Windows COFF object; the go tool feeds
+    # .syso files to the system linker on every OS and Apple's ld rejects
+    # COFF. Move it aside for the builds and restore it afterwards.
+    SYSO=cmd/lancartographer/resource.syso
+    mv "$SYSO" "$SYSO.hold"
+    trap 'mv "$SYSO.hold" "$SYSO"' EXIT
+
     echo "==> building dist/LanCartographer (GUI)"
     go build -trimpath -ldflags "-s -w" -o dist/LanCartographer ./cmd/lancartographer
 

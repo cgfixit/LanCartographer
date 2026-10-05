@@ -9,6 +9,8 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action lists PR commits via the REST API on pull_request events.
+  pull-requests: read
 
 jobs:
   gitleaks:
@@ -23,3 +25,6 @@ jobs:
 
       - name: Gitleaks
         uses: gitleaks/gitleaks-action@v2
+        env:
+          # Required by gitleaks-action v2 for pull_request scans.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -36,9 +36,13 @@ gofmt_check() {
 # Generated artifacts whose bytes must be reproducible from the checked-in
 # sources. Hash them instead of diffing the tree so the check works on a
 # dirty working copy (uncommitted edits are not "drift").
+# NOTE: resource.syso is intentionally NOT listed — its bytes depend on the
+# goversioninfo build version, which varies between developer machines and
+# CI. It is still exercised: `go generate` must succeed and the Windows
+# build embeds it. The drift check guards the deterministic Go-generated
+# files below.
 GENERATED=(
     internal/oui/oui_data.go
-    cmd/lancartographer/resource.syso
     cmd/lancartographer/app.ico
 )
 

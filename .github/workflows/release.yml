@@ -102,6 +102,12 @@ jobs:
           go-version: "1.27"
           cache: true
 
+      - name: Move Windows-only resource.syso aside (COFF breaks the darwin link)
+        # Same story as the CI macos job: the checked-in resource.syso is an
+        # amd64 COFF object; the go tool feeds .syso files to Apple's ld,
+        # which rejects them. It is Windows-only output, so move it aside.
+        run: mv cmd/lancartographer/resource.syso "$RUNNER_TEMP/resource.syso"
+
       - name: Generate embedded resources (icon only on macOS)
         run: |
           export CGO_ENABLED=1
