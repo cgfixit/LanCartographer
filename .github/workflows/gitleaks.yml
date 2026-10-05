@@ -23,3 +23,6 @@ jobs:
 
       - name: Gitleaks
         uses: gitleaks/gitleaks-action@v2
+        env:
+          # Required by gitleaks-action v2 for pull_request scans.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
