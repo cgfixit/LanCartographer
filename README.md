@@ -7,6 +7,15 @@ MAC vendors — and presents the result as a live, sortable table with a CLI for
 scripting. It ships as a single portable `.exe`: no installer, no services, no
 background processes, and no telemetry of any kind.
 
+![LanCartographer inventory table — light theme (sample data)](screenshots/inventory-light.png)
+
+*Dark theme, one toggle away:*
+
+![LanCartographer inventory table — dark theme (sample data)](screenshots/inventory-dark.png)
+
+The screenshots above show a fabricated sample inventory (192.168.1.0/24) —
+no real network data.
+
 ## Authorized use only
 
 Scan only networks you own or have explicit authorization to inventory. Unauthorized access or scanning may violate the Computer Fraud and Abuse Act, 18 U.S.C. § 1030, and similar laws.
