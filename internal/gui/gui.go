@@ -80,7 +80,7 @@ type ui struct {
 	scanning bool
 	cancel   context.CancelFunc
 	started  time.Time
-	ticker   *time.Ticker
+	tickStop chan struct{} // closed by finishScan to end the elapsed ticker goroutine
 
 	// table sorting (column index into tableColumns)
 	sortCol int
@@ -326,11 +326,19 @@ func (u *ui) startScan(target netip.Prefix) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	u.cancel = cancel
-	u.ticker = time.NewTicker(500 * time.Millisecond)
+	u.tickStop = make(chan struct{})
+	stop := u.tickStop
+	ticker := time.NewTicker(500 * time.Millisecond)
 	go func() {
-		for range u.ticker.C {
-			elapsed := time.Since(u.started).Round(time.Second)
-			fyne.Do(func() { u.statusElaps.SetText(elapsed.String()) })
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				elapsed := time.Since(u.started).Round(time.Second)
+				fyne.Do(func() { u.statusElaps.SetText(elapsed.String()) })
+			case <-stop:
+				return
+			}
 		}
 	}()
 
@@ -376,9 +384,9 @@ func (u *ui) applyEvent(ev scan.Event) {
 
 // finishScan runs on the UI thread once the engine's channel has closed.
 func (u *ui) finishScan() {
-	if u.ticker != nil {
-		u.ticker.Stop()
-		u.ticker = nil
+	if u.tickStop != nil {
+		close(u.tickStop) // ends the elapsed-ticker goroutine
+		u.tickStop = nil
 	}
 	u.scanning = false
 	u.cancel = nil
