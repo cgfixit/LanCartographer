@@ -1,0 +1,21 @@
+# Enforce LF line endings on checkout regardless of the developer's
+# core.autocrlf setting. gofmt rejects CRLF, and the bash scripts break
+# under Git Bash when checked out with CRLF. Binary artifacts must stay
+# binary — never normalize or diff them.
+* text=auto
+
+*.go   text eol=lf
+*.sh   text eol=lf
+*.mod  text eol=lf
+*.sum  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.svg  text eol=lf
+*.csv  text eol=lf
+
+*.png  binary
+*.ico  binary
+*.syso binary

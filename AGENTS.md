@@ -100,3 +100,10 @@ skill at `.agents/skills/optimize/SKILL.md` (repo-relative path — read it
 first). It defines a 4-minute read-only scan of the repo and a scoped
 multi-PR process (one concern per PR, drafts only). Follow its process
 rather than free-styling an audit.
+
+## 6. CI status notes
+
+- CodeQL: requires GitHub Advanced Security, which is not available on a
+  private Free-plan repo. The workflow was removed while private; restore
+  `.github/workflows/codeql.yml` from git history if the repository is made
+  public.
