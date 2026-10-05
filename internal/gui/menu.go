@@ -13,9 +13,11 @@ import (
 
 // tapBox wraps a canvas object so it can carry a right-click (secondary
 // tap) context menu. The table cell template and every side-panel child
-// use it.
+// use it. It is a real fyne widget (BaseWidget + CreateRenderer): a raw
+// embedded fyne.CanvasObject has no renderer, so Fyne draws nothing.
 type tapBox struct {
-	fyne.CanvasObject
+	widget.BaseWidget
+	content     fyne.CanvasObject
 	id          widget.TableCellID
 	hostIP      string
 	onSecondary func(*fyne.PointEvent)
@@ -23,8 +25,18 @@ type tapBox struct {
 
 // newTapBox wraps obj so TappedSecondary dispatches to onSecondary.
 func newTapBox(obj fyne.CanvasObject) *tapBox {
-	return &tapBox{CanvasObject: obj}
+	b := &tapBox{content: obj}
+	b.ExtendBaseWidget(b)
+	return b
 }
+
+// CreateRenderer renders just the wrapped content.
+func (b *tapBox) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(b.content)
+}
+
+// MinSize delegates to the wrapped content.
+func (b *tapBox) MinSize() fyne.Size { return b.content.MinSize() }
 
 // TappedSecondary implements fyne.SecondaryTappable (desktop right-click).
 func (b *tapBox) TappedSecondary(e *fyne.PointEvent) {

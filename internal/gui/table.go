@@ -46,7 +46,7 @@ func (u *ui) buildTable() {
 			box := obj.(*tapBox)
 			box.id = id
 			box.hostIP = ""
-			inner := box.CanvasObject.(*fyne.Container)
+			inner := box.content.(*fyne.Container)
 			label := inner.Objects[0].(*widget.Label)
 			circleC := inner.Objects[1].(*fyne.Container)
 			circle := circleC.Objects[0].(*fyne.Container).Objects[0].(*canvas.Circle)
