@@ -31,6 +31,22 @@ networks you do not control.
 | First-run notice | The authorization notice is shown in a dialog on first launch; a marker file records that you have seen it |
 | Elevation button | When the process is not elevated, the toolbar offers an Elevate button; MAC lookup needs elevation to return addresses, and the UI says so instead of failing silently |
 
+## How it works
+
+- **Subnet discovery:** local IPv4 subnets are enumerated from your adapters via `GetAdaptersAddresses`, then expanded into candidate host addresses.
+- **Concurrent sweep:** hosts are probed by a worker pool whose concurrency is bounded by the global dial limiter (default 128, clamped to 256).
+- **Port probes:** each port gets a TCP connect with an exact result — `open`, `closed`, or `timeout`; open ports carry a service label, and unrecognized ones get a 1-second HTTP probe that captures the page `<title>`.
+- **Enrichment:** SMB shares are listed via `NetShareEnum` level 1, and names are resolved by racing NetBIOS, mDNS, and DNS PTR (first answer wins), persisted in a MAC-keyed cache.
+- **Live events:** the engine streams per-host events over a channel, so the Fyne GUI table fills in while the scan is still running.
+
+## Why LanCartographer
+
+- **Offline-first, zero telemetry:** no analytics, no phone-home, no runtime downloads — the only traffic is the scan you asked for.
+- **Single portable exe:** no installer, no services, no background processes; run it from anywhere.
+- **No admin required:** the manifest is `asInvoker`; elevation is an opt-in button for the few lookups that need it, never a demand.
+- **Authorization-gated ranges:** out-of-scope, non-RFC1918, or overly broad targets require explicit confirmation before a single packet is sent.
+- **Original UI:** a purpose-built live table and workflow, not a reskin of an existing scanner.
+
 ## CLI reference
 
 `lancartographer-cli.exe` drives the same engine as the GUI and prints a table
@@ -201,6 +217,19 @@ suite is safe to run anywhere, on any network.
   logic already lives in `internal/maplayout`).
 - **No 3D.** A 3D visualization is intentionally absent: it adds GPU/driver
   complexity and installer weight for zero inventory value.
+
+## Inspiration and similar tools
+
+LanCartographer's feature set was inspired by well-known tools in the LAN
+scanning space — thank you to their authors and communities:
+
+- [Advanced IP Scanner](https://www.advanced-ip-scanner.com/) (Famatech)
+- [Angry IP Scanner](https://angryip.org/)
+- [Nmap](https://nmap.org/)
+
+LanCartographer is an independent, original implementation. No code, artwork,
+branding, or layout is borrowed from these projects, and LanCartographer is
+not affiliated with, sponsored by, or endorsed by any of them.
 
 ## License
 
