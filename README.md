@@ -20,14 +20,45 @@ for networks you do not control.
 
 ## Build
 
-Build steps: placeholder — a build script and full instructions will be added
-in a later task once the application code exists. For now, the repository is
-a skeleton Go module (`github.com/local/lancartographer`) that builds clean:
+**Toolchain:** Go 1.22 or later, plus a CGO C compiler — on Windows use the
+MSYS2 `mingw-w64` gcc (`pacman -S mingw-w64-ucrt-x86_64-gcc`; the `ucrt64`
+shell puts it on PATH). The GUI (Fyne) requires CGO; the CLI is the same
+binary driven by a flag, so both builds use `CGO_ENABLED=1 CC=gcc`.
+
+One-time setup for the version-resource tool used by `go generate`:
 
 ```bash
-go build ./...
-go vet ./...
+go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 ```
+
+Then build both binaries from a Git Bash shell:
+
+```bash
+./build.sh
+```
+
+`build.sh` runs `go generate ./...` (regenerates the icon, `app.manifest`,
+and `versioninfo.json`-driven `resource.syso` version resources) and then
+produces, in `dist/`:
+
+- **`dist/LanCartographer.exe`** — the GUI build
+  (`-trimpath -ldflags "-s -w -H windowsgui"`); double-click it, or run it
+  from a shell. It runs asInvoker (no admin required to start).
+- **`dist/lancartographer-cli.exe`** — the console build (same flags without
+  `-H windowsgui`), for scripting and CI.
+
+### CLI usage and exit codes
+
+```bash
+lancartographer-cli.exe --cli [--range CIDR] [--ports 21,22,80,...] \
+    [--timeout 400ms] [--concurrency 128] [--json out.json] [--i-am-authorized]
+```
+
+With no `--range`, every local physical subnet is inventoried. Ranges broader
+than your local subnets require `--i-am-authorized` confirmation. Exit codes:
+`0` scan completed; `2` bad arguments, an authorization-gate refusal, or a
+failed `--json` export; `3` no usable local interfaces (only reachable on the
+omitted-`--range` path).
 
 ## Platform notes
 
@@ -50,5 +81,5 @@ go vet ./...
 
 ## Repository status
 
-Early skeleton. Module initialized, license and authorization notice in
-place. Application code arrives in later tasks.
+Application code complete: discovery, probing, scan engine, GUI, CLI, WOL,
+export, and build packaging all live on `main`.
