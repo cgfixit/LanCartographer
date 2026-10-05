@@ -14,3 +14,6 @@ coverage.*
 .vscode/
 .idea/
 Thumbs.db
+
+# Smoke-test scratch
+.smoke/
