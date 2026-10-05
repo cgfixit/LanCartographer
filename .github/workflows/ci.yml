@@ -88,6 +88,15 @@ jobs:
           go-version: '1.27'
           cache: true
 
+      - name: Move Windows-only resource.syso aside (COFF breaks the darwin link)
+        # cmd/lancartographer/resource.syso is a checked-in amd64 COFF .rsrc
+        # object. The go tool passes .syso files to the external linker on
+        # every platform, and Apple's ld rejects COFF with
+        # "ld: unknown file type in .../000000.o". The file only matters for
+        # the Windows build (it is regenerated there by go generate), so move
+        # it aside in this checkout for the whole macos job.
+        run: mv cmd/lancartographer/resource.syso "$RUNNER_TEMP/resource.syso"
+
       - name: CGO go build
         run: CGO_ENABLED=1 go build ./...
 
