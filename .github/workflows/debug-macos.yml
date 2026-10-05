@@ -1,7 +1,9 @@
 name: debug-macos
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [kimi/ci-first-run-fixes]
+    paths: ['.github/workflows/debug-macos.yml']
 
 permissions:
   contents: read
