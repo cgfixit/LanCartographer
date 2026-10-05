@@ -1,0 +1,20 @@
+# LanCartographer embedded OUI subset — offline, hand-maintained.
+# Format: HEXPREFIX,Vendor
+#   HEXPREFIX = first 3 bytes of the MAC as 6 uppercase hex chars, no separators.
+# Regenerate internal/oui/oui_data.go after editing: go generate ./internal/oui/
+00000C,Cisco
+000085,Canon
+000048,Epson
+001132,Synology
+001422,Dell
+0015B9,Samsung
+00155D,Microsoft (Hyper-V)
+001B21,Intel
+001B63,Apple
+245EBE,QNAP
+240AC4,Espressif
+3C5AB4,Google
+3CD92B,HP
+50C7BF,TP-Link
+74C246,Amazon
+B827EB,Raspberry Pi
