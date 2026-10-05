@@ -124,8 +124,10 @@ func Run() error {
 
 	stack := container.NewStack(u.split, u.mapView)
 	u.mapView.Hide()
-	u.win.SetContent(container.NewBorder(u.topBar, u.statusBar, nil, nil,
-		container.NewVBox(u.progress, stack)))
+	u.win.SetContent(container.NewBorder(
+		container.NewVBox(u.topBar, u.progress),
+		u.statusBar, nil, nil,
+		stack))
 	u.win.SetMainMenu(u.mainMenu())
 	u.win.Show()
 	u.maybeFirstRun()
