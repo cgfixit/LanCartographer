@@ -17,9 +17,78 @@ import (
 // status circle and has no header text.
 var tableColumns = []string{"", "Name", "IP", "MAC", "Vendor", "Ports", "Shares"}
 
-// colWidths sizes the seven table columns; the header row uses the same
-// widths so headers line up with their columns.
-var colWidths = []float32{44, 170, 130, 160, 160, 260, 220}
+// colFractions gives each of the seven columns its share of the available
+// width; the fractions must sum to exactly 1.0. colMins floors each column
+// so it never collapses below a readable width (the table h-scrolls when
+// the minimums exceed the available width).
+var colFractions = []float32{0.045, 0.155, 0.115, 0.145, 0.135, 0.225, 0.18}
+var colMins = []float32{40, 110, 95, 130, 100, 150, 120}
+
+// computeColWidths splits avail across the columns by fraction, clamping
+// any column that would fall below its minimum and redistributing the
+// leftover among the unclamped columns (water-filling), so the sum never
+// exceeds avail unless every column sits at its minimum.
+func computeColWidths(avail float32) []float32 {
+	widths := make([]float32, len(colFractions))
+	fixed := make([]bool, len(colFractions))
+	remaining, remFrac := avail, float32(1)
+	for {
+		clamped := false
+		for i := range colFractions {
+			if fixed[i] {
+				continue
+			}
+			if colFractions[i]/remFrac*remaining < colMins[i] {
+				fixed[i] = true
+				widths[i] = colMins[i]
+				remaining -= colMins[i]
+				remFrac -= colFractions[i]
+				clamped = true
+			}
+		}
+		if !clamped {
+			break
+		}
+	}
+	for i := range colFractions {
+		if !fixed[i] {
+			widths[i] = colFractions[i] / remFrac * remaining
+		}
+	}
+	return widths
+}
+
+// tableAreaLayout lays out the header row above the table and re-derives
+// the table's column widths from the area's actual width on every layout
+// pass, so the columns track window resizes instead of staying fixed.
+type tableAreaLayout struct {
+	header []fyne.CanvasObject
+	table  *widget.Table
+	minSum float32
+}
+
+// MinSize reports the floor: the column minimums side by side, tall enough
+// for the header plus a usable table body.
+func (l *tableAreaLayout) MinSize(_ []fyne.CanvasObject) fyne.Size {
+	return fyne.NewSize(l.minSum, 36+200)
+}
+
+// Layout positions the header cells to match the freshly computed column
+// widths and sizes the table to fill the rest of the area.
+func (l *tableAreaLayout) Layout(_ []fyne.CanvasObject, size fyne.Size) {
+	widths := computeColWidths(size.Width)
+	x := float32(0)
+	for i := range widths {
+		if i < len(l.header) {
+			l.header[i].Move(fyne.NewPos(x, 0))
+			l.header[i].Resize(fyne.NewSize(widths[i], 36))
+		}
+		x += widths[i]
+		l.table.SetColumnWidth(i, widths[i])
+	}
+	l.table.Move(fyne.NewPos(0, 38))
+	l.table.Resize(fyne.NewSize(size.Width, size.Height-38))
+}
 
 // aliveGreen / deadRed paint the status circle.
 var (
@@ -71,9 +140,6 @@ func (u *ui) buildTable() {
 			label.SetText(cellText(h, id.Col))
 		},
 	)
-	for i, w := range colWidths {
-		u.table.SetColumnWidth(i, w)
-	}
 	u.table.OnSelected = func(id widget.TableCellID) {
 		if id.Row >= len(u.sorted) {
 			return
@@ -86,17 +152,23 @@ func (u *ui) buildTable() {
 	header := make([]fyne.CanvasObject, len(tableColumns))
 	for col := range tableColumns {
 		if col == 0 {
-			header[col] = container.NewGridWrap(fyne.NewSize(colWidths[col], 36), canvas.NewRectangle(transparent))
+			header[col] = canvas.NewRectangle(transparent)
 			continue
 		}
 		col := col
 		btn := widget.NewButton(u.headerText(col), func() { u.onHeaderClick(col) })
+		btn.Alignment = widget.ButtonAlignLeading
 		u.headerBtns[col] = btn
-		header[col] = container.NewGridWrap(fyne.NewSize(colWidths[col], 36), btn)
+		header[col] = btn
 	}
-	u.split = container.NewHSplit(
-		container.NewBorder(container.NewHBox(header...), nil, nil, nil, u.table),
-		container.NewVScroll(u.panel))
+	minSum := float32(0)
+	for _, m := range colMins {
+		minSum += m
+	}
+	area := container.New(
+		&tableAreaLayout{header: header, table: u.table, minSum: minSum},
+		append(append([]fyne.CanvasObject{}, header...), u.table)...)
+	u.split = container.NewHSplit(area, container.NewVScroll(u.panel))
 	u.split.SetOffset(0.7)
 }
 

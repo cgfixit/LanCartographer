@@ -32,8 +32,10 @@ func (u *ui) buildMapView() {
 
 // showPanelPlaceholder resets the panel to its idle hint.
 func (u *ui) showPanelPlaceholder() {
+	hint := widget.NewLabel("Select a host to see details.")
+	hint.Truncation = fyne.TextTruncateEllipsis
 	u.panel.Objects = []fyne.CanvasObject{
-		container.NewCenter(widget.NewLabel("Select a host to see details.")),
+		container.NewCenter(hint),
 	}
 	u.panel.Refresh()
 }
@@ -106,8 +108,11 @@ func (u *ui) showHost(h model.Host) {
 		}
 	}
 
+	titleLabel := widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	titleLabel.Truncation = fyne.TextTruncateEllipsis
+
 	u.panel.Objects = []fyne.CanvasObject{
-		widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		titleLabel,
 		widget.NewSeparator(),
 		ident,
 		actions,

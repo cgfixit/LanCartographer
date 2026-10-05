@@ -127,15 +127,20 @@ func secondaryTapCellAt(t *testing.T, u *ui, pos fyne.Position) fyne.CanvasObjec
 }
 
 // nameCellTapPos returns the table-local center of row's Name cell (col 1).
-// Column widths come from the same colWidths table buildTable uses; row
-// height is the table's template cell height.
+// The X offset comes from the col-1 header button's laid-out position
+// relative to the table (both are sized by tableAreaLayout from the same
+// computeColWidths pass); row height is the table's template cell height.
 func nameCellTapPos(t *testing.T, u *ui, row int) fyne.Position {
 	t.Helper()
-	x := float32(0)
-	for c := 0; c < 1; c++ {
-		x += colWidths[c]
+	tp, ok := absPos(u.win.Canvas().Content(), u.table)
+	if !ok {
+		t.Fatal("table not found in canvas tree")
 	}
-	x += colWidths[1] / 2
+	hp, ok := absPos(u.win.Canvas().Content(), u.headerBtns[1])
+	if !ok {
+		t.Fatal("header button not found in canvas tree")
+	}
+	x := hp.X - tp.X + u.headerBtns[1].Size().Width/2
 	h := u.table.CreateCell().MinSize().Height
 	y := float32(row)*h + h/2
 	return fyne.NewPos(x, y)
