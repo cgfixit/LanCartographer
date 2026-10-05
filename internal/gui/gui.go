@@ -89,6 +89,14 @@ type ui struct {
 	started  time.Time
 	tickStop chan struct{} // closed by finishScan to end the elapsed ticker goroutine
 
+	// table repaint coalescing: engine events fold into the store per event,
+	// but the sort+repaint is throttled so a fast scan costs O(events) store
+	// updates, not O(events x n log n) re-sorts. finishScan flushes.
+	lastRefresh  time.Time
+	refreshDirty bool
+	throttle     time.Duration
+	repaints     int // test hook: counts full refreshTable invocations
+
 	// table sorting (column index into tableColumns)
 	sortCol int
 	sortAsc bool
@@ -132,6 +140,8 @@ func newUI(a fyne.App, w fyne.Window, deps guiDeps) *ui {
 		deps:    deps,
 		sortCol: 2,
 		sortAsc: true,
+
+		throttle: 120 * time.Millisecond,
 	}
 
 	u.captureLocalSubnets()
@@ -225,20 +235,32 @@ func (u *ui) buildStatusBar() {
 	u.statusScan.Hide()
 	reminder := widget.NewLabel(statusReminder)
 	reminder.Importance = widget.WarningImportance
-	reminder.Truncation = fyne.TextTruncateEllipsis
 	reminder.Alignment = fyne.TextAlignTrailing
+	// Measure the natural size BEFORE enabling truncation: an
+	// ellipsis-truncated label reports a collapsed MinSize, which is what
+	// shrunk the Border right slot to "…" at every window width. The
+	// GridWrap pins the full-sentence width as the minimum; on very narrow
+	// windows the label still ellipsizes within it.
+	reminderMin := reminder.MinSize()
+	reminder.Truncation = fyne.TextTruncateEllipsis
 	counters := container.NewHBox(
 		u.statusHosts, thinSeparator(), u.statusPorts, thinSeparator(),
 		u.statusShare, thinSeparator(), u.statusElaps, thinSeparator(),
 		u.statusErr)
 	u.statusBar = container.NewBorder(nil, nil, counters,
-		container.NewHBox(u.statusScan, reminder))
+		container.NewHBox(u.statusScan, container.NewGridWrap(reminderMin, reminder)))
 }
+
+// statusSeparators tracks the live status-bar rule rectangles so applyTheme
+// can re-resolve their fill: canvas colors are captured at build time, so a
+// theme toggle would otherwise leave the 1px rules in the old theme's color.
+var statusSeparators []*canvas.Rectangle
 
 // thinSeparator returns a 1px-wide vertical rule for the status bar; a
 // widget.Separator in an HBox lays out horizontally, which reads wrong.
 func thinSeparator() fyne.CanvasObject {
 	rule := canvas.NewRectangle(theme.Color(theme.ColorNameSeparator))
+	statusSeparators = append(statusSeparators, rule)
 	return container.NewGridWrap(fyne.NewSize(1, 16), rule)
 }
 
@@ -256,6 +278,22 @@ func (u *ui) refreshTable() {
 	u.table.Refresh()
 	u.refreshStatus()
 	u.updateEmptyHint()
+	u.lastRefresh = time.Now()
+	u.refreshDirty = false
+	u.repaints++
+}
+
+// maybeRefreshTable coalesces repaint requests during a scan: within the
+// throttle window it marks the table dirty (flushed by the next full
+// refresh, and always by finishScan) but still updates the empty-table
+// hint, which is cheap and must track store emptiness exactly.
+func (u *ui) maybeRefreshTable() {
+	if u.throttle > 0 && time.Since(u.lastRefresh) < u.throttle {
+		u.refreshDirty = true
+		u.updateEmptyHint()
+		return
+	}
+	u.refreshTable()
 }
 
 // mainMenu is the window menu bar: File (export, favorites, quit) and Help
@@ -332,12 +370,18 @@ func themeModeLabel(mode string) string {
 }
 
 // applyTheme switches the app-wide theme; anything but "dark" means light.
+// Status-bar separators captured their color at build time, so re-resolve
+// them here after the switch.
 func applyTheme(mode string) {
 	if mode == "dark" {
 		fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
-		return
+	} else {
+		fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
 	}
-	fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
+	for _, rule := range statusSeparators {
+		rule.FillColor = theme.Color(theme.ColorNameSeparator)
+		rule.Refresh()
+	}
 }
 
 // onThemeToggle flips between the light and dark themes and persists the
@@ -438,12 +482,14 @@ func (u *ui) startScan(target netip.Prefix) {
 	}()
 }
 
-// applyEvent folds one engine event into the UI state.
+// applyEvent folds one engine event into the UI state. Store updates apply
+// per event (correctness-critical); repaints are throttled except for the
+// terminal events, which always flush so the settled state is exact.
 func (u *ui) applyEvent(ev scan.Event) {
 	switch ev.Kind {
 	case scan.EventHostFound, scan.EventPortFound, scan.EventShareFound:
 		u.store.apply(ev)
-		u.refreshTable()
+		u.maybeRefreshTable()
 		if u.selectedIP == ev.Host.IP.String() {
 			u.showSelectedHost()
 		}
@@ -453,8 +499,10 @@ func (u *ui) applyEvent(ev scan.Event) {
 		if ev.Err != nil {
 			u.statusErr.SetText(ev.Err.Error())
 		}
+		u.refreshTable()
 	case scan.EventDone:
 		u.progress.SetValue(1)
+		u.refreshTable()
 	}
 }
 
@@ -470,7 +518,7 @@ func (u *ui) finishScan() {
 	u.stopBtn.Disable()
 	u.statusScan.Hide()
 	u.statusElaps.SetText(time.Since(u.started).Round(time.Millisecond).String())
-	u.updateEmptyHint()
+	u.refreshTable() // final flush: settled state is exact even if throttled
 }
 
 // onStop cancels the scan context; the engine unwinds in under a second.

@@ -16,6 +16,8 @@ import (
 // never elevated. No scan ever runs; tests inject hosts via store.set.
 func newTestUI(t *testing.T) *ui {
 	t.Helper()
+	// Keep LoadSettings/SaveSettings off the real %APPDATA% settings.json.
+	t.Setenv("APPDATA", t.TempDir())
 	a := test.NewApp()
 	w := a.NewWindow("test")
 	w.Resize(fyne.NewSize(1120, 680))

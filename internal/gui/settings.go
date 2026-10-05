@@ -2,8 +2,6 @@ package gui
 
 import (
 	"encoding/json"
-	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -27,10 +25,9 @@ func LoadSettings() (AppSettings, error) {
 	def := AppSettings{Theme: "light"}
 	data, err := os.ReadFile(settingsPath())
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return def, nil
-		}
-		return def, nil //nolint:nilerr // unreadable settings fall back to defaults by design
+		// Missing AND unreadable settings both fall back to defaults by
+		// design — a bad file must never block startup.
+		return def, nil //nolint:nilerr
 	}
 	var s AppSettings
 	if err := json.Unmarshal(data, &s); err != nil {
