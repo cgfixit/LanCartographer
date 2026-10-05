@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/local/lancartographer/internal/discover"
+	"github.com/local/lancartographer/internal/hostcache"
 	"github.com/local/lancartographer/internal/model"
 	"github.com/local/lancartographer/internal/oui"
 	"github.com/local/lancartographer/internal/probe"
@@ -89,10 +90,13 @@ type deps struct {
 	scan       func(context.Context, netip.Addr, probe.Options, *probe.Limiter, func(model.Port)) // port scan
 	listShares func(context.Context, netip.Addr) ([]model.Share, error)                           // SMB share enumeration
 	nbName     func(context.Context, netip.Addr) string                                           // NetBIOS name
-	revName    func(netip.Addr) string                                                            // reverse-DNS fallback name
+	mdnsName   func(context.Context, netip.Addr) string                                           // mDNS PTR name
+	revName    func(context.Context, netip.Addr) string                                           // reverse-DNS fallback name
 	lookupMAC  func(netip.Addr) (string, error)                                                   // SendARP MAC resolution
 	isElevated func() bool                                                                        // process token elevation
 	oui        func(string) string                                                                // MAC vendor lookup
+	loadNames  func() map[string]hostcache.Entry                                                  // MAC-keyed hostname cache load
+	saveNames  func(map[string]hostcache.Entry)                                                   // hostname cache persist
 }
 
 // defaultDeps binds the real package functions. opts supplies the liveness
@@ -104,10 +108,16 @@ func defaultDeps(opts probe.Options) deps {
 		scan:       probe.ScanHost,
 		listShares: func(_ context.Context, ip netip.Addr) ([]model.Share, error) { return probe.ListShares(ip) },
 		nbName:     probe.NetBIOSName,
+		mdnsName:   probe.MDNSName,
 		revName:    probe.ReverseName,
 		lookupMAC:  probe.LookupMAC,
 		isElevated: winutil.IsElevated,
 		oui:        oui.Lookup,
+		loadNames: func() map[string]hostcache.Entry {
+			m, _ := hostcache.Load()
+			return m
+		},
+		saveNames: func(m map[string]hostcache.Entry) { _ = hostcache.Save(m) },
 	}
 }
 
@@ -154,6 +164,23 @@ func run(ctx context.Context, target netip.Prefix, opts probe.Options, out chan<
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// The MAC-keyed hostname cache loads once before any worker starts and
+	// persists once on return; workers merge through the mutex-guarded view,
+	// so no file I/O lands in the hot path.
+	var names map[string]hostcache.Entry
+	if d.loadNames != nil {
+		names = d.loadNames()
+	}
+	if names == nil {
+		names = map[string]hostcache.Entry{}
+	}
+	cache := &nameCache{m: names}
+	defer func() {
+		if d.saveNames != nil {
+			d.saveNames(cache.m)
+		}
+	}()
+
 	em := &emitter{ctx: ctx, out: out}
 	lim := probe.NewLimiter(opts.Concurrency) // single global dial budget (R8)
 	var completed atomic.Int64
@@ -172,7 +199,7 @@ func run(ctx context.Context, target netip.Prefix, opts probe.Options, out chan<
 				if ctx.Err() != nil {
 					return
 				}
-				runHost(ctx, ip, opts, lim, em, d)
+				runHost(ctx, ip, opts, lim, em, d, cache)
 				n := completed.Add(1)
 				if !em.send(Event{Kind: EventProgress, Progress: float64(n) / float64(total)}) {
 					return
@@ -222,7 +249,7 @@ func (e *emitter) send(ev Event) bool {
 // runHost probes one host end to end on hctx (a child of the sweep ctx, so
 // Stop cancels in-flight dials) and emits its events. Every failure inside
 // degrades to an empty field; the host is reported as long as it is alive.
-func runHost(ctx context.Context, ip netip.Addr, opts probe.Options, lim *probe.Limiter, em *emitter, d deps) {
+func runHost(ctx context.Context, ip netip.Addr, opts probe.Options, lim *probe.Limiter, em *emitter, d deps, cache *nameCache) {
 	hctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -255,21 +282,83 @@ func runHost(ctx context.Context, ip netip.Addr, opts probe.Options, lim *probe.
 	}
 
 	// Enrichment: failure is an empty field, not an error row.
-	if name := d.nbName(hctx, ip); name != "" {
-		h.Name = name
-	} else {
-		h.Name = d.revName(ip)
-	}
+	name := resolveName(hctx, ip, d)
 	if mac, err := d.lookupMAC(ip); err == nil {
 		h.MAC = mac
 		if mac != "" && mac != probe.MacNeedsElevation {
 			h.Vendor = d.oui(mac)
+			if name != "" {
+				cache.put(mac, name)
+			} else if cached, ok := cache.get(mac); ok {
+				name = cached
+			}
 		}
 	} else if !d.isElevated() {
 		h.MAC = probe.MacNeedsElevation
 	}
+	h.Name = name
 
 	em.send(Event{Kind: EventHostFound, Host: h})
+}
+
+// resolveName asks all three name services concurrently and picks the first
+// non-empty answer by priority: NetBIOS, then mDNS, then reverse DNS. Each
+// probe gets its own bounded ctx (NetBIOS/mDNS ~900ms, PTR 1.5s) so the
+// slowest of them, not their sum, bounds the wait. On host cancellation the
+// pending probes unwind through their ctx and an empty name is returned.
+func resolveName(hctx context.Context, ip netip.Addr, d deps) string {
+	nbCtx, nbCancel := context.WithTimeout(hctx, 900*time.Millisecond)
+	defer nbCancel()
+	revCtx, revCancel := context.WithTimeout(hctx, 1500*time.Millisecond)
+	defer revCancel()
+
+	type res struct{ nb, mdns, rev string }
+	ch := make(chan res, 1) // buffered: an abandoned collection never blocks
+	go func() {
+		var r res
+		var wg sync.WaitGroup
+		wg.Add(3)
+		go func() { defer wg.Done(); r.nb = d.nbName(nbCtx, ip) }()
+		go func() { defer wg.Done(); r.mdns = d.mdnsName(nbCtx, ip) }()
+		go func() { defer wg.Done(); r.rev = d.revName(revCtx, ip) }()
+		wg.Wait()
+		ch <- r
+	}()
+
+	select {
+	case r := <-ch:
+		if r.nb != "" {
+			return r.nb
+		}
+		if r.mdns != "" {
+			return r.mdns
+		}
+		return r.rev
+	case <-hctx.Done():
+		return ""
+	}
+}
+
+// nameCache wraps the shared hostname map so concurrent workers can merge
+// without racing; the map itself is persisted once by run on return.
+type nameCache struct {
+	mu sync.Mutex
+	m  map[string]hostcache.Entry
+}
+
+func (c *nameCache) get(mac string) (string, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return hostcache.Map(c.m).Get(mac)
+}
+
+func (c *nameCache) put(mac, name string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.m == nil {
+		c.m = map[string]hostcache.Entry{}
+	}
+	hostcache.Map(c.m).Put(mac, name)
 }
 
 // probeShares enumerates the host's shares and emits one live EventShareFound

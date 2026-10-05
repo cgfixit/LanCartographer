@@ -276,7 +276,9 @@ func TestNetBIOSName_CancelledCtx(t *testing.T) {
 
 func TestReverseName_DocRange(t *testing.T) {
 	// 192.0.2.1 is TEST-NET-1 (RFC 5737): no PTR record exists.
-	if got := ReverseName(netip.MustParseAddr("192.0.2.1")); got != "" {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if got := ReverseName(ctx, netip.MustParseAddr("192.0.2.1")); got != "" {
 		t.Errorf("ReverseName = %q, want %q for doc-range ip", got, "")
 	}
 }

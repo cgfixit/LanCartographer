@@ -182,11 +182,16 @@ func skipNBName(b []byte, off int) int {
 	}
 }
 
+// reverseResolver is the stdlib resolver ReverseName goes through; tests
+// can swap it for a fake so no real PTR traffic is needed.
+var reverseResolver = &net.Resolver{}
+
 // ReverseName returns the first DNS label of ip's PTR record, lowercased,
-// or "" if lookup fails or returns nothing. Uses the stdlib resolver, so
-// there is no ctx parameter; the system resolver's own timeout applies.
-func ReverseName(ip netip.Addr) string {
-	names, err := net.LookupAddr(ip.String())
+// or "" if the lookup fails, times out, or returns nothing. The caller's
+// ctx bounds the wait — the engine gives it 1.5s so a slow or absent
+// resolver cannot stall enrichment.
+func ReverseName(ctx context.Context, ip netip.Addr) string {
+	names, err := reverseResolver.LookupAddr(ctx, ip.String())
 	if err != nil || len(names) == 0 {
 		return ""
 	}

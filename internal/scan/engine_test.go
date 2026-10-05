@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/local/lancartographer/internal/hostcache"
 	"github.com/local/lancartographer/internal/model"
 	"github.com/local/lancartographer/internal/probe"
 )
@@ -57,8 +58,8 @@ func lastOf(evs []Event, k EventKind) (Event, bool) {
 // fakeAliveDeps returns defaultDeps with the network-touching bindings
 // replaced by fast fakes: every host is alive via tcp, ARP never matches,
 // the real port scan is replaced by emitOpenPorts, and naming/MAC/shares
-// are served from the given values.
-func fakeAliveDeps(emitScan func(emit func(model.Port)), shares []model.Share, shareErr error, nb, mac string, macErr error, elevated bool) deps {
+// are served from the given values. Name cache I/O is stubbed to empty.
+func fakeAliveDeps(emitScan func(emit func(model.Port)), shares []model.Share, shareErr error, nb, mdns, mac string, macErr error, elevated bool) deps {
 	d := defaultDeps(probe.Options{DialTimeout: time.Second})
 	d.dial = func(context.Context, netip.Addr, int) bool { return true }
 	d.arp = func(netip.Addr) bool { return false }
@@ -69,10 +70,13 @@ func fakeAliveDeps(emitScan func(emit func(model.Port)), shares []model.Share, s
 	}
 	d.listShares = func(context.Context, netip.Addr) ([]model.Share, error) { return shares, shareErr }
 	d.nbName = func(context.Context, netip.Addr) string { return nb }
-	d.revName = func(netip.Addr) string { return "REVSHOULDNOTWIN" }
+	d.mdnsName = func(context.Context, netip.Addr) string { return mdns }
+	d.revName = func(context.Context, netip.Addr) string { return "REVSHOULDNOTWIN" }
 	d.lookupMAC = func(netip.Addr) (string, error) { return mac, macErr }
 	d.isElevated = func() bool { return elevated }
 	d.oui = func(string) string { return "FakeVendor" }
+	d.loadNames = func() map[string]hostcache.Entry { return map[string]hostcache.Entry{} }
+	d.saveNames = func(map[string]hostcache.Entry) {}
 	return d
 }
 
@@ -90,7 +94,7 @@ func TestRun_HostFoundEnriched(t *testing.T) {
 		{Name: "DATA", Type: model.ShareDisk, UNC: `\\127.0.0.1\DATA`},
 		{Name: "PRINTQ", Type: model.SharePrint, UNC: `\\127.0.0.1\PRINTQ`},
 	}
-	d := fakeAliveDeps(nil, shares, nil, "TESTBOX", "3c:5a:b4:00:00:00", nil, true)
+	d := fakeAliveDeps(nil, shares, nil, "TESTBOX", "", "3c:5a:b4:00:00:00", nil, true)
 	// Wrap the real ScanHost (the fixture listener proves a genuine TCP
 	// connect scan) and additionally report 445 open so the share probe runs.
 	realScan := d.scan
@@ -202,7 +206,7 @@ func TestRun_AccessDeniedShareIsNotError(t *testing.T) {
 	emitOpen := func(emit func(model.Port)) {
 		emit(model.Port{Number: 445, State: model.PortOpen, Service: "smb"})
 	}
-	d := fakeAliveDeps(emitOpen, nil, probe.ErrAccessDenied, "BOX", "", errors.New("arp failed"), true)
+	d := fakeAliveDeps(emitOpen, nil, probe.ErrAccessDenied, "BOX", "", "", errors.New("arp failed"), true)
 
 	opts := probe.Options{Ports: []int{445}, Concurrency: 4}
 	target := netip.MustParsePrefix("192.0.2.1/32")
@@ -246,7 +250,7 @@ func TestRun_MACNeedsElevationWhenNotElevated(t *testing.T) {
 	emitOpen := func(emit func(model.Port)) {
 		emit(model.Port{Number: 22, State: model.PortOpen, Service: "ssh"})
 	}
-	d := fakeAliveDeps(emitOpen, nil, nil, "", "", errors.New("sendarp failed"), false)
+	d := fakeAliveDeps(emitOpen, nil, nil, "", "", "", errors.New("sendarp failed"), false)
 
 	target := netip.MustParsePrefix("192.0.2.1/32")
 	evs, err := runCollect(context.Background(), target, probe.Options{Ports: []int{22}}, d)
@@ -267,7 +271,7 @@ func TestRun_MACNeedsElevationWhenNotElevated(t *testing.T) {
 
 func TestRun_ReverseNameFallback(t *testing.T) {
 	emitOpen := func(emit func(model.Port)) {}
-	d := fakeAliveDeps(emitOpen, nil, nil, "", "00:11:22:33:44:55", nil, true)
+	d := fakeAliveDeps(emitOpen, nil, nil, "", "", "00:11:22:33:44:55", nil, true)
 
 	target := netip.MustParsePrefix("192.0.2.1/32")
 	evs, err := runCollect(context.Background(), target, probe.Options{Ports: []int{80}}, d)
@@ -279,7 +283,72 @@ func TestRun_ReverseNameFallback(t *testing.T) {
 		t.Fatal("EventHostFound missing")
 	}
 	if hf.Host.Name != "REVSHOULDNOTWIN" {
-		t.Errorf("Name = %q, want reverse-DNS fallback when NetBIOS is empty", hf.Host.Name)
+		t.Errorf("Name = %q, want reverse-DNS fallback when NetBIOS and mDNS are empty", hf.Host.Name)
+	}
+}
+
+func TestRun_NamePriorityMDNSBeatsPTR(t *testing.T) {
+	// NetBIOS empty, mDNS answered, PTR answered too: mDNS wins over PTR.
+	emitOpen := func(emit func(model.Port)) {}
+	d := fakeAliveDeps(emitOpen, nil, nil, "", "mdnsname", "00:11:22:33:44:55", nil, true)
+
+	target := netip.MustParsePrefix("192.0.2.1/32")
+	evs, err := runCollect(context.Background(), target, probe.Options{Ports: []int{80}}, d)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	hf, ok := lastOf(evs, EventHostFound)
+	if !ok {
+		t.Fatal("EventHostFound missing")
+	}
+	if hf.Host.Name != "mdnsname" {
+		t.Errorf("Name = %q, want mDNS result ahead of reverse-DNS", hf.Host.Name)
+	}
+}
+
+func TestRun_NameCacheFallback(t *testing.T) {
+	// All probes come back empty; the MAC-keyed cache must fill the name.
+	emitOpen := func(emit func(model.Port)) {}
+	d := fakeAliveDeps(emitOpen, nil, nil, "", "", "00:11:22:33:44:55", nil, true)
+	d.loadNames = func() map[string]hostcache.Entry {
+		return map[string]hostcache.Entry{
+			"00:11:22:33:44:55": {Name: "oldname", Last: time.Now().Unix()},
+		}
+	}
+	d.revName = func(context.Context, netip.Addr) string { return "" }
+
+	target := netip.MustParsePrefix("192.0.2.1/32")
+	evs, err := runCollect(context.Background(), target, probe.Options{Ports: []int{80}}, d)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	hf, ok := lastOf(evs, EventHostFound)
+	if !ok {
+		t.Fatal("EventHostFound missing")
+	}
+	if hf.Host.Name != "oldname" {
+		t.Errorf("Name = %q, want cached name when every probe is empty", hf.Host.Name)
+	}
+}
+
+func TestRun_NameCacheWrite(t *testing.T) {
+	// A resolved name is persisted: saveNames must receive a map keyed by
+	// the lower-case MAC carrying the probed name.
+	emitOpen := func(emit func(model.Port)) {}
+	d := fakeAliveDeps(emitOpen, nil, nil, "newname", "", "00:11:22:33:44:55", nil, true)
+	var saved map[string]hostcache.Entry
+	d.saveNames = func(m map[string]hostcache.Entry) { saved = m }
+
+	target := netip.MustParsePrefix("192.0.2.1/32")
+	if _, err := runCollect(context.Background(), target, probe.Options{Ports: []int{80}}, d); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if saved == nil {
+		t.Fatal("saveNames never called")
+	}
+	e, ok := saved["00:11:22:33:44:55"]
+	if !ok || e.Name != "newname" || e.Last == 0 {
+		t.Errorf("saved = %v, want 00:11:22:33:44:55 -> newname with a fresh timestamp", saved)
 	}
 }
 
@@ -299,10 +368,13 @@ func TestRun_CancelUnwindsFast(t *testing.T) {
 	d.scan = func(context.Context, netip.Addr, probe.Options, *probe.Limiter, func(model.Port)) {}
 	d.listShares = func(context.Context, netip.Addr) ([]model.Share, error) { return nil, nil }
 	d.nbName = func(context.Context, netip.Addr) string { return "" }
-	d.revName = func(netip.Addr) string { return "" }
+	d.mdnsName = func(context.Context, netip.Addr) string { return "" }
+	d.revName = func(context.Context, netip.Addr) string { return "" }
 	d.lookupMAC = func(netip.Addr) (string, error) { return "", nil }
 	d.isElevated = func() bool { return true }
 	d.oui = func(string) string { return "" }
+	d.loadNames = func() map[string]hostcache.Entry { return map[string]hostcache.Entry{} }
+	d.saveNames = func(map[string]hostcache.Entry) {}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
@@ -379,7 +451,7 @@ func TestRun_StopDuringShareProbe(t *testing.T) {
 	emitOpen := func(emit func(model.Port)) {
 		emit(model.Port{Number: 445, State: model.PortOpen, Service: "smb"})
 	}
-	d := fakeAliveDeps(emitOpen, nil, nil, "BOX", "", nil, true)
+	d := fakeAliveDeps(emitOpen, nil, nil, "BOX", "", "", nil, true)
 	d.listShares = func(ctx context.Context, _ netip.Addr) ([]model.Share, error) {
 		once.Do(func() { close(started) })
 		defer blocked.Done()
@@ -422,7 +494,7 @@ func TestRun_StopDuringShareProbe(t *testing.T) {
 
 func TestRun_EmptyPrefix(t *testing.T) {
 	// A prefix with no usable host addresses completes cleanly: just Done.
-	d := fakeAliveDeps(nil, nil, nil, "", "", nil, true)
+	d := fakeAliveDeps(nil, nil, nil, "", "", "", nil, true)
 	evs, err := runCollect(context.Background(), netip.Prefix{}, probe.Options{}, d)
 	if err != nil {
 		t.Fatalf("run: %v", err)
@@ -461,7 +533,7 @@ func TestValidateTarget(t *testing.T) {
 }
 
 func TestRun_RejectsInvalidTargets(t *testing.T) {
-	d := fakeAliveDeps(nil, nil, nil, "", "", nil, true)
+	d := fakeAliveDeps(nil, nil, nil, "", "", "", nil, true)
 	for _, target := range []string{"2001:db8::/64", "10.0.0.0/8"} {
 		evs, err := runCollect(context.Background(), netip.MustParsePrefix(target), probe.Options{}, d)
 		if err == nil {

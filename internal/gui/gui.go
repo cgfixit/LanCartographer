@@ -75,6 +75,9 @@ type ui struct {
 	statusErr   *widget.Label
 	statusScan  *widget.Label
 
+	// status-bar rule rectangles, live-recolored by applyTheme
+	statusSeparators []*canvas.Rectangle
+
 	// empty-table guidance overlay stacked over the table area
 	emptyHint  *fyne.Container
 	emptyTitle *widget.Label
@@ -121,7 +124,7 @@ func Run() error {
 		localSubnets: discover.LocalSubnets,
 		isElevated:   winutil.IsElevated,
 	})
-	applyTheme(u.settings.Theme)
+	u.applyTheme(u.settings.Theme)
 
 	u.win.Show()
 	u.maybeFirstRun()
@@ -243,9 +246,10 @@ func (u *ui) buildStatusBar() {
 	// windows the label still ellipsizes within it.
 	reminderMin := reminder.MinSize()
 	reminder.Truncation = fyne.TextTruncateEllipsis
+	u.statusSeparators = nil
 	counters := container.NewHBox(
-		u.statusHosts, thinSeparator(), u.statusPorts, thinSeparator(),
-		u.statusShare, thinSeparator(), u.statusElaps, thinSeparator(),
+		u.statusHosts, u.thinSeparator(), u.statusPorts, u.thinSeparator(),
+		u.statusShare, u.thinSeparator(), u.statusElaps, u.thinSeparator(),
 		u.statusErr)
 	u.statusBar = container.NewBorder(nil, nil, counters,
 		container.NewHBox(u.statusScan, container.NewGridWrap(reminderMin, reminder)))
@@ -254,13 +258,14 @@ func (u *ui) buildStatusBar() {
 // statusSeparators tracks the live status-bar rule rectangles so applyTheme
 // can re-resolve their fill: canvas colors are captured at build time, so a
 // theme toggle would otherwise leave the 1px rules in the old theme's color.
-var statusSeparators []*canvas.Rectangle
+// It is per-ui state (not package state) so repeated window builds in one
+// process, including tests, do not accumulate stale rectangles.
 
 // thinSeparator returns a 1px-wide vertical rule for the status bar; a
 // widget.Separator in an HBox lays out horizontally, which reads wrong.
-func thinSeparator() fyne.CanvasObject {
+func (u *ui) thinSeparator() fyne.CanvasObject {
 	rule := canvas.NewRectangle(theme.Color(theme.ColorNameSeparator))
-	statusSeparators = append(statusSeparators, rule)
+	u.statusSeparators = append(u.statusSeparators, rule)
 	return container.NewGridWrap(fyne.NewSize(1, 16), rule)
 }
 
@@ -372,13 +377,13 @@ func themeModeLabel(mode string) string {
 // applyTheme switches the app-wide theme; anything but "dark" means light.
 // Status-bar separators captured their color at build time, so re-resolve
 // them here after the switch.
-func applyTheme(mode string) {
+func (u *ui) applyTheme(mode string) {
 	if mode == "dark" {
 		fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
 	} else {
 		fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
 	}
-	for _, rule := range statusSeparators {
+	for _, rule := range u.statusSeparators {
 		rule.FillColor = theme.Color(theme.ColorNameSeparator)
 		rule.Refresh()
 	}
@@ -392,7 +397,7 @@ func (u *ui) onThemeToggle() {
 	} else {
 		u.settings.Theme = "dark"
 	}
-	applyTheme(u.settings.Theme)
+	u.applyTheme(u.settings.Theme)
 	u.themeBtn.SetText(themeModeLabel(u.settings.Theme))
 	if err := SaveSettings(u.settings); err != nil {
 		u.statusErr.SetText("settings: " + err.Error())
