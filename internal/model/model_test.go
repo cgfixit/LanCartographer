@@ -74,6 +74,14 @@ func TestHasWebAndHasRDP(t *testing.T) {
 	if closed.HasWeb() {
 		t.Error("HasWeb() = true, want false (443 closed)")
 	}
+	alt := Host{Ports: []Port{{Number: 8080, State: "open", Service: "http-alt"}}}
+	if !alt.HasWeb() {
+		t.Error("HasWeb() = false, want true (port 8080 open)")
+	}
+	altClosed := Host{Ports: []Port{{Number: 8443, State: "closed"}}}
+	if altClosed.HasWeb() {
+		t.Error("HasWeb() = true, want false (8443 closed)")
+	}
 }
 
 func TestWriteJSONRoundTrip(t *testing.T) {
