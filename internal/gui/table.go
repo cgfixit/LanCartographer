@@ -175,8 +175,39 @@ func (u *ui) buildTable() {
 	area := container.New(
 		&tableAreaLayout{header: header, table: u.table, minSum: minSum},
 		append(append([]fyne.CanvasObject{}, header...), u.table)...)
+
+	// Empty-state guidance stacked over the table area (same Stack pattern
+	// as the map toggle): visible only while the store holds no hosts.
+	u.emptyTitle = widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	u.emptySub = widget.NewLabel("")
+	u.emptySub.Alignment = fyne.TextAlignCenter
+	u.emptyHint = container.NewCenter(container.NewVBox(u.emptyTitle, u.emptySub))
+	area = container.NewStack(area, u.emptyHint)
+
 	u.split = container.NewHSplit(area, container.NewVScroll(u.panel))
 	u.split.SetOffset(0.7)
+}
+
+// updateEmptyHint swaps the empty-table overlay between the idle guidance
+// and the scanning notice, hiding it as soon as any host exists. Called
+// from refreshTable and finishScan.
+func (u *ui) updateEmptyHint() {
+	if u.store.len() > 0 {
+		u.emptyHint.Hide()
+		return
+	}
+	if u.scanning {
+		u.emptyTitle.SetText("Scanning " + strings.TrimSpace(u.subnet.Text) + "…")
+		u.emptySub.SetText("")
+	} else {
+		target := strings.TrimSpace(u.subnet.Text)
+		if target == "" {
+			target = "your subnet"
+		}
+		u.emptyTitle.SetText("No hosts yet")
+		u.emptySub.SetText("Click Scan to inventory " + target)
+	}
+	u.emptyHint.Show()
 }
 
 // onHeaderClick toggles or sets the sort column and re-sorts.

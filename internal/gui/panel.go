@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
@@ -53,8 +54,8 @@ func (u *ui) showHost(h model.Host) {
 		title = h.IP.String()
 	}
 
-	// Identity section.
-	ident := container.NewGridWithColumns(2,
+	// Identity section: right-aligned label column, left-aligned values.
+	ident := container.NewVBox(
 		menu(panelKV("IP", h.IP.String())),
 		menu(panelKV("MAC", h.MAC)),
 		menu(panelKV("Vendor", h.Vendor)),
@@ -88,7 +89,7 @@ func (u *ui) showHost(h model.Host) {
 	}
 
 	// Ports section: one row per probed port, open rows badged.
-	ports := container.NewVBox(widget.NewLabelWithStyle("Ports", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+	ports := container.NewVBox(sectionHeader("Ports"))
 	if len(h.Ports) == 0 {
 		ports.Add(widget.NewLabel("No ports probed yet."))
 	} else {
@@ -98,7 +99,7 @@ func (u *ui) showHost(h model.Host) {
 	}
 
 	// Shares section: never lists files; denial records show their remark.
-	shares := container.NewVBox(widget.NewLabelWithStyle("Shares", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+	shares := container.NewVBox(sectionHeader("Shares"))
 	switch {
 	case len(h.Shares) == 0:
 		shares.Add(widget.NewLabel("None (445 closed or access denied)."))
@@ -114,6 +115,7 @@ func (u *ui) showHost(h model.Host) {
 	u.panel.Objects = []fyne.CanvasObject{
 		titleLabel,
 		widget.NewSeparator(),
+		sectionHeader("Identity"),
 		ident,
 		actions,
 		widget.NewSeparator(),
@@ -125,12 +127,24 @@ func (u *ui) showHost(h model.Host) {
 	u.panel.Refresh()
 }
 
-// panelKV renders a key/value identity pair; the value is right-clickable.
+// sectionHeader renders a panel section title: bold, sub-heading sized,
+// so Ports / Shares / Identity read as one consistent tier.
+func sectionHeader(text string) fyne.CanvasObject {
+	t := canvas.NewText(text, theme.Color(theme.ColorNameForeground))
+	t.TextStyle = fyne.TextStyle{Bold: true}
+	t.TextSize = theme.Size(theme.SizeNameSubHeadingText)
+	return t
+}
+
+// panelKV renders a key/value identity pair on one row: the key sits in a
+// fixed-width, right-aligned column so the values line up, and the value
+// is right-clickable via the caller's menu wrapper.
 func panelKV(key, value string) fyne.CanvasObject {
-	k := widget.NewLabelWithStyle(key, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	k := widget.NewLabelWithStyle(key, fyne.TextAlignTrailing, fyne.TextStyle{Bold: true})
 	v := widget.NewLabel(value)
 	v.Truncation = fyne.TextTruncateEllipsis
-	return container.NewHBox(k, v)
+	return container.NewHBox(
+		container.NewGridWrap(fyne.NewSize(90, k.MinSize().Height), k), v)
 }
 
 // portRow renders one probed port: state, number, service, HTTP title.
@@ -159,27 +173,36 @@ func (u *ui) portRow(h model.Host, p model.Port) fyne.CanvasObject {
 	return row
 }
 
-// shareRow renders one share — name, type, remark, UNC — with an "Open in
-// Explorer" button. The denial record renders its remark instead. Files are
-// never listed.
+// shareRow renders one share: a folder icon and bold name on the first
+// line, type · remark on the second, the UNC smaller and dimmer, plus the
+// "Open in Explorer" action. The denial record renders its remark instead.
+// Files are never listed.
 func (u *ui) shareRow(h model.Host, s model.Share) fyne.CanvasObject {
-	var text string
+	openBtn := widget.NewButtonWithIcon("Open", theme.FolderOpenIcon(), func() {
+		u.launch(explorerArgv(explorerPath(h.IP, s.Name)))
+	})
 	if isDenialShare(s) {
-		text = s.Remark
-	} else {
-		text = fmt.Sprintf("%s  (%s)", s.Name, s.Type)
-		if s.Remark != "" {
-			text += "  —  " + s.Remark
-		}
-		if s.UNC != "" {
-			text += "  " + s.UNC
-		}
+		row := container.NewHBox(
+			widget.NewIcon(theme.FolderIcon()),
+			widget.NewLabel(s.Remark),
+			openBtn,
+		)
+		return u.wrapShareMenu(row, h, s)
 	}
-	row := container.NewHBox(
-		widget.NewLabel(text),
-		widget.NewButtonWithIcon("Open", theme.FolderOpenIcon(), func() {
-			u.launch(explorerArgv(explorerPath(h.IP, s.Name)))
-		}),
+	name := widget.NewLabelWithStyle(s.Name, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	meta := s.Type
+	if s.Remark != "" {
+		meta += "  ·  " + s.Remark
+	}
+	lines := container.NewVBox(
+		container.NewHBox(widget.NewIcon(theme.FolderIcon()), name),
+		widget.NewLabel(meta),
 	)
+	if s.UNC != "" {
+		unc := canvas.NewText(s.UNC, theme.Color(theme.ColorNamePlaceHolder))
+		unc.TextSize = theme.Size(theme.SizeNameCaptionText)
+		lines.Add(unc)
+	}
+	row := container.NewHBox(lines, openBtn)
 	return u.wrapShareMenu(row, h, s)
 }

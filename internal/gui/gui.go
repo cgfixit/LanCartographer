@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"image/color"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -59,6 +58,7 @@ type ui struct {
 	scanBtn    *widget.Button
 	stopBtn    *widget.Button
 	mapBtn     *widget.Button
+	themeBtn   *widget.Button
 	elevateBtn *widget.Button
 
 	progress *widget.ProgressBar
@@ -73,6 +73,12 @@ type ui struct {
 	statusShare *widget.Label
 	statusElaps *widget.Label
 	statusErr   *widget.Label
+	statusScan  *widget.Label
+
+	// empty-table guidance overlay stacked over the table area
+	emptyHint  *fyne.Container
+	emptyTitle *widget.Label
+	emptySub   *widget.Label
 
 	// clickable table header buttons (index-aligned with tableColumns)
 	headerBtns []*widget.Button
@@ -92,6 +98,8 @@ type ui struct {
 
 	selectedIP string
 
+	settings AppSettings
+
 	deps guiDeps
 }
 
@@ -105,6 +113,7 @@ func Run() error {
 		localSubnets: discover.LocalSubnets,
 		isElevated:   winutil.IsElevated,
 	})
+	applyTheme(u.settings.Theme)
 
 	u.win.Show()
 	u.maybeFirstRun()
@@ -126,6 +135,7 @@ func newUI(a fyne.App, w fyne.Window, deps guiDeps) *ui {
 	}
 
 	u.captureLocalSubnets()
+	u.settings, _ = LoadSettings()
 	u.progress = widget.NewProgressBar()
 	u.buildTopBar()
 	u.buildPanel()
@@ -171,19 +181,23 @@ func (u *ui) buildTopBar() {
 	}
 
 	u.scanBtn = widget.NewButtonWithIcon("Scan", theme.MediaPlayIcon(), u.onScan)
+	u.scanBtn.Importance = widget.HighImportance
 	u.stopBtn = widget.NewButtonWithIcon("Stop", theme.MediaStopIcon(), u.onStop)
+	u.stopBtn.Importance = widget.DangerImportance
 	u.stopBtn.Disable()
 
 	u.mapBtn = widget.NewButtonWithIcon("Map — v1.1", theme.GridIcon(), u.onMapToggle)
+	u.themeBtn = widget.NewButtonWithIcon(themeModeLabel(u.settings.Theme), theme.ColorPaletteIcon(), u.onThemeToggle)
 
 	items := []fyne.CanvasObject{
-		u.subnet,
+		container.NewGridWrap(fyne.NewSize(230, u.subnet.MinSize().Height), u.subnet),
 		u.scanBtn,
 		u.stopBtn,
 		widget.NewButtonWithIcon("Save Favorites", theme.FolderIcon(), u.onSaveFavorites),
 		widget.NewButtonWithIcon("Load Favorites", theme.FolderOpenIcon(), u.onLoadFavorites),
 		widget.NewButtonWithIcon("Export", theme.DocumentSaveIcon(), u.onExport),
 		u.mapBtn,
+		u.themeBtn,
 	}
 	if !u.deps.isElevated() {
 		u.elevateBtn = widget.NewButtonWithIcon("Elevate", theme.LoginIcon(), u.onElevate)
@@ -192,28 +206,40 @@ func (u *ui) buildTopBar() {
 	u.topBar = container.NewHBox(items...)
 }
 
-// buildStatusBar creates the bottom strip: counts, elapsed, last error,
-// and the standing authorization reminder.
+// statusReminder is the short standing authorization reminder shown in the
+// status bar; the full authz.Notice stays in first-run, About, and the scan
+// confirmation dialog.
+const statusReminder = "Scan only networks you own or have authorization to inventory."
+
+// buildStatusBar creates the bottom strip: counts separated by thin rules
+// on the left, and on the right a scanning indicator plus the standing
+// authorization reminder.
 func (u *ui) buildStatusBar() {
 	u.statusHosts = widget.NewLabel("0 hosts")
 	u.statusPorts = widget.NewLabel("0 open ports")
 	u.statusShare = widget.NewLabel("0 shares")
 	u.statusElaps = widget.NewLabel("0.0s")
 	u.statusErr = widget.NewLabel("")
-	reminder := widget.NewLabel(authz.Notice)
+	u.statusScan = widget.NewLabel("Scanning…")
+	u.statusScan.Importance = widget.WarningImportance
+	u.statusScan.Hide()
+	reminder := widget.NewLabel(statusReminder)
 	reminder.Importance = widget.WarningImportance
 	reminder.Truncation = fyne.TextTruncateEllipsis
-	u.statusBar = container.NewHBox(
-		u.statusHosts, widget.NewSeparator(), u.statusPorts, widget.NewSeparator(),
-		u.statusShare, widget.NewSeparator(), u.statusElaps, widget.NewSeparator(),
-		u.statusErr, layoutSpacer(), reminder)
+	reminder.Alignment = fyne.TextAlignTrailing
+	counters := container.NewHBox(
+		u.statusHosts, thinSeparator(), u.statusPorts, thinSeparator(),
+		u.statusShare, thinSeparator(), u.statusElaps, thinSeparator(),
+		u.statusErr)
+	u.statusBar = container.NewBorder(nil, nil, counters,
+		container.NewHBox(u.statusScan, reminder))
 }
 
-// layoutSpacer returns an expanding empty object for the status bar.
-func layoutSpacer() fyne.CanvasObject {
-	spacer := canvas.NewRectangle(color.Transparent)
-	spacer.SetMinSize(fyne.NewSize(20, 1))
-	return spacer
+// thinSeparator returns a 1px-wide vertical rule for the status bar; a
+// widget.Separator in an HBox lays out horizontally, which reads wrong.
+func thinSeparator() fyne.CanvasObject {
+	rule := canvas.NewRectangle(theme.Color(theme.ColorNameSeparator))
+	return container.NewGridWrap(fyne.NewSize(1, 16), rule)
 }
 
 // refreshStatus recomputes the status-bar counts from the store.
@@ -229,6 +255,7 @@ func (u *ui) refreshTable() {
 	u.sorted = sortHosts(u.store.snapshot(), u.sortCol, u.sortAsc)
 	u.table.Refresh()
 	u.refreshStatus()
+	u.updateEmptyHint()
 }
 
 // mainMenu is the window menu bar: File (export, favorites, quit) and Help
@@ -296,6 +323,38 @@ func (u *ui) onMapToggle() {
 	u.mapBtn.SetText("Table")
 }
 
+// themeModeLabel is the toolbar button caption for the current theme mode.
+func themeModeLabel(mode string) string {
+	if mode == "dark" {
+		return "Dark"
+	}
+	return "Light"
+}
+
+// applyTheme switches the app-wide theme; anything but "dark" means light.
+func applyTheme(mode string) {
+	if mode == "dark" {
+		fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
+		return
+	}
+	fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
+}
+
+// onThemeToggle flips between the light and dark themes and persists the
+// choice; a save failure is reported in the status bar, never fatal.
+func (u *ui) onThemeToggle() {
+	if u.settings.Theme == "dark" {
+		u.settings.Theme = "light"
+	} else {
+		u.settings.Theme = "dark"
+	}
+	applyTheme(u.settings.Theme)
+	u.themeBtn.SetText(themeModeLabel(u.settings.Theme))
+	if err := SaveSettings(u.settings); err != nil {
+		u.statusErr.SetText("settings: " + err.Error())
+	}
+}
+
 // onScan parses the subnet field and runs the confirmation gate before
 // starting the engine.
 func (u *ui) onScan() {
@@ -332,6 +391,7 @@ func (u *ui) startScan(target netip.Prefix) {
 	u.started = time.Now()
 	u.scanBtn.Disable()
 	u.stopBtn.Enable()
+	u.statusScan.Show()
 	u.progress.SetValue(0)
 	u.showPanelPlaceholder()
 	u.refreshTable()
@@ -408,7 +468,9 @@ func (u *ui) finishScan() {
 	u.cancel = nil
 	u.scanBtn.Enable()
 	u.stopBtn.Disable()
+	u.statusScan.Hide()
 	u.statusElaps.SetText(time.Since(u.started).Round(time.Millisecond).String())
+	u.updateEmptyHint()
 }
 
 // onStop cancels the scan context; the engine unwinds in under a second.
