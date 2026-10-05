@@ -30,13 +30,13 @@ func (u *ui) buildMapView() {
 	))
 }
 
-// showPanelPlaceholder resets the panel to its idle hint.
+// showPanelPlaceholder resets the panel to its idle hint. The label goes
+// straight into the VBox (no NewCenter) so it stretches to the panel width
+// and truncation only engages when the panel is genuinely narrow.
 func (u *ui) showPanelPlaceholder() {
 	hint := widget.NewLabel("Select a host to see details.")
 	hint.Truncation = fyne.TextTruncateEllipsis
-	u.panel.Objects = []fyne.CanvasObject{
-		container.NewCenter(hint),
-	}
+	u.panel.Objects = []fyne.CanvasObject{hint}
 	u.panel.Refresh()
 }
 

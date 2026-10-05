@@ -175,6 +175,9 @@ func TestTableTapSelectsRowAndUpdatesPanel(t *testing.T) {
 	if !ok {
 		t.Fatalf("panel first object is %T, want title *widget.Label", u.panel.Objects[0])
 	}
+	if title.Text == "Select a host to see details." {
+		t.Fatal("panel still shows placeholder hint after row tap")
+	}
 	if title.Text != "alpha" {
 		t.Fatalf("panel title = %q, want alpha", title.Text)
 	}

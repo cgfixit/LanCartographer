@@ -58,6 +58,13 @@ func computeColWidths(avail float32) []float32 {
 	return widths
 }
 
+// headerRowHeight is the header button strip height; tableTopOffset is the
+// header height plus the small gap before the table body.
+const (
+	headerRowHeight = 36
+	tableTopOffset  = headerRowHeight + 2
+)
+
 // tableAreaLayout lays out the header row above the table and re-derives
 // the table's column widths from the area's actual width on every layout
 // pass, so the columns track window resizes instead of staying fixed.
@@ -70,7 +77,7 @@ type tableAreaLayout struct {
 // MinSize reports the floor: the column minimums side by side, tall enough
 // for the header plus a usable table body.
 func (l *tableAreaLayout) MinSize(_ []fyne.CanvasObject) fyne.Size {
-	return fyne.NewSize(l.minSum, 36+200)
+	return fyne.NewSize(l.minSum, headerRowHeight+200)
 }
 
 // Layout positions the header cells to match the freshly computed column
@@ -81,13 +88,13 @@ func (l *tableAreaLayout) Layout(_ []fyne.CanvasObject, size fyne.Size) {
 	for i := range widths {
 		if i < len(l.header) {
 			l.header[i].Move(fyne.NewPos(x, 0))
-			l.header[i].Resize(fyne.NewSize(widths[i], 36))
+			l.header[i].Resize(fyne.NewSize(widths[i], headerRowHeight))
 		}
 		x += widths[i]
 		l.table.SetColumnWidth(i, widths[i])
 	}
-	l.table.Move(fyne.NewPos(0, 38))
-	l.table.Resize(fyne.NewSize(size.Width, size.Height-38))
+	l.table.Move(fyne.NewPos(0, tableTopOffset))
+	l.table.Resize(fyne.NewSize(size.Width, fyne.Max(size.Height-tableTopOffset, 0)))
 }
 
 // aliveGreen / deadRed paint the status circle.

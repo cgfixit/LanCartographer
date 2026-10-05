@@ -75,6 +75,41 @@ func TestComputeColWidths(t *testing.T) {
 		}
 	})
 
+	t.Run("partial clamp redistributes the surplus", func(t *testing.T) {
+		// avail 800: columns 0, 2, 3 land below their minimum on the first
+		// passes and clamp; the rest absorb the leftover so the row still
+		// fills the full width.
+		const avail = float32(800)
+		ws := computeColWidths(avail)
+		for _, clamped := range []int{0, 2, 3} {
+			if ws[clamped] != colMins[clamped] {
+				t.Errorf("col %d width = %v, want clamped min %v", clamped, ws[clamped], colMins[clamped])
+			}
+		}
+		for i, w := range ws {
+			if w < colMins[i] {
+				t.Errorf("col %d width = %v, below min %v", i, w, colMins[i])
+			}
+		}
+		for _, free := range []int{1, 4, 5, 6} {
+			if ws[free] <= colMins[free] {
+				t.Errorf("col %d width = %v, want above min %v (surplus not absorbed)", free, ws[free], colMins[free])
+			}
+		}
+		if math.Abs(float64(sum(ws)-avail)) > eps {
+			t.Errorf("sum = %v, want %v", sum(ws), avail)
+		}
+	})
+
+	t.Run("avail below min-sum clamps every column to its minimum", func(t *testing.T) {
+		ws := computeColWidths(700) // min-sum is 745
+		for i, w := range ws {
+			if w != colMins[i] {
+				t.Errorf("col %d width = %v, want min %v", i, w, colMins[i])
+			}
+		}
+	})
+
 	t.Run("deterministic", func(t *testing.T) {
 		a := computeColWidths(1234.5)
 		b := computeColWidths(1234.5)
