@@ -7,7 +7,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/local/lancartographer/internal/model"
@@ -18,6 +17,9 @@ func TestEmptyHintIdleThenHiddenWithHosts(t *testing.T) {
 
 	if !u.emptyHint.Visible() {
 		t.Fatal("empty hint should be visible on a fresh window")
+	}
+	if u.table.Visible() {
+		t.Fatal("table should be hidden while the store is empty")
 	}
 	if u.emptyTitle.Text != "No hosts yet" {
 		t.Fatalf("empty title = %q, want %q", u.emptyTitle.Text, "No hosts yet")
@@ -30,6 +32,9 @@ func TestEmptyHintIdleThenHiddenWithHosts(t *testing.T) {
 	if u.emptyHint.Visible() {
 		t.Fatal("empty hint should hide once hosts exist")
 	}
+	if !u.table.Visible() {
+		t.Fatal("table should be visible once hosts exist")
+	}
 }
 
 func TestEmptyHintScanningState(t *testing.T) {
@@ -39,6 +44,9 @@ func TestEmptyHintScanningState(t *testing.T) {
 	if !u.emptyHint.Visible() {
 		t.Fatal("empty hint should be visible while scanning an empty store")
 	}
+	if u.table.Visible() {
+		t.Fatal("table should be hidden while scanning an empty store")
+	}
 	if !strings.HasPrefix(u.emptyTitle.Text, "Scanning ") {
 		t.Fatalf("empty title = %q, want a Scanning prefix", u.emptyTitle.Text)
 	}
@@ -47,42 +55,8 @@ func TestEmptyHintScanningState(t *testing.T) {
 	if u.emptyTitle.Text != "No hosts yet" {
 		t.Fatalf("empty title after scan end = %q, want %q", u.emptyTitle.Text, "No hosts yet")
 	}
-}
-
-// findRect walks the object tree for the first *canvas.Rectangle.
-func findRect(obj fyne.CanvasObject) *canvas.Rectangle {
-	if r, ok := obj.(*canvas.Rectangle); ok {
-		return r
-	}
-	for _, c := range children(obj) {
-		if r := findRect(c); r != nil {
-			return r
-		}
-	}
-	return nil
-}
-
-func TestEmptyHintCardBackgroundTracksTheme(t *testing.T) {
-	u := newTestUI(t)
-
-	card := findRect(u.emptyHint)
-	if card == nil {
-		t.Fatal("empty hint tree has no card rectangle")
-	}
-	if card != u.emptyCard {
-		t.Fatal("hint card is not the registered u.emptyCard")
-	}
-	if got, want := card.FillColor, theme.Color(theme.ColorNameBackground); got != want {
-		t.Fatalf("card fill = %v, want theme background %v", got, want)
-	}
-
-	u.applyTheme("dark")
-	if got, want := u.emptyCard.FillColor, theme.Color(theme.ColorNameBackground); got != want {
-		t.Fatalf("card fill after dark toggle = %v, want %v", got, want)
-	}
-	u.applyTheme("light")
-	if got, want := u.emptyCard.FillColor, theme.Color(theme.ColorNameBackground); got != want {
-		t.Fatalf("card fill after light toggle = %v, want %v", got, want)
+	if u.table.Visible() {
+		t.Fatal("table should stay hidden after a scan that found no hosts")
 	}
 }
 

@@ -8,7 +8,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/local/lancartographer/internal/model"
@@ -177,16 +176,15 @@ func (u *ui) buildTable() {
 		minSum += m
 	}
 
-	// Empty-state guidance layered over the TABLE BODY only (stacked
-	// table-below-hint), so it centers within the body region rather than
-	// below the header row. A solid card behind the text keeps the table's
-	// column separators from showing through; applyTheme recolors it.
+	// Empty-state guidance layered over the table body in one stack. The
+	// table's own divider layer cannot be occluded reliably by a sibling
+	// overlay (its separators painted over the previous card), so
+	// updateEmptyHint swaps VISIBILITY instead: the table hides whenever the
+	// hint shows, and the hint centers alone in the body region.
 	u.emptyTitle = widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	u.emptySub = widget.NewLabel("")
 	u.emptySub.Alignment = fyne.TextAlignCenter
-	u.emptyCard = canvas.NewRectangle(theme.Color(theme.ColorNameBackground))
-	u.emptyHint = container.NewCenter(container.NewStack(u.emptyCard,
-		container.NewPadded(container.NewVBox(u.emptyTitle, u.emptySub))))
+	u.emptyHint = container.NewCenter(container.NewVBox(u.emptyTitle, u.emptySub))
 	body := container.NewStack(u.table, u.emptyHint)
 
 	area := container.New(
@@ -197,12 +195,15 @@ func (u *ui) buildTable() {
 	u.split.SetOffset(0.7)
 }
 
-// updateEmptyHint swaps the empty-table overlay between the idle guidance
-// and the scanning notice, hiding it as soon as any host exists. Called
-// from refreshTable and finishScan.
+// updateEmptyHint drives the empty-table states by swapping which layer of
+// the body stack is visible: with no hosts the table hides and the hint
+// shows (idle guidance or scanning notice); as soon as any host exists the
+// table shows and the hint hides. Called from refreshTable,
+// maybeRefreshTable, and finishScan.
 func (u *ui) updateEmptyHint() {
 	if u.store.len() > 0 {
 		u.emptyHint.Hide()
+		u.table.Show()
 		return
 	}
 	if u.scanning {
@@ -216,6 +217,7 @@ func (u *ui) updateEmptyHint() {
 		u.emptyTitle.SetText("No hosts yet")
 		u.emptySub.SetText("Click Scan to inventory " + target)
 	}
+	u.table.Hide()
 	u.emptyHint.Show()
 }
 
