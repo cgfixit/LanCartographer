@@ -1,29 +1,106 @@
 # LanCartographer
 
-LanCartographer is a Windows LAN/port inventory utility with both a GUI and a
-CLI. It discovers hosts on your local network and inventories their open
-ports, producing a map of what is actually on your LAN. It ships as a single
-portable `.exe` — no installer, no services, no background processes.
-
-- **Offline and private by design:** zero telemetry, zero phone-home, no
-  analytics of any kind. All scanning happens from your machine against your
-  network; nothing leaves it.
-- **License:** MIT (see `LICENSE`).
+LanCartographer is a Windows LAN inventory tool written in Go (1.27) with a
+Fyne v2.8.1 GUI. It discovers the hosts on your local network and inventories
+what each one exposes — open TCP ports, service identities, SMB shares, names,
+MAC vendors — and presents the result as a live, sortable table with a CLI for
+scripting. It ships as a single portable `.exe`: no installer, no services, no
+background processes, and no telemetry of any kind.
 
 ## Authorized use only
 
 Scan only networks you own or have explicit authorization to inventory. Unauthorized access or scanning may violate the Computer Fraud and Abuse Act, 18 U.S.C. § 1030, and similar laws.
 
-This tool is an inventory aid for your own infrastructure. It is not a
-vulnerability scanner, an exploitation framework, or a reconnaissance tool
-for networks you do not control.
+LanCartographer is an inventory aid for your own infrastructure. It is not a
+vulnerability scanner, an exploitation framework, or a reconnaissance tool for
+networks you do not control.
 
-## Build
+## Features
 
-**Toolchain:** Go 1.27 or later, plus a CGO C compiler — on Windows use the
-MSYS2 `mingw-w64` gcc (`pacman -S mingw-w64-ucrt-x86_64-gcc`; the `ucrt64`
-shell puts it on PATH). The GUI (Fyne) requires CGO; the CLI is the same
-binary driven by a flag, so both builds use `CGO_ENABLED=1 CC=gcc`.
+| Area | What you get |
+|---|---|
+| Live scan | One-click sweep of all local physical subnets; hosts and open ports appear in the table while the scan is still running, with a progress bar and per-host events |
+| Sortable table | Seven columns (status, Name, IP, MAC, Vendor, Ports, Shares); click any header to sort; column widths are computed from window width with per-column minimums |
+| Port states | Every probed port reports `open`, `closed`, or `timeout`; open ports carry a service label (smb, http, rdp, …), and open ports with an unrecognized service get a 1-second HTTP probe that promotes web devices and captures the page `<title>` |
+| Share enumeration | SMB shares listed as name, type (disk/print/ipc), and remark via `NetShareEnum` level 1; a host that denies the enumeration shows an explicit "access denied" marker instead of an empty list |
+| Name resolution | NetBIOS, mDNS, and reverse DNS (PTR) queried concurrently for each host, first answer wins; resolved names are persisted in a MAC-keyed cache so silent devices keep their names across scans |
+| Right-click actions | Open host or share in Explorer, open its web interface in the default browser, start a Remote Desktop session, run a visible Ping, or send Wake-on-LAN (WOL asks for confirmation first) |
+| Export | Save the inventory as CSV or JSON from the File menu (the CLI has a `--json` flag) |
+| Favorites | Save and reload the current host list as favorites |
+| Themes | Dark and light themes, persisted across launches |
+| First-run notice | The authorization notice is shown in a dialog on first launch; a marker file records that you have seen it |
+| Elevation button | When the process is not elevated, the toolbar offers an Elevate button; MAC lookup needs elevation to return addresses, and the UI says so instead of failing silently |
+
+## CLI reference
+
+`lancartographer-cli.exe` drives the same engine as the GUI and prints a table
+(IP, NAME, MAC, VENDOR, PORTS, SHARES) to stdout. Diagnostics go to stderr.
+
+| Flag | Meaning | Default |
+|---|---|---|
+| `--range CIDR` | IPv4 prefix to scan, e.g. `192.168.1.0/24` | omitted: every local physical subnet |
+| `--ports` | Comma-separated TCP ports to probe (1–65535) | `21,22,23,80,135,139,443,445,515,631,3389,5357,8080,8443,9100` |
+| `--timeout` | Per-host dial timeout; the per-dial probe timeout is 2× this value | `400ms` |
+| `--concurrency` | Global concurrent-dial budget (engine clamps to 256) | `128` |
+| `--json PATH` | Also write the inventory as JSON to `PATH` | off |
+| `--i-am-authorized` | Confirm authorization for ranges that require confirmation | off |
+
+A range requires confirmation — and therefore `--i-am-authorized` — when it is
+outside your local subnets, **or** not RFC 1918 private space, **or** broader
+than a `/22`. Every target is checked before anything is scanned, so a refusal
+exits without touching the network.
+
+Exit codes:
+
+- `0` — scan completed (JSON export, if requested, succeeded)
+- `2` — bad arguments, an authorization-gate refusal, a scan failure, or a failed `--json` export
+- `3` — no usable local interfaces (only reachable when `--range` is omitted)
+
+Examples:
+
+```bash
+# Inventory every local subnet (no admin needed)
+lancartographer-cli.exe
+
+# Sweep one subnet, save JSON
+lancartographer-cli.exe --range 192.168.1.0/24 --json inventory.json
+
+# Wider sweep with explicit authorization
+lancartographer-cli.exe --range 10.0.0.0/20 --i-am-authorized
+
+# Just a few ports, faster timeout
+lancartographer-cli.exe --range 192.168.1.0/24 --ports 22,80,443,3389 --timeout 250ms
+```
+
+## Quick start
+
+1. Grab `dist/LanCartographer.exe` (or build it below) and double-click it.
+   There is no installer and no admin rights are needed to start — the
+   executable runs `asInvoker`.
+2. Read and acknowledge the authorization dialog on first launch.
+3. Click **Scan**. Local subnets are discovered from your network adapters and
+   swept; rows appear live.
+4. Right-click any host for Explorer / browser / RDP / Ping / Wake-on-LAN, or
+   use **File → Export…** for CSV/JSON.
+
+Per-user data lives under `%AppData%\LanCartographer\`:
+
+- `settings.json` — theme preference
+- `favorites.json` — saved host lists
+- `names.json` — the persistent MAC-keyed hostname cache
+- `firstrun_seen` — marker that the first-run authorization dialog was shown
+
+## Build from source
+
+Requirements: Go 1.27 or later, and a CGO C compiler — on Windows use the
+MSYS2 mingw-w64 gcc:
+
+```bash
+pacman -S mingw-w64-ucrt-x86_64-gcc
+```
+
+(Fyne requires CGO; the CLI is the same binary built without the GUI subsystem
+flag, so both builds use `CGO_ENABLED=1 CC=gcc`.)
 
 One-time setup for the version-resource tool used by `go generate`:
 
@@ -31,55 +108,100 @@ One-time setup for the version-resource tool used by `go generate`:
 go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 ```
 
-Then build both binaries from a Git Bash shell:
+Then, from a Git Bash shell:
 
 ```bash
-./build.sh
+bash build.sh
 ```
 
 `build.sh` runs `go generate ./...` (regenerates the icon, `app.manifest`,
-and `versioninfo.json`-driven `resource.syso` version resources) and then
-produces, in `dist/`:
+and the `versioninfo.json`-driven `resource.syso` version resources) and
+builds:
 
-- **`dist/LanCartographer.exe`** — the GUI build
-  (`-trimpath -ldflags "-s -w -H windowsgui"`); double-click it, or run it
-  from a shell. It runs asInvoker (no admin required to start).
-- **`dist/lancartographer-cli.exe`** — the console build (same flags without
-  `-H windowsgui`), for scripting and CI.
+- `dist/LanCartographer.exe` — the GUI (`-trimpath -ldflags "-s -w -H windowsgui"`)
+- `dist/lancartographer-cli.exe` — the console build for scripting and CI
 
-### CLI usage and exit codes
+## Security model
 
-```bash
-lancartographer-cli.exe --cli [--range CIDR] [--ports 21,22,80,...] \
-    [--timeout 400ms] [--concurrency 128] [--json out.json] [--i-am-authorized]
-```
-
-With no `--range`, every local physical subnet is inventoried. Ranges broader
-than your local subnets require `--i-am-authorized` confirmation. Exit codes:
-`0` scan completed; `2` bad arguments, an authorization-gate refusal, or a
-failed `--json` export; `3` no usable local interfaces (only reachable on the
-omitted-`--range` path).
+- **TCP connect scans only.** Probing is `net.Dialer.DialContext` against
+  specific ports — no SYN scans, no raw sockets, no crafted packets. The
+  closest thing to "raw" is `SendARP` for MAC lookup, which is a documented
+  Windows API call.
+- **Fail-closed authorization gate.** A scan target must be confirmed when it
+  is outside your local subnets, non-RFC1918, or broader than a `/22` — in the
+  GUI via a confirmation dialog, in the CLI via `--i-am-authorized`. Refusal
+  means nothing is scanned. The engine also refuses IPv6 and anything broader
+  than a `/12` outright.
+- **No credentials.** LanCartographer never asks for, uses, or stores
+  credentials. Share enumeration runs under your current Windows token; if
+  Windows denies the request, the UI shows "access denied" and moves on. When
+  Explorer opens a share UNC, Windows enforces the token — not us.
+- **No shell strings.** External programs (Explorer, browser, RDP, Ping,
+  Wake-on-LAN broadcast) are launched with argv lists only, never a composed
+  command line, so there is no injection surface.
+- **No phone-home.** Zero telemetry, zero analytics, no OUI-database downloads
+  at runtime — the MAC-vendor (OUI) database is embedded in the binary and was
+  current when generated. The only network traffic the tool generates is the
+  scanning you asked for.
+- **Runs unelevated by design.** The manifest requests `asInvoker` (never
+  `requireAdministrator`); elevation is offered as a button, not demanded.
 
 ## Platform notes
 
-- **Windows 7 caveat:** LanCartographer requires Go 1.21 or later, and Go
-  1.21+ builds do **not** support Windows 7 or Windows 8 (Go dropped support
-  for them in the 1.21 release). The application manifest must not claim
-  Windows 7 compatibility. Windows 10/11 (and Windows Server equivalents) are
-  the supported targets.
-- **Elevation:** some inventory operations (e.g. certain ARP-table or raw
-  socket probes) may require an elevated (Administrator) process. The CLI and
-  GUI should degrade gracefully and tell you when a probe needs elevation
-  rather than failing silently.
-- **Authenticode signing:** for release builds, Authenticode-signing the
-  `.exe` with a code-signing certificate is recommended so Windows
-  SmartScreen and antivirus heuristics do not flag an unsigned
-  network-scanning binary. Signing is a recommendation, not a build blocker.
-- **No 3D:** a 3D visualization of the network map is intentionally absent.
-  The UI is a plain 2D table/tree view — 3D adds GPU/driver complexity and
-  installer weight for zero inventory value.
+- **Target:** Windows 10 and Windows 11 (and Windows Server equivalents). The
+  application manifest declares only the Windows 10/11 `supportedOS` GUID.
+- **Windows 7 / 8.1:** best-effort only. Go 1.21+ dropped support for those
+  releases, so Go-built binaries — including this one — cannot support them;
+  the manifest intentionally does not claim Windows 7 compatibility.
+- **Authenticode:** release builds should be code-signed so SmartScreen and AV
+  heuristics do not flag an unsigned network-scanning binary. Recommended, not
+  required — signing is not a build blocker.
+- **Elevation:** some lookups (MAC via `SendARP`) only return data from an
+  elevated process. LanCartographer degrades to an explicit "needs elevation"
+  marker rather than failing silently, and offers an Elevate button.
 
-## Repository status
+## Repository layout
 
-Application code complete: discovery, probing, scan engine, GUI, CLI, WOL,
-export, and build packaging all live on `main`.
+One line per top-level package; all application code is under `internal/`
+(Go's convention for "not importable from outside this module").
+
+| Path | Role |
+|---|---|
+| `cmd/lancartographer` | `main` entry point plus `go:generate` directives (icon, manifest, version resources) |
+| `internal/discover` | Local subnet enumeration (`GetAdaptersAddresses`), host-address expansion, liveness probing |
+| `internal/probe` | TCP connect port scans, HTTP title detection, rate limiter, MAC lookup, mDNS/NetBIOS/DNS name probes, share listing |
+| `internal/scan` | The central sweep engine: worker pool, event stream, enrichment, MAC-keyed name cache |
+| `internal/model` | Inventory records (`Host`, `Port`, `Share`) and the CSV/JSON writers |
+| `internal/authz` | The authorization notice and the scan-range confirmation policy |
+| `internal/oui` | Embedded MAC-vendor database, generated from `data.csv` |
+| `internal/winutil` | Typed Windows API wrappers (`NetShareEnum`, `SendARP`, elevation check) with non-Windows stubs |
+| `internal/gui` | The Fyne GUI: toolbar, live table, side panel, context menus, dialogs, settings |
+| `internal/cli` | Flag parsing, authorization gate, table output, JSON export, exit codes |
+| `internal/maplayout` | Position calculation for the 2D map view (v1.1) |
+| `internal/wol` | Wake-on-LAN magic-packet construction and broadcast send |
+| `internal/favorites` | Favorites persistence under `%AppData%\LanCartographer\` |
+| `internal/export` | File export dispatch (CSV/JSON) |
+| `internal/hostcache` | The persistent MAC-keyed hostname cache (`names.json`) |
+| `tools/icongen` | Icon generator run by `go generate` to produce `app.ico` |
+
+## Testing
+
+```bash
+CGO_ENABLED=1 go test ./... -race
+```
+
+Tests are hermetic: fixtures listen on loopback (e.g. `127.0.0.1:18080`) and
+use `192.0.2.x` (TEST-NET-1, RFC 5737 — the documentation range, guaranteed
+unroutable) for dead-address cases. No test performs a live LAN scan, so the
+suite is safe to run anywhere, on any network.
+
+## Roadmap
+
+- **v1.1 — 2D map view:** spatial layout of discovered hosts (positioning
+  logic already lives in `internal/maplayout`).
+- **No 3D.** A 3D visualization is intentionally absent: it adds GPU/driver
+  complexity and installer weight for zero inventory value.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
