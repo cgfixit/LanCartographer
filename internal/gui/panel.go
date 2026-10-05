@@ -1,3 +1,5 @@
+//go:build cgo
+
 package gui
 
 import (
@@ -77,9 +79,9 @@ func (u *ui) showHost(h model.Host) {
 			u.launch(browserArgv(h.IP, scheme))
 		}))
 	}
-	if h.HasRDP() {
+	if argv := rdpArgv(h.IP); h.HasRDP() && argv != nil {
 		actions.Add(widget.NewButtonWithIcon("RDP", theme.DesktopIcon(), func() {
-			u.launch(rdpArgv(h.IP))
+			u.launch(argv)
 		}))
 	}
 	if canWOL(h) {

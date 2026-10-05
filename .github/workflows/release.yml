@@ -5,8 +5,8 @@
 #   permissions are needed to run it.
 # - Binaries are shipped unsigned; Authenticode code signing is recommended
 #   (see README) but intentionally not required for this release.
-# - LanCartographer targets Windows 10/11 only. Do NOT claim Windows 7
-#   support anywhere in release notes or artifacts.
+# - LanCartographer targets Windows 10/11 and macOS 13+. Do NOT claim
+#   Windows 7 support anywhere in release notes or artifacts.
 name: Release
 
 on:
@@ -88,3 +88,43 @@ jobs:
             dist/LanCartographer.exe
             dist/lancartographer-cli.exe
             dist/SHA256SUMS.txt
+
+  build-macos:
+    name: Build macOS binaries
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache: true
+
+      - name: Generate embedded resources (icon only on macOS)
+        run: |
+          export CGO_ENABLED=1
+          go generate ./...
+
+      - name: Build GUI binary
+        run: |
+          export CGO_ENABLED=1
+          go build -trimpath -ldflags "-s -w" -o dist-darwin/LanCartographer ./cmd/lancartographer
+
+      - name: Build CLI binary
+        run: |
+          export CGO_ENABLED=1
+          go build -trimpath -ldflags "-s -w" -o dist-darwin/lancartographer-cli ./cmd/lancartographer
+
+      - name: Generate SHA256 checksums and zip
+        run: |
+          cd dist-darwin
+          shasum -a 256 LanCartographer lancartographer-cli > SHA256SUMS.txt
+          zip ../LanCartographer-macos.zip LanCartographer lancartographer-cli SHA256SUMS.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LanCartographer-macos
+          path: LanCartographer-macos.zip

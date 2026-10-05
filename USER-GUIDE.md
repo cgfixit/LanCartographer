@@ -18,7 +18,7 @@ Python module.
 | `interface` | Python duck typing, but declared and checked at compile time. A function that takes `io.Writer` accepts anything with a `Write` method — like a protocol/ABC, enforced before runtime. |
 | struct embedding | Mixin / inheritance-lite. Embedding `sync.Mutex` in a struct promotes its methods — the Go idiom for "this struct has a lock," comparable to `$this.Lock()` conventions you'd hand-roll. |
 | pointer (`*Host`) | Passing a list by reference instead of a copy. Go is pass-by-value everywhere; a pointer is how a function mutates the caller's struct. Most of this codebase passes structs by value unless mutation is the point. |
-| `cgo` | `ctypes` / `CDLL` — calling C from Go. This project deliberately avoids cgo for Windows APIs; see "Talking to Windows without .NET" below. |
+| `cgo` | `ctypes` / `CDLL` — calling C from Go. This project deliberately avoids cgo for OS APIs; see "Talking to the OS without .NET" below. |
 | single compiled exe | PyInstaller output, but first-class: one static-ish binary, no interpreter, no venv, no DLL hell, ~instant startup. |
 
 ## What happens when you click Scan
@@ -142,7 +142,7 @@ event channel in a mutex so concurrent workers can't interleave sends, and
 its send is `select`-ed against ctx so a cancelled sweep never wedges a
 worker on a dead consumer.
 
-## Talking to Windows without .NET
+## Talking to the OS without .NET (Windows and macOS)
 
 You know P/Invoke: `Add-Type` a C signature, marshal structs by hand, hope
 the packing matches. Go's `golang.org/x/sys/windows` is the same idea
@@ -155,6 +155,17 @@ these calls. cgo would drag a C toolchain into every build and complicate
 cross-compilation; the `x/sys/windows` approach compiles with plain `go build`.
 That's why the build needs gcc *only* for Fyne (the GUI library), not for
 Windows APIs.
+
+On macOS the same seam exists, filled by different tools. Local subnets come
+from the stdlib `net.Interfaces()` instead of `GetAdaptersAddresses`; peer
+MAC addresses are read from the ARP cache (the equivalent of running
+`arp -a`) instead of `SendARP`; share enumeration shells out to `smbutil`
+(argv list, never a shell string) instead of calling `NetShareEnum`; and
+GUI-adjacent desktop actions go through `osascript` where `mstsc`/Explorer
+would have been the Windows answer. The build tags keep the split clean:
+each `internal/winutil` wrapper has a `_windows.go` implementation and a
+`!windows` stub, so the engine and every test compile identically on both
+OSes.
 
 The one place the code touches raw memory is the `NetShareEnum` buffer walk
 in `internal/winutil/share_windows.go`: Windows hands back a pointer to a

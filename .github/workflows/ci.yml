@@ -62,3 +62,37 @@ jobs:
       - name: CGO go test with race detector
         shell: bash
         run: CGO_ENABLED=1 CC=gcc go test ./... -race
+
+      # Cross-compile smokes cover every package EXCEPT the GUI entry points:
+      # Fyne on desktop requires CGO (go-gl/glfw; internal/app/theme_darwin.go
+      # links the Foundation framework), so a CGO-off cross-compile of
+      # internal/gui and cmd/lancartographer can never succeed. The full GUI
+      # build for darwin is covered natively by the macos job below.
+      - name: Cross-compile smoke (darwin/arm64, non-GUI packages)
+        shell: bash
+        run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build $(go list ./... | grep -vE 'internal/gui|cmd/lancartographer')
+
+      - name: Cross-compile smoke (linux/amd64, non-GUI packages)
+        shell: bash
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(go list ./... | grep -vE 'internal/gui|cmd/lancartographer')
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache: true
+
+      - name: CGO go build
+        run: CGO_ENABLED=1 go build ./...
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: CGO go test with race detector
+        run: CGO_ENABLED=1 go test ./... -race

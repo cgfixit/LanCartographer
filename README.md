@@ -105,11 +105,14 @@ lancartographer.exe --cli --range 192.168.1.0/24 --json inventory.json
 
 ## Quick start
 
-1. Download `LanCartographer.exe` from the [GitHub Releases page](https://github.com/cgfixit/LanCartographer/releases)
-   (built by the release workflow on version tags) — or build it below — and
-   double-click it. Note that `dist/` is build output, not committed to the
-   repository. There is no installer and no admin rights are needed to start —
-   the executable runs `asInvoker`.
+1. Download the asset for your OS from the [GitHub Releases page](https://github.com/cgfixit/LanCartographer/releases)
+   (built by the release workflow on version tags) — `LanCartographer-windows`
+   (the `.exe` files) for Windows, `LanCartographer-macos.zip` for macOS — or
+   build it below — and run it. Note that `dist/` is build output, not
+   committed to the repository. There is no installer and no admin rights are
+   needed to start — the Windows executable runs `asInvoker`. On macOS the
+   binary is unsigned: right-click → **Open** the first time, or run
+   `xattr -d com.apple.quarantine LanCartographer` after unzipping.
 2. Read and acknowledge the authorization dialog on first launch.
 3. Click **Scan**. Local subnets are discovered from your network adapters and
    swept; rows appear live.
@@ -184,8 +187,20 @@ regenerated) and builds:
 
 ## Platform notes
 
-- **Target:** Windows 10 and Windows 11 (and Windows Server equivalents). The
-  application manifest declares only the Windows 10/11 `supportedOS` GUID.
+- **Target:** Windows 10 and Windows 11 (and Windows Server equivalents), and
+  macOS 13+. The Windows application manifest declares only the Windows 10/11
+  `supportedOS` GUID.
+- **macOS caveats:**
+  - Release binaries are unsigned, so Gatekeeper blocks the first launch of a
+    downloaded copy: right-click → **Open**, or clear the quarantine bit with
+    `xattr -d com.apple.quarantine LanCartographer`.
+  - The **Remote Desktop** right-click action is Windows-only (it launches
+    `mstsc`); it is unavailable/hidden on macOS.
+  - Share enumeration uses `smbutil` instead of `NetShareEnum`, so the share
+    list can differ from what a Windows client would report for the same host.
+  - Peer MAC addresses come from the local ARP cache; hosts that have been
+    silent since the cache entry expired may show no MAC (and therefore no
+    vendor) — the table degrades to an empty MAC instead of failing.
 - **Windows 7 / 8.1:** best-effort only. Go 1.21+ dropped support for those
   releases, so Go-built binaries — including this one — cannot support them;
   the manifest intentionally does not claim Windows 7 compatibility.

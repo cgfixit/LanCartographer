@@ -41,6 +41,18 @@ The app manifest is `asInvoker` — never `requireAdministrator`.
 Toolchain PATH: Go at `/c/Program Files/Go/bin`, gcc (MSYS2 ucrt64) at
 `/c/msys64/ucrt64/bin`. Everything below needs `CGO_ENABLED=1 CC=gcc`.
 
+**macOS gate notes:** there is no MSYS2 on the macOS CI job — CGO uses the
+runner's system clang (`CGO_ENABLED=1`, default `CC`). `go generate ./...`
+on macOS runs only `tools/icongen`; the goversioninfo directive lives in
+`cmd/lancartographer/generate_windows.go` (`//go:build windows`), and the
+checked-in `resource.syso` regenerates on Windows only. The Windows CI job
+also runs cross-compile smoke builds (`CGO_ENABLED=0 GOOS=darwin
+GOARCH=arm64` and `GOOS=linux`, non-GUI packages only — Fyne's desktop
+driver requires CGO, so the GUI build for darwin is verified natively by
+the macos-latest job, never by cross-compile). Keep those green; a
+Windows-only API used in the engine, CLI, or `winutil` stubs fails the
+gate even though the Windows build is fine.
+
 The local gate — run from the repo root:
 
 ```bash

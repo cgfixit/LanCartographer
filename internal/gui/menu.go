@@ -1,3 +1,5 @@
+//go:build cgo
+
 package gui
 
 import (
@@ -102,9 +104,9 @@ func (u *ui) showHostMenu(h model.Host, e *fyne.PointEvent) {
 			u.launch(browserArgv(h.IP, scheme))
 		}))
 	}
-	if h.HasRDP() {
+	if argv := rdpArgv(h.IP); h.HasRDP() && argv != nil {
 		items = append(items, fyne.NewMenuItem("Remote Desktop", func() {
-			u.launch(rdpArgv(h.IP))
+			u.launch(argv)
 		}))
 	}
 	items = append(items, fyne.NewMenuItem("Ping", func() {

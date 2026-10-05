@@ -1,3 +1,5 @@
+//go:build cgo
+
 // Package gui is LanCartographer's Fyne interface: toolbar, live scan
 // table, side panel, context menus, favorites, export, and the 2D map
 // placeholder. Widget code stays thin; every launch or formatting
