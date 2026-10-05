@@ -55,8 +55,11 @@ jobs:
         shell: bash
         run: |
           go generate ./...
-          # go.sum is allowed to drift as a side effect of generate.
-          git diff --exit-code -- ':(exclude)go.sum'
+          # go.sum may drift as a dependency side effect; resource.syso
+          # bytes depend on the goversioninfo build version (differs between
+          # dev machines and CI) — the deterministic Go-generated files must
+          # not drift, so those two are excluded here.
+          git diff --exit-code -- ':(exclude)go.sum' ':(exclude)cmd/lancartographer/resource.syso'
 
       - name: CGO go build
         shell: bash
