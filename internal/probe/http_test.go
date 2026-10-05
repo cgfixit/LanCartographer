@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -137,5 +138,48 @@ func TestDetectWeb_ExtractsTitle(t *testing.T) {
 	}
 	if title != "NAS Admin" {
 		t.Fatalf("detectWeb title = %q, want %q", title, "NAS Admin")
+	}
+}
+
+func TestHTTPTitle_DoesNotFollowRedirects(t *testing.T) {
+	// Server B counts hits: a redirect-following probe would reach it.
+	var hitsB atomic.Int32
+	srvB := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hitsB.Add(1)
+		_, _ = w.Write([]byte("<title>redirect target</title>"))
+	}))
+	t.Cleanup(srvB.Close)
+
+	srvA := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, srvB.URL, http.StatusFound)
+	}))
+	t.Cleanup(srvA.Close)
+
+	u, err := url.Parse(srvA.URL)
+	if err != nil {
+		t.Fatalf("parse server URL: %v", err)
+	}
+	host, portStr, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		t.Fatalf("split host/port: %v", err)
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		t.Fatalf("parse port: %v", err)
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		t.Fatalf("parse ip: %v", err)
+	}
+
+	status, _, err := HTTPTitle(context.Background(), ip, port, false)
+	if err != nil {
+		t.Fatalf("HTTPTitle: %v (a 302 response is not an error)", err)
+	}
+	if status != http.StatusFound {
+		t.Errorf("status = %d, want 302 (the original response, not the redirect target)", status)
+	}
+	if got := hitsB.Load(); got != 0 {
+		t.Errorf("redirect target received %d requests, want 0 (no unintended egress)", got)
 	}
 }

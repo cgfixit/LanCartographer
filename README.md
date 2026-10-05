@@ -20,7 +20,7 @@ for networks you do not control.
 
 ## Build
 
-**Toolchain:** Go 1.22 or later, plus a CGO C compiler — on Windows use the
+**Toolchain:** Go 1.27 or later, plus a CGO C compiler — on Windows use the
 MSYS2 `mingw-w64` gcc (`pacman -S mingw-w64-ucrt-x86_64-gcc`; the `ucrt64`
 shell puts it on PATH). The GUI (Fyne) requires CGO; the CLI is the same
 binary driven by a flag, so both builds use `CGO_ENABLED=1 CC=gcc`.

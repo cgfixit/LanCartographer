@@ -431,3 +431,44 @@ func TestRun_EmptyPrefix(t *testing.T) {
 		t.Errorf("events = %+v, want exactly Done/1", evs)
 	}
 }
+
+func TestValidateTarget(t *testing.T) {
+	cases := []struct {
+		name    string
+		target  string
+		wantErr bool
+	}{
+		{"ipv6 prefix rejected", "2001:db8::/64", true},
+		{"too large /8 rejected", "10.0.0.0/8", true},
+		{"boundary /12 allowed", "10.0.0.0/12", false},
+		{"typical /24 allowed", "192.168.1.0/24", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateTarget(netip.MustParsePrefix(tc.target))
+			if tc.wantErr && err == nil {
+				t.Fatalf("validateTarget(%s) = nil, want error", tc.target)
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("validateTarget(%s) = %v, want nil", tc.target, err)
+			}
+		})
+	}
+	// A zero prefix stays a clean no-op (existing empty-scan behavior).
+	if err := validateTarget(netip.Prefix{}); err != nil {
+		t.Errorf("validateTarget(zero) = %v, want nil", err)
+	}
+}
+
+func TestRun_RejectsInvalidTargets(t *testing.T) {
+	d := fakeAliveDeps(nil, nil, nil, "", "", nil, true)
+	for _, target := range []string{"2001:db8::/64", "10.0.0.0/8"} {
+		evs, err := runCollect(context.Background(), netip.MustParsePrefix(target), probe.Options{}, d)
+		if err == nil {
+			t.Errorf("run(%s) = nil error, want validation failure", target)
+		}
+		if len(evs) != 0 {
+			t.Errorf("run(%s) emitted %d events, want none on validation failure", target, len(evs))
+		}
+	}
+}

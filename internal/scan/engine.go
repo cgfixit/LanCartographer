@@ -8,6 +8,7 @@ package scan
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/netip"
 	"sort"
@@ -55,6 +56,30 @@ type Event struct {
 // maxHostsInFlight bounds concurrent per-host processing (R8: a /24 must
 // finish in seconds, which sequential liveness cannot do).
 const maxHostsInFlight = 64
+
+// maxPrefixHostBits bounds the address space a sweep may span: 2^20
+// addresses (a /12). Anything broader would materialize a host list large
+// enough to hang or OOM the operator's own machine, so Run rejects it
+// before enumeration.
+const maxPrefixHostBits = 20
+
+// validateTarget rejects targets Run cannot safely sweep: non-IPv4 ranges
+// (IPv6 enumeration is unbounded and unsupported) and IPv4 prefixes broader
+// than a /12. An invalid (zero) prefix is allowed: it sweeps zero hosts,
+// preserving the empty-scan no-op.
+func validateTarget(target netip.Prefix) error {
+	if !target.IsValid() {
+		return nil
+	}
+	if !target.Addr().Is4() {
+		return fmt.Errorf("scan: only IPv4 ranges are supported, got %s", target)
+	}
+	if hostBits := 32 - target.Bits(); hostBits > maxPrefixHostBits {
+		return fmt.Errorf("scan: range too large: %s spans %d addresses; maximum is /12 (%d addresses)",
+			target.Masked(), uint64(1)<<hostBits, uint64(1)<<maxPrefixHostBits)
+	}
+	return nil
+}
 
 // deps is the testability seam (R3): every external effect the engine needs
 // binds here, with defaultDeps wiring the real implementations.
@@ -106,14 +131,19 @@ func arpPresent(ip netip.Addr) bool {
 }
 
 // Run sweeps target and streams events on out. It returns nil on full
-// completion (after emitting EventDone with Progress=1) and ctx.Err() when
-// cancelled. out is never closed by Run; no events are sent after Run
-// returns, so the caller may close it immediately.
+// completion (after emitting EventDone with Progress=1), ctx.Err() when
+// cancelled, and a validation error (without emitting any event) when
+// target is not IPv4 or spans more than a /12. out is never closed by Run;
+// no events are sent after Run returns, so the caller may close it
+// immediately.
 func Run(ctx context.Context, target netip.Prefix, opts probe.Options, out chan<- Event) error {
 	return run(ctx, target, opts, out, defaultDeps(opts))
 }
 
 func run(ctx context.Context, target netip.Prefix, opts probe.Options, out chan<- Event, d deps) error {
+	if err := validateTarget(target); err != nil {
+		return err
+	}
 	hosts := discover.HostsIn(target.Masked())
 	total := len(hosts)
 	if total == 0 {

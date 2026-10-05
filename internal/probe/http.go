@@ -26,8 +26,9 @@ const (
 // entities unescaped, whitespace trimmed, and a hard limit of 80 runes.
 // A response without a title element is not an error: it returns
 // (status, "", nil). The probe always uses a 1s client timeout; a longer
-// deadline on ctx does not extend it. TLS certificate verification is never
-// disabled.
+// deadline on ctx does not extend it. Redirects are never followed — the
+// original response is returned as-is. TLS certificate verification is
+// never disabled.
 func HTTPTitle(ctx context.Context, ip netip.Addr, port int, https bool) (status int, title string, err error) {
 	scheme := "http"
 	transport := &http.Transport{}
@@ -35,7 +36,13 @@ func HTTPTitle(ctx context.Context, ip netip.Addr, port int, https bool) (status
 		scheme = "https"
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
 	}
-	client := &http.Client{Timeout: httpProbeTimeout, Transport: transport}
+	client := &http.Client{
+		Timeout:   httpProbeTimeout,
+		Transport: transport,
+		// The original response's status/title is all the probe needs;
+		// following redirects would be unintended egress.
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
 	defer client.CloseIdleConnections()
 
 	addr := netip.AddrPortFrom(ip, uint16(port))

@@ -2,7 +2,7 @@
 # LanCartographer release build: regenerates version resources (icon +
 # manifest via goversioninfo) and builds both binaries into dist/.
 #
-# Toolchain: Go 1.22+ on PATH, plus MSYS2 mingw-w64 gcc for CGO (Fyne).
+# Toolchain: Go 1.27+ on PATH, plus MSYS2 mingw-w64 gcc for CGO (Fyne).
 # Install the manifest tool once with:
 #   go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 set -euo pipefail

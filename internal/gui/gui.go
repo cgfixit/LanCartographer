@@ -6,6 +6,7 @@ package gui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"image/color"
 	"net/netip"
@@ -351,7 +352,11 @@ func (u *ui) startScan(target netip.Prefix) {
 	out := make(chan scan.Event, 64)
 	go func() {
 		defer close(out)
-		_ = scan.Run(ctx, target, opts, out)
+		// A rejected target (non-IPv4, broader than /12) surfaces here;
+		// Stop's cancellation is not an error worth showing.
+		if err := scan.Run(ctx, target, opts, out); err != nil && !errors.Is(err, context.Canceled) {
+			fyne.Do(func() { u.statusErr.SetText(err.Error()) })
+		}
 	}()
 	go func() {
 		for ev := range out {
