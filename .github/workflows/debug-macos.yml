@@ -21,75 +21,43 @@ jobs:
           go-version: '1.27'
           cache: false
 
-      - name: System facts
+      - name: Elimination links — which cgo dep breaks the final link
         run: |
-          sw_vers
-          echo "--- clang ---"
-          clang --version
-          echo "--- xcode-select ---"
-          xcode-select -p
-          echo "--- xcrun ---"
-          xcrun -f clang && xcrun --show-sdk-path && xcrun --sdk macosx --show-sdk-version
-          echo "--- ld ---"
-          xcrun -f ld && ld -version_details 2>/dev/null | head -5 || ld -v 2>&1 | head -3
-          echo "--- go ---"
-          go version
-          go env CGO_ENABLED CGO_CFLAGS CGO_LDFLAGS CC CXX GOFLAGS GOARM64 SDKROOT
-
-      - name: Minimal cgo repro (clang link)
-        run: |
-          mkdir -p /tmp/cgotest && cd /tmp/cgotest
-          cat > main.go <<'EOF'
+          cd "$GITHUB_WORKSPACE"
+          for pkg in \
+            'glfw github.com/go-gl/glfw/v3.4/glfw' \
+            'gl github.com/go-gl/gl/v2.1/gl' \
+            'systray fyne.io/systray' \
+            'fyneapp fyne.io/fyne/v2/app' \
+            'driver fyne.io/fyne/v2/internal/driver/glfw' ; do
+            name="${pkg%% *}"; path="${pkg#* }"
+            mkdir -p "_linktest/$name"
+            cat > "_linktest/$name/main.go" <<EOF
           package main
 
-          /*
-          #include <stdio.h>
-          static int add(int a, int b) { return a + b; }
-          */
-          import "C"
-          import "fmt"
+          import _ "$path"
 
-          func main() { fmt.Println("cgo ok:", C.add(1, 2)) }
+          func main() {}
           EOF
-          cat > go.mod <<'EOF'
-          module cgotest
+            echo "=== link test: $name ($path)"
+            if CGO_ENABLED=1 go build -o /dev/null "./_linktest/$name" 2>&1 | tail -6; then
+              echo "=== $name: OK"
+            else
+              echo "=== $name: FAIL"
+            fi
+          done
 
-          go 1.27
-          EOF
-          CGO_ENABLED=1 go build -x . 2>&1 | tail -30
-          ./cgotest
-
-      - name: Minimal cgo repro with -framework flags (Fyne-style link)
-        run: |
-          cd /tmp/cgotest
-          cat > main.go <<'EOF'
-          package main
-
-          /*
-          #cgo LDFLAGS: -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -framework CoreGraphics -framework Foundation
-          #include <stdio.h>
-          static int add(int a, int b) { return a + b; }
-          */
-          import "C"
-          import "fmt"
-
-          func main() { fmt.Println("cgo frameworks ok:", C.add(2, 3)) }
-          EOF
-          CGO_ENABLED=1 go build -x . 2>&1 | tail -40
-          ./cgotest
-
-      - name: Build fyne alone
+      - name: Dump the bad object (preserve linker tmpdir)
         run: |
           cd "$GITHUB_WORKSPACE"
-          CGO_ENABLED=1 go build fyne.io/fyne/v2 2>&1 | tail -20 && echo "FYNE BUILD OK"
-
-      - name: Failing build with -x (capture package + linker line)
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          CGO_ENABLED=1 go build -x ./... 2>&1 | tail -120
-        continue-on-error: true
-
-      - name: Failing build retry (cache warm)
-        run: |
-          cd "$GITHUB_WORKSPACE"
-          CGO_ENABLED=1 go build ./...
+          LT="$RUNNER_TEMP/linktmp"
+          mkdir -p "$LT"
+          CGO_ENABLED=1 go build -ldflags="-tmpdir=$LT" ./cmd/lancartographer 2>&1 | tail -5 || true
+          echo "--- file(1) on linker objects ---"
+          for f in "$LT"/*.o; do echo "== $(basename "$f")"; file "$f"; done | head -60
+          echo "--- 000000.o magic bytes ---"
+          xxd "$LT"/000000.o 2>/dev/null | head -4
+          echo "--- otool -h 000000.o ---"
+          otool -h "$LT"/000000.o 2>&1 | head -15
+          echo "--- compare with go.o ---"
+          file "$LT"/go.o; xxd "$LT"/go.o | head -2
