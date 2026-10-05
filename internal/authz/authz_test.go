@@ -14,9 +14,10 @@ func TestNeedsConfirmation(t *testing.T) {
 		want   bool
 	}{
 		{"listed local /24 needs no confirmation", netip.MustParsePrefix("192.168.1.0/24"), local, false},
-		{"listed local 10/8 needs no confirmation", netip.MustParsePrefix("10.0.0.0/8"),
-			[]netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, false},
+		{"listed local 10/8 still needs confirmation (broader than /22)", netip.MustParsePrefix("10.0.0.0/8"),
+			[]netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, true},
 		{"public range needs confirmation", netip.MustParsePrefix("203.0.113.0/24"), local, true},
+		{"rfc1918 range outside local needs confirmation", netip.MustParsePrefix("192.168.99.0/24"), local, true},
 		{"private range broader than /22 needs confirmation", netip.MustParsePrefix("192.168.0.0/16"), local, true},
 		{"host bits masked into listed local needs no confirmation",
 			netip.MustParsePrefix("192.168.1.5/24").Masked(), local, false},

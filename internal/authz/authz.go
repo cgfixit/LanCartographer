@@ -29,14 +29,17 @@ func IsRFC1918(p netip.Prefix) bool {
 // NeedsConfirmation reports whether scanning target requires explicit
 // operator confirmation. Callers must Masked() the target first.
 //
-// A target fully contained in a known local prefix is already authorized
-// and never needs confirmation. Any other target needs confirmation when
-// it is outside RFC1918 space or broader than a /22.
+// Confirmation is required when ANY of these independent conditions hold:
+//  1. target is not contained in any prefix in local,
+//  2. target is not RFC1918 private space,
+//  3. target is broader than a /22 (target.Bits() < 22).
 func NeedsConfirmation(target netip.Prefix, local []netip.Prefix) bool {
+	outsideLocal := true
 	for _, l := range local {
 		if l.Bits() <= target.Bits() && l.Contains(target.Addr()) {
-			return false
+			outsideLocal = false
+			break
 		}
 	}
-	return !IsRFC1918(target) || target.Bits() < 22
+	return outsideLocal || !IsRFC1918(target) || target.Bits() < 22
 }
