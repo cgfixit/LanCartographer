@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  gate:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache: true
+
+      - name: Set up MSYS2 (ucrt64 gcc for CGO)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: false
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+
+      - name: Add ucrt64 gcc to PATH
+        run: echo "C:/msys64/ucrt64/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: gofmt check (must be empty)
+        shell: bash
+        run: |
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then
+            echo "gofmt found unformatted files:"
+            echo "$out"
+            exit 1
+          fi
+          echo "gofmt: PASS"
+
+      - name: go vet
+        shell: bash
+        run: go vet ./...
+
+      - name: go generate drift check
+        shell: bash
+        run: |
+          go generate ./...
+          # go.sum is allowed to drift as a side effect of generate.
+          git diff --exit-code -- ':(exclude)go.sum'
+
+      - name: CGO go build
+        shell: bash
+        run: CGO_ENABLED=1 CC=gcc go build ./...
+
+      - name: CGO go test with race detector
+        shell: bash
+        run: CGO_ENABLED=1 CC=gcc go test ./... -race

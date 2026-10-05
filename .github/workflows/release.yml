@@ -1,0 +1,85 @@
+# Release workflow for LanCartographer.
+# Notes:
+# - The Windows app manifest is asInvoker: the GUI binary never requests
+#   administrator elevation (no requireAdministrator), so no special
+#   permissions are needed to run it.
+# - Binaries are shipped unsigned; Authenticode code signing is recommended
+#   (see README) but intentionally not required for this release.
+# - LanCartographer targets Windows 10/11 only. Do NOT claim Windows 7
+#   support anywhere in release notes or artifacts.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache: true
+
+      - name: Set up MSYS2 (ucrt64 gcc)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+
+      - name: Add ucrt64 toolchain to PATH
+        run: echo "C:/msys64/ucrt64/bin" >> "$env:GITHUB_PATH"
+
+      - name: Generate embedded resources
+        shell: bash
+        run: |
+          export CGO_ENABLED=1
+          export CC=gcc
+          go generate ./...
+
+      - name: Build GUI binary
+        shell: bash
+        run: |
+          export CGO_ENABLED=1
+          export CC=gcc
+          go build -trimpath -ldflags "-s -w -H windowsgui" -o dist/LanCartographer.exe ./cmd/lancartographer
+
+      - name: Build CLI binary
+        shell: bash
+        run: |
+          export CGO_ENABLED=1
+          export CC=gcc
+          go build -trimpath -ldflags "-s -w" -o dist/lancartographer-cli.exe ./cmd/lancartographer
+
+      - name: Generate SHA256 checksums
+        shell: bash
+        run: |
+          cd dist
+          sha256sum LanCartographer.exe lancartographer-cli.exe > SHA256SUMS.txt
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LanCartographer-windows
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/LanCartographer.exe
+            dist/lancartographer-cli.exe
+            dist/SHA256SUMS.txt
