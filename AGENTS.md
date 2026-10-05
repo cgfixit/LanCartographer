@@ -1,8 +1,14 @@
 # AGENTS.md — LanCartographer operating contract
 
 Cross-agent contract for any AI coding agent working in this repo. Read it
-fully before your first edit. Repo: `github.com/local/lancartographer`,
-MIT licensed.
+fully before your first edit. Repo: `github.com/cgfixit/LanCartographer`
+(**private**; the canonical remote is `origin`). MIT licensed.
+
+> **Visibility is a hard invariant.** This repository is private. Never
+> change repository visibility, never transfer it, and never push it to a
+> public remote — that requires the owner's explicit, case-by-case approval.
+> Draft PRs, issues, and Actions runs inside this repo do not affect
+> visibility and are safe.
 
 ## 1. Product
 
