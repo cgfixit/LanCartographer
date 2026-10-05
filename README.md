@@ -1,6 +1,6 @@
 # LanCartographer
 
-LanCartographer is a Windows LAN inventory tool written in Go (1.27) with a
+LanCartographer is a Windows and MacOS security/privacy aware LAN inventory tool written in Go (1.27) with a
 Fyne v2.8.1 GUI. It discovers the hosts on your local network and inventories
 what each one exposes — open TCP ports, service identities, SMB shares, names,
 MAC vendors — and presents the result as a live, sortable table with a CLI for
