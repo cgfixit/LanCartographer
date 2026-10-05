@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/netip"
-	"strings"
 	"sync"
 	"time"
 
@@ -92,75 +91,4 @@ func scanPort(ctx context.Context, ip netip.Addr, port int, opts Options) model.
 		}
 	}
 	return p
-}
-
-// classifyPort maps a TCP port number to its pinned service label.
-func classifyPort(port int) string {
-	switch port {
-	case 80, 443, 8080, 8443:
-		return "Web"
-	case 445:
-		return "SMB"
-	case 3389:
-		return "RDP"
-	case 22:
-		return "SSH"
-	case 21:
-		return "FTP"
-	case 515, 631, 9100:
-		return "Printer"
-	default:
-		return "unknown"
-	}
-}
-
-// detectWeb is the unexported seam behind web-service promotion (ruling
-// R7). Minimal version: dial with a 1s timeout, send a bare HTTP/1.0 GET,
-// read at most 2 KiB, and report ok only when the first line parses as
-// "HTTP/1.x <3-digit status>". Title extraction arrives in Task 8, so the
-// returned title is always empty for now.
-func detectWeb(ctx context.Context, ip netip.Addr, port int) (title string, ok bool) {
-	d := net.Dialer{Timeout: time.Second}
-	conn, err := d.DialContext(ctx, "tcp", netip.AddrPortFrom(ip, uint16(port)).String())
-	if err != nil {
-		return "", false
-	}
-	defer conn.Close()
-	if deadline, ok := ctx.Deadline(); ok {
-		conn.SetDeadline(deadline)
-	} else {
-		conn.SetDeadline(time.Now().Add(time.Second))
-	}
-	if _, err := conn.Write([]byte("GET / HTTP/1.0\r\n\r\n")); err != nil {
-		return "", false
-	}
-	buf := make([]byte, 2048)
-	n, err := conn.Read(buf)
-	if n == 0 {
-		return "", false
-	}
-	_ = err // a partial read still counts; only the bytes matter
-	line := string(buf[:n])
-	if i := strings.IndexByte(line, '\n'); i >= 0 {
-		line = line[:i]
-	}
-	line = strings.TrimRight(line, "\r")
-	fields := strings.SplitN(line, " ", 3)
-	if len(fields) < 2 {
-		return "", false
-	}
-	proto, status := fields[0], fields[1]
-	if len(proto) != len("HTTP/1.x") || !strings.HasPrefix(proto, "HTTP/1.") ||
-		proto[len(proto)-1] < '0' || proto[len(proto)-1] > '9' {
-		return "", false
-	}
-	if len(status) != 3 {
-		return "", false
-	}
-	for _, c := range status {
-		if c < '0' || c > '9' {
-			return "", false
-		}
-	}
-	return "", true
 }
