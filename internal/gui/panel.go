@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
@@ -66,17 +65,17 @@ func (u *ui) showHost(h model.Host) {
 
 	// Action buttons, enabled per the host's actual surface.
 	actions := container.NewHBox(
-		widget.NewButtonWithIcon("Explorer", theme.FolderIcon(), func() {
+		widget.NewButtonWithIcon(fileManagerName, theme.FolderIcon(), func() {
 			u.launch(explorerArgv(explorerPath(h.IP, "")))
 		}),
 		widget.NewButtonWithIcon("Ping", theme.MediaPlayIcon(), func() {
 			u.launch(pingArgv(h.IP))
 		}),
 	)
-	if scheme := browserScheme(h); scheme != "" {
-		scheme := scheme
+	if target := browserURL(h); target != "" {
+		target := target
 		actions.Add(widget.NewButtonWithIcon("Browser", theme.GridIcon(), func() {
-			u.launch(browserArgv(h.IP, scheme))
+			u.launch(browserArgv(target))
 		}))
 	}
 	if argv := rdpArgv(h.IP); h.HasRDP() && argv != nil {
@@ -129,13 +128,9 @@ func (u *ui) showHost(h model.Host) {
 	u.panel.Refresh()
 }
 
-// sectionHeader renders a panel section title: bold, sub-heading sized,
-// so Ports / Shares / Identity read as one consistent tier.
+// sectionHeader uses a themed widget so switching themes recolors it.
 func sectionHeader(text string) fyne.CanvasObject {
-	t := canvas.NewText(text, theme.Color(theme.ColorNameForeground))
-	t.TextStyle = fyne.TextStyle{Bold: true}
-	t.TextSize = theme.Size(theme.SizeNameSubHeadingText)
-	return t
+	return widget.NewLabelWithStyle(text, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 }
 
 // panelKV renders a key/value identity pair on one row: the key sits in a
@@ -145,8 +140,8 @@ func panelKV(key, value string) fyne.CanvasObject {
 	k := widget.NewLabelWithStyle(key, fyne.TextAlignTrailing, fyne.TextStyle{Bold: true})
 	v := widget.NewLabel(value)
 	v.Truncation = fyne.TextTruncateEllipsis
-	return container.NewHBox(
-		container.NewGridWrap(fyne.NewSize(90, k.MinSize().Height), k), v)
+	return container.NewBorder(nil, nil,
+		container.NewGridWrap(fyne.NewSize(90, k.MinSize().Height), k), nil, v)
 }
 
 // portRow renders one probed port: state, number, service, HTTP title.
@@ -177,7 +172,7 @@ func (u *ui) portRow(h model.Host, p model.Port) fyne.CanvasObject {
 
 // shareRow renders one share: a folder icon and bold name on the first
 // line, type · remark on the second, the UNC smaller and dimmer, plus the
-// "Open in Explorer" action. The denial record renders its remark instead.
+// "Open in "+fileManagerName action. The denial record renders its remark instead.
 // Files are never listed.
 func (u *ui) shareRow(h model.Host, s model.Share) fyne.CanvasObject {
 	openBtn := widget.NewButtonWithIcon("Open", theme.FolderOpenIcon(), func() {
@@ -201,8 +196,8 @@ func (u *ui) shareRow(h model.Host, s model.Share) fyne.CanvasObject {
 		widget.NewLabel(meta),
 	)
 	if s.UNC != "" {
-		unc := canvas.NewText(s.UNC, theme.Color(theme.ColorNamePlaceHolder))
-		unc.TextSize = theme.Size(theme.SizeNameCaptionText)
+		unc := widget.NewLabel(s.UNC)
+		unc.Importance = widget.LowImportance
 		lines.Add(unc)
 	}
 	row := container.NewHBox(lines, openBtn)

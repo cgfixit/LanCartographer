@@ -4,17 +4,19 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"github.com/local/lancartographer/internal/appdata"
 )
 
 // AppSettings is the persisted user preference set, stored as JSON under
-// %AppData%\LanCartographer\settings.json. Theme is "dark" or "light".
+// the per-user LanCartographer directory. Theme is "dark" or "light".
 type AppSettings struct {
 	Theme string `json:"theme"`
 }
 
-// settingsPath returns the settings file location for the current APPDATA.
-func settingsPath() string {
-	return filepath.Join(os.Getenv("APPDATA"), "LanCartographer", "settings.json")
+// settingsPath returns the settings file location for the current user.
+func settingsPath() (string, error) {
+	return appdata.Path("settings.json")
 }
 
 // LoadSettings reads the saved settings. It fails soft: a missing file, a
@@ -23,7 +25,11 @@ func settingsPath() string {
 // startup.
 func LoadSettings() (AppSettings, error) {
 	def := AppSettings{Theme: "light"}
-	data, err := os.ReadFile(settingsPath())
+	p, err := settingsPath()
+	if err != nil {
+		return def, nil
+	}
+	data, err := os.ReadFile(p)
 	if err != nil {
 		// Missing AND unreadable settings both fall back to defaults by
 		// design — a bad file must never block startup.
@@ -43,8 +49,11 @@ func LoadSettings() (AppSettings, error) {
 // needed. The write goes through a temp file renamed into place so a crash
 // mid-write cannot leave a truncated settings.json.
 func SaveSettings(s AppSettings) error {
-	p := settingsPath()
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	p, err := settingsPath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
 		return err
 	}
 	tmp, err := os.CreateTemp(filepath.Dir(p), "settings-*.tmp")

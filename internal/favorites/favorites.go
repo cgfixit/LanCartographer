@@ -1,5 +1,5 @@
 // Package favorites persists the user's favorite hosts as JSON under
-// %AppData%\LanCartographer\favorites.json.
+// the per-user LanCartographer configuration directory.
 package favorites
 
 import (
@@ -10,18 +10,23 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/local/lancartographer/internal/appdata"
 	"github.com/local/lancartographer/internal/model"
 )
 
-// path returns the favorites file location for the current APPDATA.
-func path() string {
-	return filepath.Join(os.Getenv("APPDATA"), "LanCartographer", "favorites.json")
+// path returns the favorites file location for the current user.
+func path() (string, error) {
+	return appdata.Path("favorites.json")
 }
 
 // Load reads the saved favorites. A missing file is not an error and
 // yields (nil, nil); a corrupt file is an error.
 func Load() ([]model.Host, error) {
-	f, err := os.Open(path())
+	p, err := path()
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.Open(p)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
@@ -40,8 +45,11 @@ func Load() ([]model.Host, error) {
 // The write goes through a temp file renamed into place so a crash
 // mid-write cannot leave a truncated favorites.json.
 func Save(hosts []model.Host) error {
-	p := path()
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	p, err := path()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
 		return err
 	}
 	tmp, err := os.CreateTemp(filepath.Dir(p), "favorites-*.tmp")

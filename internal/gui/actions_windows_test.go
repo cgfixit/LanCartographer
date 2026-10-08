@@ -29,10 +29,10 @@ func TestArgvBuilders(t *testing.T) {
 		t.Errorf("rdpArgv = %q", got)
 	}
 	want = []string{"cmd", "/c", "start", "", "http://10.0.0.9"}
-	if got := browserArgv(ip, "http"); !slices.Equal(got, want) {
+	if got := browserArgv("http://10.0.0.9"); !slices.Equal(got, want) {
 		t.Errorf("browserArgv http = %q", got)
 	}
-	if got := browserArgv(ip, ""); got != nil {
+	if got := browserArgv(""); got != nil {
 		t.Errorf("browserArgv empty scheme = %q, want nil", got)
 	}
 	want = []string{"explorer", `\\10.0.0.9\DATA`}

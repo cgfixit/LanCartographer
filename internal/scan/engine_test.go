@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/netip"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -261,8 +262,12 @@ func TestRun_MACNeedsElevationWhenNotElevated(t *testing.T) {
 	if !ok {
 		t.Fatal("EventHostFound missing")
 	}
-	if hf.Host.MAC != probe.MacNeedsElevation {
-		t.Errorf("MAC = %q, want elevation sentinel when lookup fails and not elevated", hf.Host.MAC)
+	want := ""
+	if runtime.GOOS == "windows" {
+		want = probe.MacNeedsElevation
+	}
+	if hf.Host.MAC != want {
+		t.Errorf("MAC = %q, want %q on %s", hf.Host.MAC, want, runtime.GOOS)
 	}
 	if hf.Host.Vendor != "" {
 		t.Errorf("Vendor = %q, want empty for the sentinel (not a real MAC)", hf.Host.Vendor)
@@ -411,6 +416,7 @@ func TestRun_CancelUnwindsFast(t *testing.T) {
 }
 
 func TestRun_DeadHosts(t *testing.T) {
+	t.Setenv("APPDATA", t.TempDir())
 	// Two dead hosts: no host/port/share events, progress marches 0.5 -> 1.
 	d := defaultDeps(probe.Options{DialTimeout: time.Second})
 	d.dial = func(context.Context, netip.Addr, int) bool { return false }
@@ -437,6 +443,33 @@ func TestRun_DeadHosts(t *testing.T) {
 	}
 	if last := evs[len(evs)-1]; last.Kind != EventDone || last.Progress != 1 {
 		t.Errorf("last event = kind %d progress %v, want Done/1", last.Kind, last.Progress)
+	}
+}
+
+func TestRun_ProgressOrdered(t *testing.T) {
+	// Contending workers must deliver every completion in increasing order,
+	// even when the consumer forces channel backpressure.
+	d := fakeAliveDeps(nil, nil, nil, "", "", "", nil, true)
+	d.dial = func(context.Context, netip.Addr, int) bool { return false }
+	d.arp = func(netip.Addr) bool { return false }
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	evs, err := runCollect(ctx, netip.MustParsePrefix("192.0.2.0/24"), probe.Options{Concurrency: 256}, d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed := 0
+	for _, ev := range evs {
+		if ev.Kind != EventProgress {
+			continue
+		}
+		completed++
+		if want := float64(completed) / 254; ev.Progress != want {
+			t.Fatalf("completion %d: progress %v, want %v", completed, ev.Progress, want)
+		}
+	}
+	if completed != 254 || evs[len(evs)-1].Kind != EventDone {
+		t.Fatalf("incomplete stream: %d progress events", completed)
 	}
 }
 

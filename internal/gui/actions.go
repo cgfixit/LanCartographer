@@ -52,20 +52,24 @@ func defaultPorts() []int {
 	return ports
 }
 
-// browserScheme picks the URL scheme for a host's web interface per spec:
-// "http" when 80 or 8080 is open, "https" when 443 is open, "" otherwise.
-func browserScheme(h model.Host) string {
-	open := map[int]bool{}
-	for _, p := range h.Ports {
-		if p.State == model.PortOpen {
-			open[p.Number] = true
+// browserURL selects an open web endpoint in the existing preference order.
+// Preserve non-default ports: opening an 8080 service at port 80 is wrong.
+func browserURL(h model.Host) string {
+	for _, number := range []int{80, 8080, 443, 8443} {
+		for _, p := range h.Ports {
+			if p.Number != number || p.State != model.PortOpen {
+				continue
+			}
+			scheme := "http"
+			if number == 443 || number == 8443 {
+				scheme = "https"
+			}
+			address := h.IP.String()
+			if number == 8080 || number == 8443 {
+				address = net.JoinHostPort(address, strconv.Itoa(number))
+			}
+			return scheme + "://" + address
 		}
-	}
-	switch {
-	case open[80] || open[8080]:
-		return "http"
-	case open[443]:
-		return "https"
 	}
 	return ""
 }

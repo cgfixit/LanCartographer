@@ -4,6 +4,8 @@ package gui
 
 import "net/netip"
 
+const fileManagerName = "Explorer"
+
 // explorerPath builds the UNC path for a host (\\ip) or one of its shares
 // (\\ip\share). A share whose Name is empty (the synthetic access-denied
 // record) yields just the host path.
@@ -26,13 +28,13 @@ func rdpArgv(ip netip.Addr) []string {
 }
 
 // browserArgv builds the argv that opens the host's web interface in the
-// default browser. scheme must come from browserScheme ("" means no action
+// default browser. target must come from browserURL ("" means no action
 // and returns nil).
-func browserArgv(ip netip.Addr, scheme string) []string {
-	if scheme == "" {
+func browserArgv(target string) []string {
+	if target == "" {
 		return nil
 	}
-	return []string{"cmd", "/c", "start", "", scheme + "://" + ip.String()}
+	return []string{"cmd", "/c", "start", "", target}
 }
 
 // explorerArgv builds the argv that opens a host or share UNC in Explorer.
