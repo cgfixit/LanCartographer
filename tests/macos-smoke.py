@@ -4,6 +4,8 @@ import http.server
 import json
 import os
 from pathlib import Path
+import plistlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -30,6 +32,13 @@ def main():
     dist = Path(sys.argv[1] if len(sys.argv) > 1 else "dist").resolve()
     cli = dist / "lancartographer-cli"
     gui = dist / "LanCartographer.app/Contents/MacOS/LanCartographer"
+    info = plistlib.loads((dist / "LanCartographer.app/Contents/Info.plist").read_bytes())
+    minimum = info["LSMinimumSystemVersion"]
+    for binary in (cli, gui):
+        headers = subprocess.check_output(["otool", "-l", str(binary)], text=True)
+        versions = re.findall(r"^\s*minos ([\d.]+)$", headers, re.MULTILINE)
+        assert versions == [minimum], (binary, versions, minimum)
+    print(f"PASS: Mach-O deployment targets match bundle minimum macOS {minimum}")
     # A discovery port exercises both liveness and inventory. An occupied
     # port fails the check; it is never stopped or taken over.
     port = 8080

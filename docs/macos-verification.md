@@ -47,9 +47,13 @@ it from an earlier process. No application logic was changed in that copy.
 The QA executable SHA-256 was
 `3a4c61a4883609df4d80d188a32e474ad090f6a52ecfd22318319bebf729d3a9`.
 Subsequent source edits were comments/import grouping, a Windows-specific path
-test correction, documentation, and smoke-check coverage.
+test correction, documentation, and smoke-check coverage. After correcting the
+CGO deployment target, the rebuilt QA app was launched again and completed a
+new authorized loopback scan; the native details panel displayed the fixture
+HTTP title. That final QA executable SHA-256 was
+`bfc4e49d0b78227a1ceb98b1dbca59b1116368f480b1926011474c892f446b78`.
 
-The screenshots show only a saved loopback fixture, with no real LAN inventory.
+The screenshots show only loopback fixture data, with no real LAN inventory.
 The “before” image predates the panel corrections; it already includes the
 Finder label from the intermediate Mac candidate.
 
@@ -58,6 +62,8 @@ Finder label from the intermediate Mac candidate.
 | ![Before](../screenshots/macos-dark-before.png) | ![After](../screenshots/macos-dark-after.png) |
 
 ![Native light theme](../screenshots/macos-light-after.png)
+
+![Final native HTTP title](../screenshots/macos-http-title.png)
 
 ## Packaged runtime and focused checks
 
@@ -68,7 +74,7 @@ bash build.sh
 # Extracted the newly built ZIP to an owned scratch directory, then:
 shasum -a 256 -c SHA256SUMS.txt
 codesign --verify --deep --strict LanCartographer.app
-python3 tests/macos-smoke.py .smoke/extracted
+python3 tests/macos-smoke.py .smoke/deployment-extracted
 
 go test ./internal/scan -race -run 'TestRun_(DeadHosts|ProgressOrdered|MACNeedsElevationWhenNotElevated|Stop)' -count=100
 go test -race ./internal/appdata ./internal/favorites ./internal/hostcache ./internal/gui -run 'Test(Path|LoadSettings|SaveThenLoadSettings|LoadMissing|SaveLoad|SaveOverwrites|LoadCorrupt|Load_|Save_|ExplorerPath|ArgvBuilders)'
@@ -89,10 +95,17 @@ full race gates remain in hosted CI on Windows and both Mac architectures.
 The extracted archive's app and CLI both refused unconfirmed loopback scans
 with exit 2 and no HTTP request to the fixture. Authorized runs each exported
 one host with open port 8080 and its exact HTTP title. Checksums and bundle
-signature verification passed after extraction.
+signature verification passed after extraction. The smoke check also verifies
+that both Mach-O deployment targets match the bundle minimum. Initially the
+local binary inherited macOS 27 from the host; setting only the deployment
+environment variable left cached CGO objects built for 27. Explicit C/C++ and
+linker deployment flags now rebuild those objects for 13.0 with no newer-OS
+object warnings. `otool -l` reports `minos 13.0` for both entry points.
+[Go 1.27 itself requires macOS 13 or later](https://go.dev/doc/go1.27#darwin);
+this metadata check does not replace runtime acceptance on macOS 13.
 
 Final locally built app executable SHA-256:
-`999579d5b4f1851c07b62551739328012eb4917e014a84d7616d78f03b3b16b2`.
+`d6db8b85ed61e6911e60955ed046667226929eba708f10570fdd75ab02795d2d`.
 
 ## Security, performance, and limits
 

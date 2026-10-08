@@ -148,7 +148,8 @@ open dist/LanCartographer.app
 ./dist/lancartographer-cli --range 127.0.0.1/32 --i-am-authorized --ports 8080
 ```
 
-The script uses system clang, builds the native architecture once, packages an
+The script uses system clang with a macOS 13 deployment target, builds the
+native architecture once, packages an
 app bundle with icon and local-network usage description, verifies its ad-hoc
 signature, and creates `dist/LanCartographer-macos-<arch>.zip`. It temporarily
 moves the checked-in Windows COFF resource aside and restores it on exit.
