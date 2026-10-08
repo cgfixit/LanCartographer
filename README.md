@@ -1,11 +1,12 @@
 # LanCartographer
 
-LanCartographer is a Windows and MacOS security / privacy aware LAN inventory tool written in Go (1.27) with a
+LanCartographer is a Windows and macOS LAN inventory tool written in Go (1.27) with a
 Fyne v2.8.1 GUI. It discovers the hosts on your local network and inventories
 what each one exposes — open TCP ports, service identities, SMB shares, names,
 MAC vendors — and presents the result as a live, sortable table with a CLI for
-scripting. It ships as a single portable `.exe`: no installer, no services, no
-background processes, and no telemetry of any kind.
+scripting. Windows builds are portable `.exe` files; macOS builds include a native `.app`
+and a CLI, in separate Apple Silicon and Intel archives. There is no installer,
+background service, or telemetry.
 
 ![LanCartographer inventory table — light theme (sample data)](screenshots/inventory-light.png)
 
@@ -28,39 +29,39 @@ networks you do not control.
 
 | Area | What you get |
 |---|---|
-| Live scan | One-click sweep of all local physical subnets; hosts and open ports appear in the table while the scan is still running, with a progress bar and per-host events |
+| Live scan | Scan the selected IPv4 subnet (or an explicitly entered range); hosts and open ports appear in the table while the scan is still running, with a progress bar and per-host events |
 | Sortable table | Seven columns (status, Name, IP, MAC, Vendor, Ports, Shares); click any header to sort; column widths are computed from window width with per-column minimums |
-| Port states | Every probed port reports `open`, `closed`, or `timeout`; open ports carry a service label (smb, http, rdp, …), and open ports with an unrecognized service get a 1-second HTTP probe that promotes web devices and captures the page `<title>` |
-| Share enumeration | SMB shares listed as name, type (disk/print/ipc), and remark via `NetShareEnum` level 1; a host that denies the enumeration shows an explicit "access denied" marker instead of an empty list |
+| Port states | Every probed port reports `open`, `closed`, or `timeout`; open ports carry a service label (smb, http, rdp, …), web ports receive a bounded HTTP/HTTPS title probe; unrecognized services receive an HTTP probe that can identify additional web devices |
+| Share enumeration | SMB shares listed via Windows `NetShareEnum` or macOS `smbutil`; a host that denies the enumeration shows an explicit "access denied" marker instead of an empty list |
 | Name resolution | NetBIOS, mDNS, and reverse DNS (PTR) queried concurrently for each host, highest-priority answer wins (NetBIOS → mDNS → PTR; probes run concurrently); resolved names are persisted in a MAC-keyed cache so silent devices keep their names across scans |
-| Right-click actions | Open host or share in Explorer, open its web interface in the default browser, start a Remote Desktop session, run a visible Ping, or send Wake-on-LAN (WOL asks for confirmation first) |
+| Right-click actions | Open host or share in Explorer (Windows) or Finder (macOS), open its web interface with the detected port, start Remote Desktop (Windows), run Ping, or send Wake-on-LAN (confirmation required) |
 | Export | Save the inventory as CSV or JSON from the File menu (the CLI has a `--json` flag) |
 | Favorites | Save and reload the current host list as favorites |
 | Themes | Dark and light themes, persisted across launches |
 | First-run notice | The authorization notice is shown in a dialog on first launch; a marker file records that you have seen it |
-| Elevation button | When the process is not elevated, the toolbar offers an Elevate button; MAC lookup needs elevation to return addresses, and the UI says so instead of failing silently |
+| Elevation button | Windows only: an unelevated process offers an Elevate button and marks failed MAC lookup as needing elevation; macOS reads the ARP cache without this button |
 
 ## How it works
 
-- **Subnet discovery:** local IPv4 subnets are enumerated from your adapters via `GetAdaptersAddresses`, then expanded into candidate host addresses.
+- **Subnet discovery:** local IPv4 subnets are enumerated from your adapters via Windows adapter APIs or macOS network interfaces, then expanded into candidate host addresses.
 - **Concurrent sweep:** the sweep runs up to 64 host workers at once, and a separate global dial budget (default 128, hard cap 256) bounds how many TCP dials may be in flight — two different knobs.
-- **Port probes:** each port gets a TCP connect with an exact result — `open`, `closed`, or `timeout`; open ports carry a service label, and unrecognized ones get a 1-second HTTP probe that captures the page `<title>`.
-- **Enrichment:** SMB shares are listed via `NetShareEnum` level 1, and names are resolved by querying NetBIOS, mDNS, and DNS PTR concurrently (highest-priority answer wins: NetBIOS → mDNS → PTR), persisted in a MAC-keyed cache.
+- **Port probes:** each port gets a TCP connect with an exact result — `open`, `closed`, or `timeout`; open ports carry a service label, known web ports get an HTTP/HTTPS title probe, and unrecognized ones get an HTTP probe that can identify a web service. Each request is capped at one second and 32 KiB, follows no redirects, and verifies TLS certificates.
+- **Enrichment:** SMB shares are listed via Windows `NetShareEnum` level 1 or macOS `smbutil`, and names are resolved by querying NetBIOS, mDNS, and DNS PTR concurrently (highest-priority answer wins: NetBIOS → mDNS → PTR), persisted in a MAC-keyed cache.
 - **Live events:** the engine streams per-host events over a channel, so the Fyne GUI table fills in while the scan is still running.
 
 ## Why LanCartographer
 
 - **Offline-first, zero telemetry:** no analytics, no phone-home, no runtime downloads — the only traffic is the scan you asked for.
-- **Single portable exe:** no installer, no services, no background processes; run it from anywhere.
-- **No admin required:** the manifest is `asInvoker`; elevation is an opt-in button for the few lookups that need it, never a demand.
+- **Native packaging:** portable Windows executables and a macOS app bundle plus CLI; no background service.
+- **No admin required to start:** Windows uses an `asInvoker` manifest with optional elevation; macOS runs as the current user.
 - **Authorization-gated ranges:** out-of-scope, non-RFC1918, or overly broad targets require explicit confirmation before a single packet is sent.
 - **Original UI:** a purpose-built live table and workflow, not a reskin of an existing scanner.
 
 ## CLI reference
 
-`lancartographer-cli.exe` drives the same engine as the GUI and prints a table
+`lancartographer-cli.exe` (Windows) or `./lancartographer-cli` (macOS) drives the same engine as the GUI and prints a table
 (IP, NAME, MAC, VENDOR, PORTS, SHARES) to stdout. Diagnostics go to stderr.
-The CLI build auto-detects from its own file name (any exe whose base name
+The CLI build auto-detects from its own file name (any executable whose base name
 contains "cli", case-insensitive); passing `--cli` as the first argument also
 selects CLI mode and is accepted on both binaries.
 
@@ -105,58 +106,68 @@ lancartographer.exe --cli --range 192.168.1.0/24 --json inventory.json
 
 ## Quick start
 
-1. Download the asset for your OS from the [GitHub Releases page](https://github.com/cgfixit/LanCartographer/releases)
-   (built by the release workflow on version tags) — `LanCartographer-windows`
-   (the `.exe` files) for Windows, `LanCartographer-macos.zip` for macOS — or
-   build it below — and run it. Note that `dist/` is build output, not
-   committed to the repository. There is no installer and no admin rights are
-   needed to start — the Windows executable runs `asInvoker`. On macOS the
-   binary is unsigned: right-click → **Open** the first time, or run
-   `xattr -d com.apple.quarantine LanCartographer` after unzipping.
-2. Read and acknowledge the authorization dialog on first launch.
-3. Click **Scan**. Local subnets are discovered from your network adapters and
-   swept; rows appear live.
-4. Right-click any host for Explorer / browser / RDP / Ping / Wake-on-LAN, or
-   use **File → Export…** for CSV/JSON.
+1. Build from source below, or download an available version's assets from
+   [GitHub Releases](https://github.com/cgfixit/LanCartographer/releases).
+   Windows assets are `LanCartographer.exe` and `lancartographer-cli.exe`.
+   macOS archives are `LanCartographer-macos-arm64.zip` for Apple Silicon and
+   `LanCartographer-macos-amd64.zip` for Intel. Each Mac archive contains
+   `LanCartographer.app`, `lancartographer-cli`, and `SHA256SUMS.txt`.
+2. On Windows, run the GUI executable. On macOS, extract the matching archive
+   and open `LanCartographer.app`. The Mac bundle is ad-hoc signed, **not
+   Developer ID signed or notarized**; macOS may block a downloaded build.
+   Verify its provenance and follow macOS Privacy & Security approval if you
+   choose to trust it. Do not disable Gatekeeper.
+3. Read the first-run notice, select or enter an authorized subnet, and click
+   **Scan**. The GUI scans the selected range; the CLI discovers all local
+   subnets when `--range` is omitted. **Stop** cancels an active scan.
+4. Select a row for details, use Finder/Explorer or Browser actions, save
+   favorites, or use **File → Export…** for CSV/JSON.
 
-Per-user data lives under `%AppData%\LanCartographer\`:
+Per-user data lives in `%AppData%\LanCartographer\` on Windows and
+`~/Library/Application Support/LanCartographer/` on macOS:
 
 - `settings.json` — theme preference
 - `favorites.json` — saved host lists
-- `names.json` — the persistent MAC-keyed hostname cache
-- `firstrun_seen` — marker that the first-run authorization dialog was shown
+- `names.json` — persistent MAC-keyed hostname cache
+- `firstrun_seen` — first-run notice acknowledgment
+
+An explicit absolute `APPDATA` overrides this location, including for isolated
+verification fixtures. The app does not fall back to writing in its working
+directory. New data directories use mode `0700` and files `0600` on macOS.
 
 ## Build from source
 
-Requirements: Go 1.27 or later, and a CGO C compiler — on Windows use the
-MSYS2 mingw-w64 gcc:
+Use the Go version in `go.mod` (currently Go 1.27.1) and a CGO C compiler.
 
-```bash
-pacman -S mingw-w64-ucrt-x86_64-gcc
-```
-
-(Fyne requires CGO; the CLI is the same binary built without the GUI subsystem
-flag, so both builds use `CGO_ENABLED=1 CC=gcc`.)
-
-One-time setup for the version-resource tool used by `go generate`:
-
-```bash
-go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
-```
-
-Then, from a Git Bash shell:
+**macOS:** install Xcode Command Line Tools, then run:
 
 ```bash
 bash build.sh
+open dist/LanCartographer.app
+# CLI example against your own machine:
+./dist/lancartographer-cli --range 127.0.0.1/32 --i-am-authorized --ports 8080
 ```
 
-`build.sh` runs `go generate ./...` (regenerates the icon via `tools/icongen`
-and the `versioninfo.json`-driven `resource.syso` via goversioninfo, which
-consumes the checked-in `app.manifest` — the manifest itself is not
-regenerated) and builds:
+The script uses system clang with a macOS 13 deployment target, builds the
+native architecture once, packages an
+app bundle with icon and local-network usage description, verifies its ad-hoc
+signature, and creates `dist/LanCartographer-macos-<arch>.zip`. It temporarily
+moves the checked-in Windows COFF resource aside and restores it on exit.
 
-- `dist/LanCartographer.exe` — the GUI (`-trimpath -ldflags "-s -w -H windowsgui"`)
-- `dist/lancartographer-cli.exe` — the console build for scripting and CI
+**Windows:** install MSYS2 ucrt64 gcc and the version-resource generator,
+then build from Git Bash:
+
+```bash
+pacman -S mingw-w64-ucrt-x86_64-gcc
+go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+bash build.sh
+```
+
+This regenerates the icon and Windows version resources and builds
+`dist/LanCartographer.exe` (GUI subsystem) and `dist/lancartographer-cli.exe`
+(console subsystem). The manifest remains `asInvoker`. Both platforms use
+CGO because both entry points include Fyne. Build output stays under `dist/`
+and is not committed.
 
 ## Security model
 
@@ -169,21 +180,21 @@ regenerated) and builds:
   GUI via a confirmation dialog, in the CLI via `--i-am-authorized`. Refusal
   means nothing is scanned. The engine also refuses IPv6 and anything broader
   than a `/12` outright.
-- **No credentials.** LanCartographer never asks for, uses, or stores
-  credentials. Share enumeration runs under your current Windows token; if
-  Windows denies the request, the UI shows "access denied" and moves on. When
-  Explorer opens a share UNC, Windows enforces the token — not us.
-- **No shell strings.** External programs (Explorer, browser, RDP, Ping,
-  Wake-on-LAN broadcast) are launched as argv lists only. The Ping and
-  browser actions use `cmd /c start` argv vectors whose variable parts are
-  validated IP literals from `netip` — never composed command strings — so
-  there is no injection surface.
+- **No application credential store.** Share enumeration uses the current
+  Windows token or macOS SMB session; the app does not collect or save
+  passwords. Finder and Explorer handle authentication when you open shares.
+- **Bounded external actions.** Browser and file-manager actions pass
+  arguments separately. Windows uses `cmd /c start` for browser/Ping; macOS
+  uses `open` for URLs and a Terminal AppleScript for Ping. Ping targets come
+  only from parsed IP literals, and macOS share names are URL-escaped.
+  Wake-on-LAN sends a UDP packet only after confirmation.
 - **No phone-home.** Zero telemetry, zero analytics, no OUI-database downloads
   at runtime — the MAC-vendor (OUI) database is embedded in the binary and was
   current when generated. The only network traffic the tool generates is the
   scanning you asked for.
-- **Runs unelevated by design.** The manifest requests `asInvoker` (never
-  `requireAdministrator`); elevation is offered as a button, not demanded.
+- **Runs unelevated by design.** The Windows manifest requests `asInvoker`
+  (never `requireAdministrator`); its elevation button is optional. macOS
+  does not require root for the inventory workflow.
 
 ## Platform notes
 
@@ -191,9 +202,8 @@ regenerated) and builds:
   macOS 13+. The Windows application manifest declares only the Windows 10/11
   `supportedOS` GUID.
 - **macOS caveats:**
-  - Release binaries are unsigned, so Gatekeeper blocks the first launch of a
-    downloaded copy: right-click → **Open**, or clear the quarantine bit with
-    `xattr -d com.apple.quarantine LanCartographer`.
+  - Bundles are ad-hoc signed for integrity, but have no Developer ID signature
+    or notarization. Local execution does not prove downloaded Gatekeeper acceptance.
   - The **Remote Desktop** right-click action is Windows-only (it launches
     `mstsc`); it is unavailable/hidden on macOS.
   - Share enumeration uses `smbutil` instead of `NetShareEnum`, so the share
@@ -207,7 +217,7 @@ regenerated) and builds:
 - **Authenticode:** release builds should be code-signed so SmartScreen and AV
   heuristics do not flag an unsigned network-scanning binary. Recommended, not
   required — signing is not a build blocker.
-- **Elevation:** some lookups (MAC via `SendARP`) only return data from an
+- **Windows elevation:** some lookups (MAC via `SendARP`) only return data from an
   elevated process. LanCartographer degrades to an explicit "needs elevation"
   marker rather than failing silently, and offers an Elevate button.
 
@@ -219,32 +229,49 @@ One line per top-level package; all application code is under `internal/`
 | Path | Role |
 |---|---|
 | `cmd/lancartographer` | `main` entry point plus `go:generate` directives (icon, manifest, version resources) |
-| `internal/discover` | Local subnet enumeration (`GetAdaptersAddresses`), host-address expansion, liveness probing |
+| `internal/discover` | Platform-specific local subnet enumeration, host-address expansion, liveness probing |
 | `internal/probe` | TCP connect port scans, HTTP title detection, rate limiter, MAC lookup, mDNS/NetBIOS/DNS name probes, share listing |
 | `internal/scan` | The central sweep engine: worker pool, event stream, enrichment, MAC-keyed name cache |
 | `internal/model` | Inventory records (`Host`, `Port`, `Share`) and the CSV/JSON writers |
 | `internal/authz` | The authorization notice and the scan-range confirmation policy |
 | `internal/oui` | Embedded MAC-vendor database, generated from `data.csv` |
-| `internal/winutil` | Typed Windows API wrappers (`NetShareEnum`, `SendARP`, elevation check) with non-Windows stubs |
+| `internal/winutil` | Typed Windows API wrappers (`NetShareEnum`, `SendARP`, elevation check) with macOS implementations and other-platform stubs |
 | `internal/gui` | The Fyne GUI: toolbar, live table, side panel, context menus, dialogs, settings |
 | `internal/cli` | Flag parsing, authorization gate, table output, JSON export, exit codes |
 | `internal/maplayout` | Position calculation for the 2D map view (v1.1) |
 | `internal/wol` | Wake-on-LAN magic-packet construction and broadcast send |
-| `internal/favorites` | Favorites persistence under `%AppData%\LanCartographer\` |
+| `internal/appdata` | Native per-user paths shared by the GUI and CLI |
+| `internal/favorites` | Atomic favorites persistence in the per-user directory |
 | `internal/export` | File export dispatch (CSV/JSON) |
 | `internal/hostcache` | The persistent MAC-keyed hostname cache (`names.json`) |
 | `tools/icongen` | Icon generator run by `go generate` to produce `app.ico` |
 
-## Testing
+## Verification
+
+CI runs the existing Windows gate and native macOS gates on Apple Silicon and
+Intel runners: generation/build, vet, race tests, and a packaged CLI loopback
+smoke check. For a local change, run the affected behavior plus relevant
+formatting, lint, vet, and focused regression checks; broad regression coverage
+runs in GitHub Actions.
+
+On macOS, after building:
 
 ```bash
-CGO_ENABLED=1 go test ./... -race
+python3 tests/macos-smoke.py dist
 ```
 
-Tests are hermetic: fixtures listen on loopback (e.g. `127.0.0.1:18080`) and
-use `192.0.2.x` (TEST-NET-1, RFC 5737 — the documentation range, guaranteed
-unroutable) for dead-address cases. No test performs a live LAN scan, so the
-suite is safe to run anywhere, on any network.
+This owns a loopback HTTP fixture on port 8080, exercises both packaged entry
+points, checks authorization refusal, discovers an open port and its HTTP
+title, and verifies JSON export in a temporary data directory. An occupied
+port fails the check without stopping another service.
+
+Native Computer Use on macOS 27.0.1/arm64 verified authorization dialogs,
+loopback discovery, cancellation followed by a successful new scan, host
+details, theme switching/persistence, favorites, CSV export, and a Browser
+action preserving port 8080. See [the verification record](docs/macos-verification.md)
+for evidence and limits. Intel GUI interaction, macOS 13 execution,
+authenticated SMB, and downloaded Gatekeeper acceptance were not verified on
+this machine. CLI/CI evidence is separate from native GUI evidence.
 
 ## Roadmap
 

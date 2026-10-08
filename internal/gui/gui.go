@@ -13,6 +13,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/local/lancartographer/internal/appdata"
 	"github.com/local/lancartographer/internal/authz"
 	"github.com/local/lancartographer/internal/discover"
 	"github.com/local/lancartographer/internal/export"
@@ -118,7 +120,13 @@ type ui struct {
 
 // Run opens the LanCartographer window and blocks until it closes.
 func Run() error {
-	a := app.New()
+	a := app.NewWithID("com.cgfixit.lancartographer")
+	settings, _ := LoadSettings()
+	if settings.Theme == "dark" {
+		a.Settings().SetTheme(theme.DarkTheme())
+	} else {
+		a.Settings().SetTheme(theme.LightTheme())
+	}
 	w := a.NewWindow("LanCartographer")
 	w.Resize(fyne.NewSize(1120, 680))
 
@@ -214,7 +222,7 @@ func (u *ui) buildTopBar() {
 		u.mapBtn,
 		u.themeBtn,
 	}
-	if !u.deps.isElevated() {
+	if runtime.GOOS == "windows" && !u.deps.isElevated() {
 		u.elevateBtn = widget.NewButtonWithIcon("Elevate", theme.LoginIcon(), u.onElevate)
 		items = append(items, u.elevateBtn)
 	}
@@ -325,32 +333,38 @@ func (u *ui) mainMenu() *fyne.MainMenu {
 // aboutText is the About box body: version, license, authorization notice,
 // and build target.
 func aboutText() string {
-	return fmt.Sprintf("LanCartographer %s — LAN inventory for Windows.\n\n"+
-		"MIT License.\n\n%s\n\nBuilt for Windows 10/11 (amd64).", Version, authz.Notice)
+	return fmt.Sprintf("LanCartographer %s — LAN inventory.\n\n"+
+		"MIT License.\n\n%s\n\nBuilt for %s/%s.", Version, authz.Notice, runtime.GOOS, runtime.GOARCH)
 }
 
-// firstRunPath is the %AppData% marker recording that the operator has seen
+// firstRunPath is the per-user marker recording that the operator has seen
 // the authorization notice.
-func firstRunPath() string {
-	return filepath.Join(os.Getenv("APPDATA"), "LanCartographer", "firstrun_seen")
+func firstRunPath() (string, error) {
+	return appdata.Path("firstrun_seen")
 }
 
 // maybeFirstRun shows the authorization dialog on first launch; the "I
 // understand" button persists the marker so it never appears again.
 func (u *ui) maybeFirstRun() {
-	if _, err := os.Stat(firstRunPath()); err == nil {
-		return
+	p, pathErr := firstRunPath()
+	if pathErr == nil {
+		if _, err := os.Stat(p); err == nil {
+			return
+		}
 	}
 	label := widget.NewLabel(authz.Notice)
 	label.Wrapping = fyne.TextWrapWord
 	var popup *widget.PopUp
 	understand := widget.NewButton("I understand", func() {
-		if err := os.MkdirAll(filepath.Dir(firstRunPath()), 0o755); err == nil {
-			_ = os.WriteFile(firstRunPath(), []byte(time.Now().Format(time.RFC3339)), 0o644)
+		if pathErr == nil {
+			if err := os.MkdirAll(filepath.Dir(p), 0o700); err == nil {
+				_ = os.WriteFile(p, []byte(time.Now().Format(time.RFC3339)), 0o600)
+			}
 		}
 		popup.Hide()
 	})
 	popup = widget.NewModalPopUp(container.NewVBox(label, understand), u.win.Canvas())
+	popup.Resize(fyne.NewSize(600, 180))
 	popup.Show()
 }
 
@@ -451,13 +465,14 @@ func (u *ui) startScan(target netip.Prefix) {
 	u.cancel = cancel
 	u.tickStop = make(chan struct{})
 	stop := u.tickStop
+	started := u.started
 	ticker := time.NewTicker(500 * time.Millisecond)
 	go func() {
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				elapsed := time.Since(u.started).Round(time.Second)
+				elapsed := time.Since(started).Round(time.Second)
 				fyne.Do(func() { u.statusElaps.SetText(elapsed.String()) })
 			case <-stop:
 				return

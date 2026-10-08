@@ -80,6 +80,11 @@ func scanPort(ctx context.Context, ip netip.Addr, port int, opts Options) model.
 	}
 	conn.Close()
 	p := model.Port{Number: port, State: model.PortOpen, Service: classifyPort(port)}
+	if p.Service == "Web" {
+		// Known web ports need the same bounded title enrichment as an
+		// unknown port promoted to Web. Keep certificate checks enabled.
+		_, p.Title, _ = HTTPTitle(ctx, ip, port, port == 443 || port == 8443)
+	}
 	if p.Service == "unknown" {
 		// R7 seam: promote open unknown ports that answer an HTTP probe.
 		dctx, cancel := context.WithTimeout(ctx, time.Second)

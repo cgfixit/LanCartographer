@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"runtime"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/local/lancartographer/internal/discover"
@@ -181,9 +181,8 @@ func run(ctx context.Context, target netip.Prefix, opts probe.Options, out chan<
 		}
 	}()
 
-	em := &emitter{ctx: ctx, out: out}
+	em := &emitter{ctx: ctx, out: out, total: total}
 	lim := probe.NewLimiter(opts.Concurrency) // single global dial budget (R8)
-	var completed atomic.Int64
 
 	workers := maxHostsInFlight
 	if total < workers {
@@ -200,8 +199,7 @@ func run(ctx context.Context, target netip.Prefix, opts probe.Options, out chan<
 					return
 				}
 				runHost(ctx, ip, opts, lim, em, d, cache)
-				n := completed.Add(1)
-				if !em.send(Event{Kind: EventProgress, Progress: float64(n) / float64(total)}) {
+				if !em.send(Event{Kind: EventProgress}) {
 					return
 				}
 			}
@@ -233,11 +231,19 @@ type emitter struct {
 	ctx context.Context
 	out chan<- Event
 	mu  sync.Mutex
+	// Count completion under the send lock: an atomic increment before
+	// send lets a later worker publish its larger count first.
+	completed int
+	total     int
 }
 
 func (e *emitter) send(ev Event) bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if ev.Kind == EventProgress {
+		e.completed++
+		ev.Progress = float64(e.completed) / float64(e.total)
+	}
 	select {
 	case e.out <- ev:
 		return true
@@ -293,7 +299,7 @@ func runHost(ctx context.Context, ip netip.Addr, opts probe.Options, lim *probe.
 				name = cached
 			}
 		}
-	} else if !d.isElevated() {
+	} else if runtime.GOOS == "windows" && !d.isElevated() {
 		h.MAC = probe.MacNeedsElevation
 	}
 	h.Name = name

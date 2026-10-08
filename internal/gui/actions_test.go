@@ -14,7 +14,7 @@ func host(ip string, ports ...model.Port) model.Host {
 	return model.Host{IP: netip.MustParseAddr(ip), Alive: true, Ports: ports}
 }
 
-func TestBrowserScheme(t *testing.T) {
+func TestBrowserURL(t *testing.T) {
 	open := func(n int) model.Port { return model.Port{Number: n, State: model.PortOpen, Service: "svc"} }
 	cases := []struct {
 		name  string
@@ -22,16 +22,17 @@ func TestBrowserScheme(t *testing.T) {
 		want  string
 	}{
 		{"no ports", nil, ""},
+		{"8443 open", []model.Port{open(8443)}, "https://10.0.0.1:8443"},
 		{"only closed 80", []model.Port{{Number: 80, State: model.PortClosed}}, ""},
-		{"80 open", []model.Port{open(80)}, "http"},
-		{"8080 open", []model.Port{open(8080)}, "http"},
-		{"443 only", []model.Port{open(443)}, "https"},
-		{"443 plus 80", []model.Port{open(443), open(80)}, "http"},
+		{"80 open", []model.Port{open(80)}, "http://10.0.0.1"},
+		{"8080 open", []model.Port{open(8080)}, "http://10.0.0.1:8080"},
+		{"443 only", []model.Port{open(443)}, "https://10.0.0.1"},
+		{"443 plus 80", []model.Port{open(443), open(80)}, "http://10.0.0.1"},
 		{"closed 443 only", []model.Port{{Number: 443, State: model.PortClosed}}, ""},
 	}
 	for _, c := range cases {
-		if got := browserScheme(host("10.0.0.1", c.ports...)); got != c.want {
-			t.Errorf("%s: browserScheme = %q, want %q", c.name, got, c.want)
+		if got := browserURL(host("10.0.0.1", c.ports...)); got != c.want {
+			t.Errorf("%s: browserURL = %q, want %q", c.name, got, c.want)
 		}
 	}
 }

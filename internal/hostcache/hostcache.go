@@ -1,5 +1,5 @@
 // Package hostcache persists MAC-keyed hostnames as JSON under
-// %AppData%\LanCartographer\names.json, so a device that stays silent to
+// the per-user LanCartographer directory, so a device that stays silent to
 // every name probe (IoT, phones) keeps the name it resolved under last time.
 package hostcache
 
@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/local/lancartographer/internal/appdata"
 )
 
 // Entry is one cached hostname: the name and when it was last observed.
@@ -26,16 +28,20 @@ type Map map[string]Entry
 // ttl is how long a cached name is trusted without re-confirmation.
 const ttl = int64((30 * 24 * time.Hour) / time.Second)
 
-// path returns the names file location for the current APPDATA.
-func path() string {
-	return filepath.Join(os.Getenv("APPDATA"), "LanCartographer", "names.json")
+// path returns the names file location for the current user.
+func path() (string, error) {
+	return appdata.Path("names.json")
 }
 
 // Load reads the saved cache. Like favorites it fails soft: a missing or
 // corrupt file yields an empty map and a nil error — a forgotten name is
 // re-resolved on the next scan, never surfaced as a failure.
 func Load() (Map, error) {
-	f, err := os.Open(path())
+	p, err := path()
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.Open(p)
 	if errors.Is(err, fs.ErrNotExist) {
 		return Map{}, nil
 	}
@@ -57,8 +63,11 @@ func Load() (Map, error) {
 // write goes through a temp file renamed into place so a crash mid-write
 // cannot leave a truncated names.json.
 func Save(m Map) error {
-	p := path()
-	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+	p, err := path()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
 		return err
 	}
 	tmp, err := os.CreateTemp(filepath.Dir(p), "names-*.tmp")

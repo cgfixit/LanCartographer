@@ -19,10 +19,8 @@ permissions:
 
 jobs:
   build:
-    name: Build and release
+    name: Build Windows binaries
     runs-on: windows-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,6 +41,9 @@ jobs:
 
       - name: Add ucrt64 toolchain to PATH
         run: echo "C:/msys64/ucrt64/bin" >> "$env:GITHUB_PATH"
+
+      - name: Install Windows resource generator
+        run: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 
       - name: Generate embedded resources
         shell: bash
@@ -80,18 +81,17 @@ jobs:
             dist/lancartographer-cli.exe
             dist/SHA256SUMS.txt
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: |
-            dist/LanCartographer.exe
-            dist/lancartographer-cli.exe
-            dist/SHA256SUMS.txt
-
   build-macos:
-    name: Build macOS binaries
-    runs-on: macos-latest
+    name: Build macOS (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: amd64
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -102,35 +102,41 @@ jobs:
           go-version: "1.27"
           cache: true
 
-      - name: Move Windows-only resource.syso aside (COFF breaks the darwin link)
-        # Same story as the CI macos job: the checked-in resource.syso is an
-        # amd64 COFF object; the go tool feeds .syso files to Apple's ld,
-        # which rejects them. It is Windows-only output, so move it aside.
-        run: mv cmd/lancartographer/resource.syso "$RUNNER_TEMP/resource.syso"
+      - name: Build and validate macOS release bundle
+        run: bash build.sh
 
-      - name: Generate embedded resources (icon only on macOS)
-        run: |
-          export CGO_ENABLED=1
-          go generate ./...
-
-      - name: Build GUI binary
-        run: |
-          export CGO_ENABLED=1
-          go build -trimpath -ldflags "-s -w" -o dist-darwin/LanCartographer ./cmd/lancartographer
-
-      - name: Build CLI binary
-        run: |
-          export CGO_ENABLED=1
-          go build -trimpath -ldflags "-s -w" -o dist-darwin/lancartographer-cli ./cmd/lancartographer
-
-      - name: Generate SHA256 checksums and zip
-        run: |
-          cd dist-darwin
-          shasum -a 256 LanCartographer lancartographer-cli > SHA256SUMS.txt
-          zip ../LanCartographer-macos.zip LanCartographer lancartographer-cli SHA256SUMS.txt
+      - name: Exercise packaged CLI on loopback
+        run: python3 tests/macos-smoke.py dist
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LanCartographer-macos
-          path: LanCartographer-macos.zip
+          name: LanCartographer-macos-${{ matrix.arch }}
+          path: dist/LanCartographer-macos-${{ matrix.arch }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish all platform assets
+    needs: [build, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: LanCartographer-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/LanCartographer.exe
+            dist/lancartographer-cli.exe
+            dist/SHA256SUMS.txt
+            dist/LanCartographer-macos-arm64.zip
+            dist/LanCartographer-macos-amd64.zip

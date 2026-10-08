@@ -94,14 +94,14 @@ func (u *ui) showHostMenu(h model.Host, e *fyne.PointEvent) {
 		u.copyItem("Copy MAC", h.MAC),
 		u.copyItem("Copy name", h.Name),
 		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Open in Explorer", func() {
+		fyne.NewMenuItem("Open in "+fileManagerName, func() {
 			u.launch(explorerArgv(explorerPath(h.IP, "")))
 		}),
 	}
-	if scheme := browserScheme(h); scheme != "" {
-		scheme := scheme
+	if target := browserURL(h); target != "" {
+		target := target
 		items = append(items, fyne.NewMenuItem("Open in browser", func() {
-			u.launch(browserArgv(h.IP, scheme))
+			u.launch(browserArgv(target))
 		}))
 	}
 	if argv := rdpArgv(h.IP); h.HasRDP() && argv != nil {
@@ -126,7 +126,7 @@ func (u *ui) showShareMenu(h model.Host, s model.Share, e *fyne.PointEvent) {
 		u.copyItem("Copy UNC", s.UNC),
 		u.copyItem("Copy name", s.Name),
 		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Open in Explorer", func() {
+		fyne.NewMenuItem("Open in "+fileManagerName, func() {
 			u.launch(explorerArgv(explorerPath(h.IP, s.Name)))
 		}),
 	}

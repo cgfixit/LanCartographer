@@ -7,8 +7,8 @@ owner's decision alone — agents do not change it either way.
 
 ## 1. Product
 
-LanCartographer is an **original** Windows 10/11 LAN & port inventory tool:
-Go 1.27, Fyne v2.8.1 GUI, and a stdlib-flag CLI sharing one scan engine.
+LanCartographer is an **original** Windows 10/11 and macOS LAN & port inventory tool:
+Go 1.27.1, Fyne v2.8.1 GUI, and a stdlib-flag CLI sharing one scan engine.
 It is authorization-gated and zero-telemetry. It is inspired by — and must
 credit, without implying affiliation — Advanced IP Scanner (Famatech),
 Angry IP Scanner, and Nmap. The CFAA authorization sentence governs
@@ -17,7 +17,8 @@ referenced (LICENSE, README, authz flow):
 
 > Scan only networks you own or have explicit authorization to inventory. Unauthorized access or scanning may violate the Computer Fraud and Abuse Act, 18 U.S.C. § 1030, and similar laws.
 
-The app manifest is `asInvoker` — never `requireAdministrator`.
+The Windows manifest is `asInvoker` — never `requireAdministrator`. macOS
+runs unelevated; an empty ARP cache is not evidence that root is needed.
 
 ## 2. Layout quick map
 
@@ -26,67 +27,74 @@ The app manifest is `asInvoker` — never `requireAdministrator`.
 - `internal/` — one package per concern: `discover`, `probe`, `scan`,
   `model`, `authz`, `oui` (`oui_data.go` is generated AND intentionally
   checked in), `winutil`, `gui`, `cli`, `maplayout`, `wol`, `favorites`,
-  `export`, `hostcache`.
+  `export`, `hostcache`, `appdata`.
 - `tools/icongen/` — icon/resource generator.
-- `tests/ci-gate.sh` — the local gate; run it via bash.
+- `tests/ci-gate.sh` — Windows-oriented full gate, also represented in CI.
+- `tests/macos-smoke.py` — owned loopback fixture exercising both packaged entry points.
 - `.github/workflows/` — CI source of truth; `ci.yml` defines done.
-- `build.sh` — runs `go generate ./...` then builds `dist/LanCartographer.exe`
-  (`-trimpath -ldflags "-s -w -H windowsgui"`) and
-  `dist/lancartographer-cli.exe` (no `-H windowsgui`).
+- `build.sh` — native platform build: Windows GUI/CLI executables, or macOS
+  `.app` plus CLI and architecture ZIP. The macOS build temporarily moves the
+  Windows COFF resource aside and restores it on exit.
+- `packaging/macos/Info.plist` — bundle identity and local-network usage text.
+  Ad-hoc signing verifies integrity; it is not Developer ID signing/notarization.
+  Keep the plist minimum OS and the CGO compilation/link deployment targets
+  aligned; the runtime smoke inspects the Mach-O headers.
 - `.agents/skills/optimize/SKILL.md` — the optimize skill (see §5).
 
 `go.sum` is committed. The two generated/binary files above stay tracked.
 
-## 3. Commands
+## 3. Execution and ownership map
 
-Toolchain PATH: Go at `/c/Program Files/Go/bin`, gcc (MSYS2 ucrt64) at
-`/c/msys64/ucrt64/bin`. Everything below needs `CGO_ENABLED=1 CC=gcc`.
+- `cmd/lancartographer/main.go` dispatches to CLI for `--cli` or a filename
+  containing `cli`; otherwise it starts Fyne. macOS can reuse one executable
+  for both entry points because its linker flags are identical.
+- GUI/CLI perform authorization before invoking `internal/scan`; direct
+  engine callers must apply the same policy. `scan` owns the worker pool,
+  ordered event emission, cancellation, and enrichment/cache lifecycle.
+- `probe` owns bounded TCP/HTTP probes; `discover` and `winutil` contain
+  platform-specific interface, ARP, elevation, and SMB boundaries.
+- Fyne widgets are updated on the UI thread (`fyne.Do` from workers).
+  Apply the saved theme before creating widgets; shared panel labels must
+  respond to theme changes. Subprocess arguments are built in platform files.
+- `appdata.Path` chooses the native per-user directory, with an absolute
+  `APPDATA` override for Windows/fixtures. Never fall back to cwd. Persistence
+  uses temporary files renamed into place; new directories are mode 0700.
 
-**macOS gate notes:** there is no MSYS2 on the macOS CI job — CGO uses the
-runner's system clang (`CGO_ENABLED=1`, default `CC`). `go generate ./...`
-on macOS runs only `tools/icongen`; the goversioninfo directive lives in
-`cmd/lancartographer/generate_windows.go` (`//go:build windows`), and the
-checked-in `resource.syso` regenerates on Windows only. The Windows CI job
-also runs cross-compile smoke builds (`CGO_ENABLED=0 GOOS=darwin
-GOARCH=arm64` and `GOOS=linux`, non-GUI packages only — Fyne's desktop
-driver requires CGO, so the GUI build for darwin is verified natively by
-the macos-latest job, never by cross-compile). Keep those green; a
-Windows-only API used in the engine, CLI, or `winutil` stubs fails the
-gate even though the Windows build is fine.
+## 4. Commands and verification
 
-The local gate — run from the repo root:
-
-```bash
-bash tests/ci-gate.sh
-```
-
-It runs, in order: `gofmt -l .` (must be empty), `go vet ./...`,
-`go generate` drift check, CGO build of both exes, and
-`go test ./... -race` (race detector requires CGO + gcc).
-
-Release-style builds:
+Honor `go.mod` and inspect the actual compiler/PATH before building. Fyne
+requires CGO. Windows needs MSYS2 ucrt64 gcc and `goversioninfo`; macOS uses
+Xcode Command Line Tools and system clang, without Windows `CC=gcc` settings.
 
 ```bash
-bash build.sh   # dist/LanCartographer.exe + dist/lancartographer-cli.exe
+bash build.sh
+# macOS: exercise the packaged CLI and app --cli against an owned fixture
+python3 tests/macos-smoke.py dist
+# changed workflows
+actionlint .github/workflows/ci.yml .github/workflows/release.yml
 ```
 
-## 4. Standing preferences
-
-- **VERIFY BY RUNNING.** After code changes, actually run the program or
-  the tests and observe the result. A green compile is not verification.
-- **PREFER CI/LINT WORKFLOWS OVER ad-hoc test picking.** Treat
-  `.github/workflows/ci.yml` as the source of truth and make changes pass
-  the full gate (`bash tests/ci-gate.sh`) rather than running a single
-  favorable test. When time-constrained, gofmt + vet + build still
-  precede any claim of done.
-- One concern per branch/PR. Open PRs as drafts. Never push to `main`.
-- No telemetry, ever. No new network paths without explicit justification.
-- Never weaken the authorization gate (`internal/authz`) or drop the CFAA
-  sentence from any user-facing surface.
-- Never `git add`/`git commit` unless the user explicitly asks; the
-  controller commits after review.
-- Where you create YAML, validate it parses:
-  `python -c "import yaml,sys; yaml.safe_load(open('<file>', encoding='utf-8'))"`
+- Run changed behavior as the primary local check. Use gofmt, relevant vet,
+  builds, workflow lint, and focused regression checks for concrete risks.
+  Do not run the full local suite by default; hosted CI covers broad/platform
+  regressions. Record any user waiver separately from passing evidence.
+- CI runs the Windows gate and macOS 15 arm64/Intel native builds, packaged
+  smoke checks, vet, and race tests. A cross-compile does not verify Fyne.
+- macOS manual `go build ./...` or tests linking `cmd/lancartographer` need the
+  Windows `resource.syso` moved aside and restored; prefer `build.sh` for
+  packaging. Never delete or commit a changed Windows resource accidentally.
+- UI changes require actual native interaction and rendered inspection.
+  Keep native GUI, CLI fixtures, focused tests, hosted CI, and downloaded
+  release acceptance distinct. Use owned loopback fixtures and disposable
+  data directories; never publish real LAN inventory or credentials.
+- Preserve the HTTP one-second/32-KiB limits, TLS verification, no redirects,
+  dial budget, worker limit, cancellation, and monotonic progress events.
+- No telemetry or runtime downloads. Justify new network paths and preserve
+  the authorization notice verbatim.
+- One concern per branch/PR; open drafts and never push to `main`. Commit and
+  publish only within the user's authorized scope. Do not merge without an
+  explicit request.
+- Validate changed YAML syntax and actionlint; inspect scripts invoked by CI.
 
 ## 5. The optimize skill
 
@@ -98,7 +106,6 @@ rather than free-styling an audit.
 
 ## 6. CI status notes
 
-- CodeQL: requires GitHub Advanced Security, which is not available on a
-  private Free-plan repo. The workflow was removed while private; restore
-  `.github/workflows/codeql.yml` from git history if the repository is made
-  public.
+CodeQL was removed while the repository was private. Check current visibility,
+plan, workflow configuration, and authorization before proposing restoration;
+an absent security workflow is not a passing security scan.

@@ -2,7 +2,12 @@
 
 package gui
 
-import "net/netip"
+import (
+	"net/netip"
+	"net/url"
+)
+
+const fileManagerName = "Finder"
 
 // explorerPath builds the smb:// URL for a host (smb://ip) or one of its
 // shares (smb://ip/share), opened via the "open" command. A share whose
@@ -12,7 +17,7 @@ func explorerPath(ip netip.Addr, shareName string) string {
 	if shareName == "" {
 		return "smb://" + ip.String()
 	}
-	return "smb://" + ip.String() + "/" + shareName
+	return "smb://" + ip.String() + "/" + url.PathEscape(shareName)
 }
 
 // pingArgv builds the argv that opens a visible Terminal window running
@@ -29,13 +34,13 @@ func rdpArgv(netip.Addr) []string {
 }
 
 // browserArgv builds the argv that opens the host's web interface in the
-// default browser via "open". scheme must come from browserScheme (""
+// default browser via "open". target must come from browserURL (""
 // means no action and returns nil).
-func browserArgv(ip netip.Addr, scheme string) []string {
-	if scheme == "" {
+func browserArgv(target string) []string {
+	if target == "" {
 		return nil
 	}
-	return []string{"open", scheme + "://" + ip.String()}
+	return []string{"open", target}
 }
 
 // explorerArgv builds the argv that opens a host or share smb:// URL in

@@ -5,16 +5,21 @@ Thanks for your interest. A few rules keep this repo reviewable and safe.
 ## Prerequisites
 
 - **Go 1.27+** (module targets Go 1.27).
-- **MSYS2 `mingw-w64-ucrt-x86_64-gcc`** — CGO is required
+- **Windows: MSYS2 `mingw-w64-ucrt-x86_64-gcc`** — CGO is required
   (`CGO_ENABLED=1 CC=gcc`); use the MSYS2 **ucrt64** gcc, not plain mingw.
-- **goversioninfo** — one-time install for the Windows resource embedding
+- **macOS: Xcode Command Line Tools** — CGO uses system clang; run `bash build.sh`
+  for the app bundle and `python3 tests/macos-smoke.py dist` for its runtime smoke.
+- **Windows: goversioninfo** — one-time install for the Windows resource embedding
   (`go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest`).
   Note: `cmd/lancartographer/resource.syso` is an **intentionally checked-in**
   binary — do not delete it and do not add `*.syso` to `.gitignore`.
 
 ## The local gate
 
-Everything must pass locally before you open a PR. The one-liner:
+CI runs the full platform gates. Locally, execute the affected behavior and
+relevant formatting, lint, vet, builds, and focused regression checks. Record
+what ran and what remains for hosted CI; do not label omitted checks passed.
+The complete Windows-oriented gate, when explicitly needed, is:
 
 ```bash
 bash tests/ci-gate.sh
@@ -36,12 +41,12 @@ is intentionally committed — regenerate it only when you mean to change it.
 ## Workflow
 
 - **Branch naming:** `kimi/<slug>` (or the prefix your tool uses: `grok/`,
-  `claude/`, `codex/`).
+  `claude/`, `codex/`, `cx/`).
 - **One concern per PR.** Do not mix a fix, a refactor, and a feature.
-- **All PRs are opened as drafts.** Mark ready only when the local gate is
-  green and the template is complete.
+- **All PRs are opened as drafts.** Mark ready only when the platform gates are
+  green in hosted CI, affected behavior is verified, and the template is complete.
 - **The PR template is required.** Every section must be filled, including
-  exact test commands and their results — "not run" is not acceptable.
+  exact commands, results, native/platform limits, and any explicit user waiver.
 - Never commit generated noise, build outputs, logs, or secrets. `go.sum`
   is committed and stays committed.
 
