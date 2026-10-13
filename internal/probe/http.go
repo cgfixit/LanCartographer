@@ -69,7 +69,15 @@ func HTTPTitle(ctx context.Context, ip netip.Addr, port int, https bool) (status
 // attributes tolerated), unescapes HTML entities, trims whitespace, and
 // truncates to 80 runes.
 func extractTitle(body string) string {
-	lower := strings.ToLower(body)
+	// HTML tag names are ASCII case-insensitive. Unicode case folding can
+	// change byte lengths, invalidating offsets into the original body.
+	folded := []byte(body)
+	for i, b := range folded {
+		if b >= 'A' && b <= 'Z' {
+			folded[i] = b + ('a' - 'A')
+		}
+	}
+	lower := string(folded)
 	start := strings.Index(lower, "<title")
 	if start < 0 {
 		return ""

@@ -56,6 +56,24 @@ func TestHTTPTitle(t *testing.T) {
 			wantTitle:  "NAS Admin",
 		},
 		{
+			name:       "Unicode before tags preserves byte offsets",
+			body:       strings.Repeat("Ⱥ", 100) + "<TITLE>NAS K Ⱥ Admin</TITLE>",
+			wantStatus: 200,
+			wantTitle:  "NAS K Ⱥ Admin",
+		},
+		{
+			name:       "shorter lowercase encoding preserves title",
+			body:       "K<TITLE>Kelvin</TITLE>",
+			wantStatus: 200,
+			wantTitle:  "Kelvin",
+		},
+		{
+			name:       "invalid UTF-8 before title preserves offsets",
+			body:       "\xff<TITLE>Device</TITLE>",
+			wantStatus: 200,
+			wantTitle:  "Device",
+		},
+		{
 			name:       "long title truncated to 80 runes",
 			body:       "<html><head><title>" + longTitle + "</title></head></html>",
 			wantStatus: 200,
