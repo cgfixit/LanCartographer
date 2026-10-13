@@ -138,3 +138,23 @@ func TestAlive_AllPortsProbed(t *testing.T) {
 		}
 	}
 }
+
+func TestAlive_SelectedPortsDeduplicated(t *testing.T) {
+	var mu sync.Mutex
+	calls := map[int]int{}
+	dial := func(_ context.Context, _ netip.Addr, port int) bool {
+		mu.Lock()
+		calls[port]++
+		mu.Unlock()
+		return false
+	}
+	Alive(context.Background(), testIP, probe.NewLimiter(2), dial, func(netip.Addr) bool { return false }, 50001, 50001, 445)
+	if calls[50001] != 1 {
+		t.Fatalf("selected port dialed %d times, want 1", calls[50001])
+	}
+	for _, port := range DiscoveryPorts {
+		if calls[port] != 1 {
+			t.Errorf("discovery port %d dialed %d times, want 1", port, calls[port])
+		}
+	}
+}
