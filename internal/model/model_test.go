@@ -135,3 +135,52 @@ func TestWriteCSV(t *testing.T) {
 		t.Errorf("ports field not quoted in raw output: %q", out)
 	}
 }
+
+func TestWriteCSV_FormulaLikeText(t *testing.T) {
+	cases := []struct {
+		value string
+		want  string
+	}{
+		{"=1+1", "'=1+1"},
+		{"+1+1", "'+1+1"},
+		{"-1+1", "'-1+1"},
+		{"@SUM(1,1)", "'@SUM(1,1)"},
+		{" \t=1+1", "' \t=1+1"},
+		{"\r\n=1+1", "'\n=1+1"}, // encoding/csv normalizes CRLF when reading.
+		{"\tdevice", "'\tdevice"},
+		{"＝1+1", "'＝1+1"},
+		{"＋1+1", "'＋1+1"},
+		{"－1+1", "'－1+1"},
+		{"＠SUM(1,1)", "'＠SUM(1,1)"},
+		{"device", "device"},
+		{"normal,\"quoted\"", "normal,\"quoted\""},
+		{"", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.value, func(t *testing.T) {
+			h := testHost()
+			h.Name, h.MAC, h.Vendor, h.FoundVia = tc.value, tc.value, tc.value, tc.value
+			var buf bytes.Buffer
+			if err := WriteCSV(&buf, []Host{h}); err != nil {
+				t.Fatal(err)
+			}
+			rows, err := csv.NewReader(&buf).ReadAll()
+			if err != nil || len(rows) != 2 || len(rows[1]) != len(csvHeader) {
+				t.Fatalf("CSV structure: %v, %v", rows, err)
+			}
+			for _, col := range []int{2, 3, 4, 5} {
+				if got := rows[1][col]; got != tc.want {
+					t.Errorf("column %s = %q, want %q", csvHeader[col], got, tc.want)
+				}
+			}
+			buf.Reset()
+			if err := WriteJSON(&buf, []Host{h}); err != nil {
+				t.Fatal(err)
+			}
+			var back []Host
+			if err := json.Unmarshal(buf.Bytes(), &back); err != nil || !reflect.DeepEqual(back, []Host{h}) {
+				t.Fatalf("JSON changed raw values: %s, %v", buf.String(), err)
+			}
+		})
+	}
+}

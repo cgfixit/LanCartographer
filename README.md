@@ -35,7 +35,7 @@ networks you do not control.
 | Share enumeration | SMB shares listed via Windows `NetShareEnum` or macOS `smbutil`; a host that denies the enumeration shows an explicit "access denied" marker instead of an empty list |
 | Name resolution | NetBIOS, mDNS, and reverse DNS (PTR) queried concurrently for each host, highest-priority answer wins (NetBIOS → mDNS → PTR; probes run concurrently); resolved names are persisted in a MAC-keyed cache so silent devices keep their names across scans |
 | Right-click actions | Open host or share in Explorer (Windows) or Finder (macOS), open its web interface with the detected port, start Remote Desktop (Windows), run Ping, or send Wake-on-LAN (confirmation required) |
-| Export | Save the inventory as CSV or JSON from the File menu (the CLI has a `--json` flag) |
+| Export | Save the inventory as CSV or JSON from the File menu (the CLI has a `--json` flag); CSV prefixes formula-like cells with an apostrophe for spreadsheet import, while JSON preserves raw values |
 | Favorites | Save and reload the current host list as favorites |
 | Themes | Dark and light themes, persisted across launches |
 | First-run notice | The authorization notice is shown in a dialog on first launch; a marker file records that you have seen it |
