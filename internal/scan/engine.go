@@ -259,7 +259,7 @@ func runHost(ctx context.Context, ip netip.Addr, opts probe.Options, lim *probe.
 	hctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	alive, foundVia := discover.Alive(hctx, ip, lim, d.dial, d.arp)
+	alive, foundVia := discover.Alive(hctx, ip, lim, d.dial, d.arp, opts.Ports...)
 	if !alive {
 		return
 	}

@@ -18,19 +18,27 @@ var DiscoveryPorts = []int{445, 80, 443, 135, 139, 22, 3389, 8080, 8443}
 // success. Implementations must honor ctx cancellation.
 type DialFunc func(ctx context.Context, ip netip.Addr, port int) bool
 
-// Alive reports whether ip responds on the LAN. All DiscoveryPorts are
-// dialed concurrently, bounded by lim; the first successful dial ends the
+// Alive reports whether ip responds on the LAN. DiscoveryPorts and any
+// additional selected ports are deduplicated and dialed concurrently,
+// bounded by lim; the first successful dial ends the
 // probe (foundVia "tcp") and cancels the remaining dials. If no port
 // answers, arp is consulted as a fallback (foundVia "arp"). A host with no
 // dial success and no ARP entry is reported (false, ""). Cancellation of
 // the caller's ctx aborts the probe promptly.
-func Alive(ctx context.Context, ip netip.Addr, lim *probe.Limiter, dial DialFunc, arp func(netip.Addr) bool) (alive bool, foundVia string) {
+func Alive(ctx context.Context, ip netip.Addr, lim *probe.Limiter, dial DialFunc, arp func(netip.Addr) bool, additionalPorts ...int) (alive bool, foundVia string) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	var success atomic.Bool
 	var wg sync.WaitGroup
-	for _, port := range DiscoveryPorts {
+	ports := append([]int(nil), DiscoveryPorts...)
+	ports = append(ports, additionalPorts...)
+	seen := make(map[int]bool, len(ports))
+	for _, port := range ports {
+		if seen[port] {
+			continue
+		}
+		seen[port] = true
 		wg.Add(1)
 		go func(port int) {
 			defer wg.Done()

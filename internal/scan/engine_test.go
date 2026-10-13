@@ -81,6 +81,39 @@ func fakeAliveDeps(emitScan func(emit func(model.Port)), shares []model.Share, s
 	return d
 }
 
+func TestRun_SelectedPortOnly(t *testing.T) {
+	// The host has no ARP entry and answers only the caller's selected port.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	port := ln.Addr().(*net.TCPAddr).Port
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			conn.Close()
+		}
+	}()
+	opts := probe.Options{Ports: []int{port}, DialTimeout: 100 * time.Millisecond, ProbeTimeout: 100 * time.Millisecond, Concurrency: 8}
+	d := fakeAliveDeps(nil, nil, nil, "fixture", "", "", nil, true)
+	realDial := tcpDial(opts.DialTimeout)
+	d.dial = func(ctx context.Context, ip netip.Addr, p int) bool {
+		return p == port && realDial(ctx, ip, p)
+	}
+	evs, err := runCollect(context.Background(), netip.MustParsePrefix("127.0.0.1/32"), opts, d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	host, ok := lastOf(evs, EventHostFound)
+	if !ok || host.Host.FoundVia != "tcp" || len(host.Host.Ports) != 1 || host.Host.Ports[0].State != model.PortOpen {
+		t.Fatalf("selected-port-only host missing: %+v", evs)
+	}
+}
+
 func TestRun_HostFoundEnriched(t *testing.T) {
 	// Real loopback listener so the default (real) probe.ScanHost binding is
 	// exercised: one genuinely open port, found by a real TCP connect.
