@@ -67,3 +67,11 @@ Security-relevant behavior is documented in the README, including:
 
 Changes that weaken the authorization gate or fail-closed behavior are
 security regressions and will be treated as such.
+
+CSV exports prefix formula-like cells with an apostrophe, including leading
+whitespace and full-width formula prefixes; CSV delimiters and quotes are
+escaped by Go's CSV writer. JSON exports preserve the original values.
+Spreadsheet import behavior varies, and saving and reopening a CSV in Excel
+can remove text escapes. Keep untrusted inventories as text when editing or
+re-exporting them; this hardening does not guarantee safety across spreadsheet
+save/reopen cycles. See [OWASP's CSV injection guidance](https://owasp.org/www-community/attacks/CSV_Injection).

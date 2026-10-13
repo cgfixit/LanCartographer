@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // Port states observed by a scan.
@@ -123,7 +124,8 @@ var csvHeader = []string{"ip", "alive", "name", "mac", "vendor", "found_via", "p
 
 // WriteCSV writes a header row then one row per host. The ports and shares
 // columns carry OpenPortsSummary()/SharesSummary() and are quoted by
-// encoding/csv when they contain commas.
+// encoding/csv when they contain commas. Formula-like cells are prefixed
+// with an apostrophe for spreadsheet import; JSON keeps the raw values.
 func WriteCSV(w io.Writer, hosts []Host) error {
 	cw := csv.NewWriter(w)
 	if err := cw.Write(csvHeader); err != nil {
@@ -140,10 +142,23 @@ func WriteCSV(w io.Writer, hosts []Host) error {
 			h.OpenPortsSummary(),
 			h.SharesSummary(),
 		}
+		for i, cell := range row {
+			row[i] = csvText(cell)
+		}
 		if err := cw.Write(row); err != nil {
 			return err
 		}
 	}
 	cw.Flush()
 	return cw.Error()
+}
+
+// csvText neutralizes formula prefixes, including after whitespace and
+// their full-width forms. CSV quoting alone does not stop evaluation.
+func csvText(s string) string {
+	first, _ := utf8.DecodeRuneInString(strings.TrimSpace(s))
+	if strings.ContainsRune("=+-@＝＋－＠", first) || (s != "" && strings.ContainsAny(s[:1], "\t\r\n")) {
+		return "'" + s
+	}
+	return s
 }
