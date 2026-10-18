@@ -307,41 +307,54 @@ func runHost(ctx context.Context, ip netip.Addr, opts probe.Options, lim *probe.
 	em.send(Event{Kind: EventHostFound, Host: h})
 }
 
-// resolveName asks all three name services concurrently and picks the first
-// non-empty answer by priority: NetBIOS, then mDNS, then reverse DNS. Each
-// probe gets its own bounded ctx (NetBIOS/mDNS ~900ms, PTR 1.5s) so the
-// slowest of them, not their sum, bounds the wait. On host cancellation the
-// pending probes unwind through their ctx and an empty name is returned.
+// resolveName asks NetBIOS, mDNS, and reverse DNS at the same time and keeps
+// the highest-priority non-empty answer: NetBIOS, then mDNS, then PTR.
+// A winner cancels the lookups it outranks, so a slow PTR does not hold the
+// name. Each probe still has its own cap (NetBIOS and mDNS 900ms, PTR 1.5s).
+// Host cancellation returns an empty name.
 func resolveName(hctx context.Context, ip netip.Addr, d deps) string {
 	nbCtx, nbCancel := context.WithTimeout(hctx, 900*time.Millisecond)
 	defer nbCancel()
 	revCtx, revCancel := context.WithTimeout(hctx, 1500*time.Millisecond)
 	defer revCancel()
 
-	type res struct{ nb, mdns, rev string }
-	ch := make(chan res, 1) // buffered: an abandoned collection never blocks
-	go func() {
-		var r res
-		var wg sync.WaitGroup
-		wg.Add(3)
-		go func() { defer wg.Done(); r.nb = d.nbName(nbCtx, ip) }()
-		go func() { defer wg.Done(); r.mdns = d.mdnsName(nbCtx, ip) }()
-		go func() { defer wg.Done(); r.rev = d.revName(revCtx, ip) }()
-		wg.Wait()
-		ch <- r
-	}()
+	type hit struct {
+		src  string
+		name string
+	}
+	ch := make(chan hit, 3)
+	go func() { ch <- hit{"nb", d.nbName(nbCtx, ip)} }()
+	go func() { ch <- hit{"mdns", d.mdnsName(nbCtx, ip)} }()
+	go func() { ch <- hit{"rev", d.revName(revCtx, ip)} }()
 
-	select {
-	case r := <-ch:
-		if r.nb != "" {
-			return r.nb
+	var nb, mdns, rev string
+	var nbDone, mdnsDone, revDone bool
+	for {
+		if nbDone && nb != "" {
+			nbCancel()
+			revCancel()
+			return nb
 		}
-		if r.mdns != "" {
-			return r.mdns
+		if nbDone && mdnsDone && mdns != "" {
+			revCancel()
+			return mdns
 		}
-		return r.rev
-	case <-hctx.Done():
-		return ""
+		if nbDone && mdnsDone && revDone {
+			return rev
+		}
+		select {
+		case h := <-ch:
+			switch h.src {
+			case "nb":
+				nb, nbDone = h.name, true
+			case "mdns":
+				mdns, mdnsDone = h.name, true
+			default:
+				rev, revDone = h.name, true
+			}
+		case <-hctx.Done():
+			return ""
+		}
 	}
 }
 

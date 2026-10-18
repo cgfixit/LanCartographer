@@ -33,7 +33,7 @@ networks you do not control.
 | Sortable table | Seven columns (status, Name, IP, MAC, Vendor, Ports, Shares); click any header to sort; column widths are computed from window width with per-column minimums |
 | Port states | Every probed port reports `open`, `closed`, or `timeout`; open ports carry a service label (smb, http, rdp, …), web ports receive a bounded HTTP/HTTPS title probe; unrecognized services receive an HTTP probe that can identify additional web devices |
 | Share enumeration | SMB shares listed via Windows `NetShareEnum` or macOS `smbutil`; a host that denies the enumeration shows an explicit "access denied" marker instead of an empty list |
-| Name resolution | NetBIOS, mDNS, and reverse DNS (PTR) queried concurrently for each host, highest-priority answer wins (NetBIOS → mDNS → PTR; probes run concurrently); resolved names are persisted in a MAC-keyed cache so silent devices keep their names across scans |
+| Name resolution | NetBIOS, mDNS, and reverse DNS (PTR) run at the same time. The highest-priority answer wins (NetBIOS, then mDNS, then PTR) and the slower lookups are cancelled. Resolved names are persisted in a MAC-keyed cache so silent devices keep their names across scans |
 | Right-click actions | Open host or share in Explorer (Windows) or Finder (macOS), open its web interface with the detected port, start Remote Desktop (Windows), run Ping, or send Wake-on-LAN (confirmation required) |
 | Export | Save the inventory as CSV or JSON from the File menu (the CLI has a `--json` flag); CSV prefixes formula-like cells with an apostrophe for spreadsheet import, while JSON preserves raw values |
 | Favorites | Save and reload the current host list as favorites |
@@ -46,7 +46,7 @@ networks you do not control.
 - **Subnet discovery:** local IPv4 subnets are enumerated from your adapters via Windows adapter APIs or macOS network interfaces, then expanded into candidate host addresses.
 - **Concurrent sweep:** the sweep runs up to 64 host workers at once, and a separate global dial budget (default 128, hard cap 256) bounds how many TCP dials may be in flight — two different knobs.
 - **Port probes:** each port gets a TCP connect with an exact result — `open`, `closed`, or `timeout`; open ports carry a service label, known web ports get an HTTP/HTTPS title probe, and unrecognized ones get an HTTP probe that can identify a web service. Each request is capped at one second and 32 KiB, follows no redirects, and verifies TLS certificates.
-- **Enrichment:** SMB shares are listed via Windows `NetShareEnum` level 1 or macOS `smbutil`, and names are resolved by querying NetBIOS, mDNS, and DNS PTR concurrently (highest-priority answer wins: NetBIOS → mDNS → PTR), persisted in a MAC-keyed cache.
+- **Enrichment:** SMB shares are listed via Windows `NetShareEnum` level 1 or macOS `smbutil`. Names come from NetBIOS, then mDNS, then DNS PTR. A higher-priority answer cancels the lookups still running. The chosen name is stored in a MAC-keyed cache.
 - **Live events:** the engine streams per-host events over a channel, so the Fyne GUI table fills in while the scan is still running.
 
 ## Why LanCartographer
