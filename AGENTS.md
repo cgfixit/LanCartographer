@@ -32,7 +32,7 @@ runs unelevated; an empty ARP cache is not evidence that root is needed.
 - `tests/ci-gate.sh` — Windows-oriented full gate, also represented in CI.
 - `tests/macos-smoke.py` — owned loopback fixture exercising both packaged entry points.
 - `.github/workflows/` — CI source of truth; `ci.yml` defines done.
-- `build.sh` — native platform build: Windows GUI/CLI executables, or macOS
+- `deploy/build.sh` — native platform build: Windows GUI/CLI executables, or macOS
   `.app` plus CLI and architecture ZIP. The macOS build temporarily moves the
   Windows COFF resource aside and restores it on exit.
 - `packaging/macos/Info.plist` — bundle identity and local-network usage text.
@@ -67,7 +67,7 @@ requires CGO. Windows needs MSYS2 ucrt64 gcc and `goversioninfo`; macOS uses
 Xcode Command Line Tools and system clang, without Windows `CC=gcc` settings.
 
 ```bash
-bash build.sh
+bash deploy/build.sh
 # macOS: exercise the packaged CLI and app --cli against an owned fixture
 python3 tests/macos-smoke.py dist
 # changed workflows
@@ -81,7 +81,7 @@ actionlint .github/workflows/ci.yml .github/workflows/release.yml .github/workfl
 - CI runs the Windows gate and macOS 15 arm64/Intel native builds, packaged
   smoke checks, vet, and race tests. A cross-compile does not verify Fyne.
 - macOS manual `go build ./...` or tests linking `cmd/lancartographer` need the
-  Windows `resource.syso` moved aside and restored; prefer `build.sh` for
+  Windows `resource.syso` moved aside and restored; prefer `deploy/build.sh` for
   packaging. Never delete or commit a changed Windows resource accidentally.
 - UI changes require actual native interaction and rendered inspection.
   Keep native GUI, CLI fixtures, focused tests, hosted CI, and downloaded

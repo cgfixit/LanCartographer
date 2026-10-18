@@ -103,7 +103,7 @@ jobs:
           cache: true
 
       - name: Build and validate macOS release bundle
-        run: bash build.sh
+        run: bash deploy/build.sh
 
       - name: Exercise packaged CLI on loopback
         run: python3 tests/macos-smoke.py dist

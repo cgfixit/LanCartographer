@@ -143,7 +143,7 @@ Use the Go version in `go.mod` (currently Go 1.27.1) and a CGO C compiler.
 **macOS:** install Xcode Command Line Tools, then run:
 
 ```bash
-bash build.sh
+bash deploy/build.sh
 open dist/LanCartographer.app
 # CLI example against your own machine:
 ./dist/lancartographer-cli --range 127.0.0.1/32 --i-am-authorized --ports 8080
@@ -161,7 +161,7 @@ then build from Git Bash:
 ```bash
 pacman -S mingw-w64-ucrt-x86_64-gcc
 go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
-bash build.sh
+bash deploy/build.sh
 ```
 
 This regenerates the icon and Windows version resources and builds
