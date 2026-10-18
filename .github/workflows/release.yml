@@ -17,15 +17,17 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish changed main after verification (false previews only)"
+        description: "Publish a release (only when dispatched from a v* tag; false builds a preview)"
         type: boolean
         default: false
 
-# Tag pushes, the twice-daily schedule, and manual publish run to completion.
+# Tag pushes, the twice-daily schedule, and manual runs all build and verify
+# every platform; only a v* tag ref publishes (a dispatch also needs publish).
+# Runs queue instead of cancelling so a publish is never interrupted.
 concurrency:
   group: release-publish
   cancel-in-progress: false
-  
+
 permissions:
   contents: read
 
@@ -99,8 +101,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-15
             arch: arm64
+          - os: macos-15-intel
+            arch: amd64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
@@ -113,7 +117,7 @@ jobs:
           cache: true
 
       - name: Build and validate macOS release bundle
-        run: bash build.sh
+        run: bash deploy/build.sh
 
       - name: Exercise packaged CLI on loopback
         run: python3 tests/macos-smoke.py dist
@@ -128,6 +132,9 @@ jobs:
   release:
     name: Publish all platform assets
     needs: [build, build-macos]
+    # Scheduled and branch runs have no tag to release; they stop after the
+    # verified builds instead of failing in action-gh-release.
+    if: startsWith(github.ref, 'refs/tags/v') && (github.event_name != 'workflow_dispatch' || inputs.publish)
     runs-on: ubuntu-latest
     permissions:
       contents: write

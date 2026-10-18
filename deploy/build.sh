@@ -12,7 +12,8 @@
 #   go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 set -euo pipefail
 
-cd "$(dirname "$0")"
+# Run from the repository root (this script lives in deploy/).
+cd "$(dirname "$0")/.."
 
 # macOS branch: icongen is the only generator that runs (the goversioninfo
 # directive is windows-tagged), and Fyne links against the system clang.

@@ -25,9 +25,9 @@ The Go version is the `go` line in `go.mod` (currently 1.27.1). Windows also nee
 From the repository root:
 
 ```bash
-bash build.sh
+bash deploy/build.sh
 ```
 
-Windows output is `dist/LanCartographer.exe` and `dist/lancartographer-cli.exe`. macOS output is `dist/LanCartographer`, `dist/lancartographer-cli`, `dist/LanCartographer.app`, and a zip named for the architecture. `build.sh` moves the checked-in Windows `resource.syso` aside on macOS and restores it on exit. `dist/` is build output and is not committed.
+Windows output is `dist/LanCartographer.exe` and `dist/lancartographer-cli.exe`. macOS output is `dist/LanCartographer`, `dist/lancartographer-cli`, `dist/LanCartographer.app`, and a zip named for the architecture. `deploy/build.sh` moves the checked-in Windows `resource.syso` aside on macOS and restores it on exit. `dist/` is build output and is not committed.
 
 For the code tour, read [USER-GUIDE.md](USER-GUIDE.md).

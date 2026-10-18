@@ -32,7 +32,7 @@ Expected minimum:
     gofmt -l .                                  # (empty)
     go vet ./...                                # pass
     go generate ./... && git status --porcelain # no drift
-    CGO_ENABLED=1 CC=gcc bash build.sh          # builds
+    CGO_ENABLED=1 CC=gcc bash deploy/build.sh          # builds
     CGO_ENABLED=1 CC=gcc go test ./... -race    # pass
 -->
 
@@ -59,10 +59,10 @@ Expected minimum:
 ## Checklist
 
 - [ ] Local gate green: `gofmt -l .` empty, `go vet ./...` clean, `go generate` drift check clean
-- [ ] CGO build passes (`CGO_ENABLED=1 CC=gcc bash build.sh`)
+- [ ] CGO build passes (`CGO_ENABLED=1 CC=gcc bash deploy/build.sh`)
 - [ ] Race tests pass (`CGO_ENABLED=1 CC=gcc go test ./... -race`)
 - [ ] Tests added/updated for behavior changes
-- [ ] Docs updated (README / SECURITY / CONTRIBUTING as applicable)
+- [ ] Docs updated (README / USER-GUIDE / SECURITY as applicable)
 - [ ] CFAA authorization notice untouched — or change is intentional and called out in the Summary
 - [ ] `cmd/lancartographer/resource.syso` and `internal/oui/oui_data.go` not accidentally modified
 - [ ] No logs, caches, build outputs, or secrets committed
