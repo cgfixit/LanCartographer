@@ -32,24 +32,66 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build Windows binaries
-    runs-on: windows-latest
+  # The schedule only rebuilds when main has moved. Each run costs one Windows
+  # and two macOS runners, and macOS minutes bill at roughly ten times the
+  # Linux rate on a private repository. The 14-hour window covers the 12-hour
+  # cron gap plus a delayed start. Tag pushes and manual runs always build.
+  changes:
+    name: Check for new commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.check.outputs.build }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        if: github.event_name == 'schedule'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Decide whether to build
+        id: check
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "schedule" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          age=$(( $(date +%s) - $(git log -1 --format=%ct) ))
+          if [ "$age" -le $(( 14 * 3600 )) ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "main unchanged for ${age}s; skipping scheduled build"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build Windows binaries
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
-          go-version: "1.27"
+          go-version-file: go.mod
           cache: true
 
       - name: Set up MSYS2 (ucrt64 gcc)
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
         with:
           msystem: UCRT64
-          update: true
+          # Same toolchain CI verified; a full pacman upgrade adds minutes
+          # and can ship a compiler CI never ran.
+          update: false
           install: >-
             mingw-w64-ucrt-x86_64-gcc
 
@@ -57,7 +99,7 @@ jobs:
         run: echo "C:/msys64/ucrt64/bin" >> "$env:GITHUB_PATH"
 
       - name: Install Windows resource generator
-        run: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+        run: go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0
 
       - name: Generate embedded resources
         shell: bash
@@ -87,7 +129,7 @@ jobs:
           sha256sum LanCartographer.exe lancartographer-cli.exe > SHA256SUMS.txt
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: LanCartographer-windows
           path: |
@@ -97,6 +139,8 @@ jobs:
 
   build-macos:
     name: Build macOS (${{ matrix.arch }})
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -106,14 +150,17 @@ jobs:
           - os: macos-15-intel
             arch: amd64
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
-          go-version: "1.27"
+          go-version-file: go.mod
           cache: true
 
       - name: Build and validate macOS release bundle
@@ -123,7 +170,7 @@ jobs:
         run: python3 tests/macos-smoke.py dist
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: LanCartographer-macos-${{ matrix.arch }}
           path: dist/LanCartographer-macos-${{ matrix.arch }}.zip
@@ -136,18 +183,19 @@ jobs:
     # verified builds instead of failing in action-gh-release.
     if: startsWith(github.ref, 'refs/tags/v') && (github.event_name != 'workflow_dispatch' || inputs.publish)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
       - name: Download verified build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: LanCartographer-*
           path: dist
           merge-multiple: true
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           generate_release_notes: true
           fail_on_unmatched_files: true

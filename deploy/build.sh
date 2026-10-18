@@ -9,7 +9,7 @@
 # Toolchain: Go 1.27+ on PATH, plus MSYS2 mingw-w64 gcc for CGO (Fyne) on
 # Windows; on macOS the system clang is used. Install the manifest tool
 # once with:
-#   go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+#   go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0
 set -euo pipefail
 
 # Run from the repository root (this script lives in deploy/).

@@ -160,7 +160,7 @@ then build from Git Bash:
 
 ```bash
 pacman -S mingw-w64-ucrt-x86_64-gcc
-go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0
 bash deploy/build.sh
 ```
 
