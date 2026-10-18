@@ -9,11 +9,25 @@
 #   Windows 7 support anywhere in release notes or artifacts.
 name: Release
 
+name: release
+
 on:
   push:
-    tags:
-      - "v*.*.*"
+    tags: ["v*"]
+  schedule:
+    - cron: "17 8,20 * * *"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish changed main after verification (false previews only)"
+        type: boolean
+        default: false
 
+# Tag pushes, the twice-daily schedule, and manual publish run to completion.
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+  
 permissions:
   contents: read
 
@@ -87,10 +101,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-15
+          - os: macos-latest
             arch: arm64
-          - os: macos-15-intel
-            arch: amd64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
