@@ -46,12 +46,13 @@ The walk below is the actual call chain in the code, starting at
    would take.
 
 4. **Per-host liveness.** Each worker first asks "is anything there?"
-   (`discover.Alive`): it dials the nine *discovery ports*
-   (`445, 80, 443, 135, 139, 22, 3389, 8080, 8443` — SMB, web, RDP, SSH,
-   ordered by expected hit rate) concurrently through the shared limiter. The
-   first success wins and cancels the rest. If no port answers, an ARP-table
-   lookup (`SendARP`) is the fallback — a host can be alive with every port
-   filtered. The result is recorded as `FoundVia`: `"tcp"` or `"arp"`.
+   (`discover.Alive`): it dials `DiscoveryPorts`
+   (`445, 80, 443, 135, 139, 22, 3389, 8080, 8443`, ordered by expected hit
+   rate) plus the selected scan ports. Duplicates are skipped. The dials share
+   the scan limiter. The first success wins and cancels the rest. If no port
+   answers, an ARP lookup (`SendARP` on Windows, the ARP cache on macOS) is
+   the fallback. A host can be alive with every probed port filtered. The
+   result is recorded as `FoundVia`: `"tcp"` or `"arp"`.
    Silent host → the worker moves on; nothing is reported for dead addresses.
 
 5. **Port probe.** For each live host, `probe.ScanHost` dials every port in
@@ -117,8 +118,8 @@ widgets, no race conditions in the table.
 **The rate limiter is a semaphore.** `internal/probe/limiter.go` implements a
 `Limiter` as a buffered channel of size *n* — think `SemaphoreSlim(n, n)`.
 To run work you "park" a token (`l.sem <- struct{}{}`), do the dial, then
-release it. The entire scan — 64 host workers, nine discovery dials per host,
-15 port dials per host — shares **one** limiter, created in `scan.Run`:
+release it. The whole scan shares one limiter, created in `scan.Run`. That includes the
+64 host workers, the discovery dials, and the selected port dials:
 
 ```go
 lim := probe.NewLimiter(opts.Concurrency) // default 128, hard cap 256

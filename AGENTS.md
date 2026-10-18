@@ -71,7 +71,7 @@ bash build.sh
 # macOS: exercise the packaged CLI and app --cli against an owned fixture
 python3 tests/macos-smoke.py dist
 # changed workflows
-actionlint .github/workflows/ci.yml .github/workflows/release.yml
+actionlint .github/workflows/ci.yml .github/workflows/release.yml .github/workflows/gitleaks.yml
 ```
 
 - Run changed behavior as the primary local check. Use gofmt, relevant vet,
@@ -94,7 +94,8 @@ actionlint .github/workflows/ci.yml .github/workflows/release.yml
 - One concern per branch/PR; open drafts and never push to `main`. Commit and
   publish only within the user's authorized scope. Do not merge without an
   explicit request.
-- Validate changed YAML syntax and actionlint; inspect scripts invoked by CI.
+- Validate changed YAML syntax and actionlint, including `.github/workflows/gitleaks.yml`. Inspect scripts invoked by CI.
+- `gitleaks.yml` runs on push to `main` and on pull request to `main`. Its permissions are `contents: read` and `pull-requests: read`.
 
 ## 5. The optimize skill
 
