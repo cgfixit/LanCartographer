@@ -7,9 +7,10 @@ Copilot, or any future tool. It is not tied to one product's config format.
 ## What lives here
 
 - `.agents/skills/` — reusable skill definitions (`SKILL.md` files) that an
-  agent can load on demand to follow a repeatable workflow. Today this holds
-  the [`optimize`](skills/optimize/SKILL.md) skill, a read-only audit and
-  improvement-finding pass.
+  agent can load on demand to follow a repeatable workflow. This holds
+  [`optimize`](skills/optimize/SKILL.md), the short read-only scan, and
+  [`lan-optimizer`](skills/lan-optimizer/SKILL.md), the scan plus draft-PR
+  rules.
 
 ## Rules
 

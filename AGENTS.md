@@ -103,7 +103,9 @@ When asked to optimize, audit, or find improvements in this repo, use the
 skill at `.agents/skills/optimize/SKILL.md` (repo-relative path — read it
 first). It defines a 4-minute read-only scan of the repo and a scoped
 multi-PR process (one concern per PR, drafts only). Follow its process
-rather than free-styling an audit.
+rather than free-styling an audit. `/lan-optimizer` loads
+`.agents/skills/lan-optimizer/SKILL.md`, which adds branch topology and
+the draft-PR gate. `todo.txt` is the current deletion list.
 
 ## 6. CI status notes
 
