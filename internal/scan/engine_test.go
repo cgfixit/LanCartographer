@@ -598,6 +598,36 @@ func TestValidateTarget(t *testing.T) {
 	}
 }
 
+func TestResolveNameStopsOnceABetterNameExists(t *testing.T) {
+	ip := netip.MustParseAddr("192.0.2.10")
+	block := func(ctx context.Context, _ netip.Addr) string {
+		<-ctx.Done()
+		return "late"
+	}
+	d := deps{
+		nbName:   func(context.Context, netip.Addr) string { return "nbhost" },
+		mdnsName: block,
+		revName:  block,
+	}
+	start := time.Now()
+	if got := resolveName(context.Background(), ip, d); got != "nbhost" {
+		t.Fatalf("resolveName = %q, want nbhost", got)
+	}
+	if elapsed := time.Since(start); elapsed > 200*time.Millisecond {
+		t.Fatalf("resolveName waited %s after NetBIOS had the name", elapsed)
+	}
+
+	d.nbName = func(context.Context, netip.Addr) string { return "" }
+	d.mdnsName = func(context.Context, netip.Addr) string { return "mdnshost" }
+	start = time.Now()
+	if got := resolveName(context.Background(), ip, d); got != "mdnshost" {
+		t.Fatalf("resolveName = %q, want mdnshost", got)
+	}
+	if elapsed := time.Since(start); elapsed > 200*time.Millisecond {
+		t.Fatalf("resolveName waited %s after mDNS had the name", elapsed)
+	}
+}
+
 func TestRun_RejectsInvalidTargets(t *testing.T) {
 	d := fakeAliveDeps(nil, nil, nil, "", "", "", nil, true)
 	for _, target := range []string{"2001:db8::/64", "10.0.0.0/8"} {
