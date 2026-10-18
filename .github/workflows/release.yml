@@ -9,8 +9,6 @@
 #   Windows 7 support anywhere in release notes or artifacts.
 name: Release
 
-name: release
-
 on:
   push:
     tags: ["v*"]
