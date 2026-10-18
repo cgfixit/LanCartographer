@@ -1,0 +1,8 @@
+Next steps. Do these in order. Do not start the v1.1 map.
+
+1. Delete the unlinked notes docs/csv-verification-2026-10-13.md, docs/discovery-verification-2026-10-13.md, and docs/http-verification-2026-10-13.md. Keep docs/macos-verification.md. README links it.
+2. Delete empty packaging/notes.txt. Nothing references it.
+3. Drop the includeVirtual argument on discover.LocalSubnets. Callers pass false. The true branch exists for one test.
+4. Replace the three temp-file JSON saves in favorites, hostcache, and settings with one appdata helper.
+5. Make gui.broadcastAddr call the same IPv4 last-address helper as discover.lastAddr.
+6. Replace formatMAC's Sprintf with net.HardwareAddr.String.
