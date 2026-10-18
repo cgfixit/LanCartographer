@@ -37,6 +37,18 @@ func TestBrowserURL(t *testing.T) {
 	}
 }
 
+func TestThemeModeLabel(t *testing.T) {
+	if got := themeModeLabel("light"); got != "Light on" {
+		t.Fatalf("light label = %q, want %q", got, "Light on")
+	}
+	if got := themeModeLabel("dark"); got != "Dark on" {
+		t.Fatalf("dark label = %q, want %q", got, "Dark on")
+	}
+	if got := themeModeLabel("other"); got != "Light on" {
+		t.Fatalf("unknown label = %q, want %q", got, "Light on")
+	}
+}
+
 func TestCanWOL(t *testing.T) {
 	mustParse := netip.MustParseAddr
 	cases := []struct {
