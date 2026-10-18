@@ -1,7 +1,7 @@
 // Package gui is LanCartographer's Fyne interface: toolbar, live scan
-// table, side panel, context menus, favorites, export, and (stubbed for
-// now) the 2D map view. Widget code stays thin; every launch or formatting
-// decision lives here as a pure, unit-tested helper.
+// table, side panel, context menus, favorites, and export. Widget code
+// stays thin; every launch or formatting decision lives here as a pure,
+// unit-tested helper.
 package gui
 
 import (

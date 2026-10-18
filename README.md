@@ -238,7 +238,6 @@ One line per top-level package; all application code is under `internal/`
 | `internal/winutil` | Typed Windows API wrappers (`NetShareEnum`, `SendARP`, elevation check) with macOS implementations and other-platform stubs |
 | `internal/gui` | The Fyne GUI: toolbar, live table, side panel, context menus, dialogs, settings |
 | `internal/cli` | Flag parsing, authorization gate, table output, JSON export, exit codes |
-| `internal/maplayout` | Position calculation for the 2D map view (v1.1) |
 | `internal/wol` | Wake-on-LAN magic-packet construction and broadcast send |
 | `internal/appdata` | Native per-user paths shared by the GUI and CLI |
 | `internal/favorites` | Atomic favorites persistence in the per-user directory |
@@ -275,8 +274,6 @@ this machine. CLI/CI evidence is separate from native GUI evidence.
 
 ## Roadmap
 
-- **v1.1 — 2D map view:** spatial layout of discovered hosts (positioning
-  logic already lives in `internal/maplayout`).
 - **No 3D.** A 3D visualization is intentionally absent: it adds GPU/driver
   complexity and installer weight for zero inventory value.
 
