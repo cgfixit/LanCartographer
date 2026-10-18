@@ -26,7 +26,7 @@ runs unelevated; an empty ARP cache is not evidence that root is needed.
   contains the intentionally-checked-in `resource.syso` (never ignore/delete).
 - `internal/` — one package per concern: `discover`, `probe`, `scan`,
   `model`, `authz`, `oui` (`oui_data.go` is generated AND intentionally
-  checked in), `winutil`, `gui`, `cli`, `maplayout`, `wol`, `favorites`,
+  checked in), `winutil`, `gui`, `cli`, `wol`, `favorites`,
   `export`, `hostcache`, `appdata`.
 - `tools/icongen/` — icon/resource generator.
 - `tests/ci-gate.sh` — Windows-oriented full gate, also represented in CI.

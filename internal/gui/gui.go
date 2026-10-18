@@ -1,9 +1,9 @@
 //go:build cgo
 
 // Package gui is LanCartographer's Fyne interface: toolbar, live scan
-// table, side panel, context menus, favorites, export, and the 2D map
-// placeholder. Widget code stays thin; every launch or formatting
-// decision lives in actions.go as a pure, unit-tested helper.
+// table, side panel, context menus, favorites, and export. Widget code
+// stays thin; every launch or formatting decision lives in actions.go
+// as a pure, unit-tested helper.
 package gui
 
 import (
@@ -61,7 +61,6 @@ type ui struct {
 	subnet     *widget.SelectEntry
 	scanBtn    *widget.Button
 	stopBtn    *widget.Button
-	mapBtn     *widget.Button
 	themeBtn   *widget.Button
 	elevateBtn *widget.Button
 
@@ -69,7 +68,6 @@ type ui struct {
 	split    *container.Split
 	table    *widget.Table
 	panel    *fyne.Container
-	mapView  *fyne.Container
 
 	statusBar   *fyne.Container
 	statusHosts *widget.Label
@@ -163,16 +161,13 @@ func newUI(a fyne.App, w fyne.Window, deps guiDeps) *ui {
 	u.buildTopBar()
 	u.buildPanel()
 	u.buildTable()
-	u.buildMapView()
 	u.buildStatusBar()
 	u.refreshTable()
 
-	stack := container.NewStack(u.split, u.mapView)
-	u.mapView.Hide()
 	u.win.SetContent(container.NewBorder(
 		container.NewVBox(u.topBar, u.progress),
 		u.statusBar, nil, nil,
-		stack))
+		u.split))
 	u.win.SetMainMenu(u.mainMenu())
 	return u
 }
@@ -190,7 +185,7 @@ func (u *ui) captureLocalSubnets() {
 }
 
 // buildTopBar lays out the editable subnet combo, Scan/Stop, favorites,
-// export, the map toggle, and (when unelevated) the elevate button.
+// export, theme, and (when unelevated) the elevate button.
 func (u *ui) buildTopBar() {
 	u.subnet = widget.NewSelectEntry(nil)
 	u.subnet.SetPlaceHolder("Subnet, e.g. 10.0.0.0/24")
@@ -209,7 +204,6 @@ func (u *ui) buildTopBar() {
 	u.stopBtn.Importance = widget.DangerImportance
 	u.stopBtn.Disable()
 
-	u.mapBtn = widget.NewButtonWithIcon("Map — v1.1", theme.GridIcon(), u.onMapToggle)
 	u.themeBtn = widget.NewButtonWithIcon(themeModeLabel(u.settings.Theme), theme.ColorPaletteIcon(), u.onThemeToggle)
 
 	items := []fyne.CanvasObject{
@@ -219,7 +213,6 @@ func (u *ui) buildTopBar() {
 		widget.NewButtonWithIcon("Save Favorites", theme.FolderIcon(), u.onSaveFavorites),
 		widget.NewButtonWithIcon("Load Favorites", theme.FolderOpenIcon(), u.onLoadFavorites),
 		widget.NewButtonWithIcon("Export", theme.DocumentSaveIcon(), u.onExport),
-		u.mapBtn,
 		u.themeBtn,
 	}
 	if runtime.GOOS == "windows" && !u.deps.isElevated() {
@@ -366,20 +359,6 @@ func (u *ui) maybeFirstRun() {
 	popup = widget.NewModalPopUp(container.NewVBox(label, understand), u.win.Canvas())
 	popup.Resize(fyne.NewSize(600, 180))
 	popup.Show()
-}
-
-// onMapToggle swaps the table split for the map placeholder and back. The
-// table never depends on the map; v1.1 ships the real 2D ring.
-func (u *ui) onMapToggle() {
-	if u.mapView.Visible() {
-		u.mapView.Hide()
-		u.split.Show()
-		u.mapBtn.SetText("Map — v1.1")
-		return
-	}
-	u.split.Hide()
-	u.mapView.Show()
-	u.mapBtn.SetText("Table")
 }
 
 // themeModeLabel is the toolbar button caption for the current theme mode.

@@ -202,3 +202,13 @@ func findButton(obj fyne.CanvasObject, want string) bool {
 	}
 	return false
 }
+
+func TestNoMapPlaceholder(t *testing.T) {
+	u := newTestUI(t)
+	if findButton(u.win.Canvas().Content(), "Map — v1.1") {
+		t.Fatal("map placeholder button is still in the window")
+	}
+	if findText(u.win.Canvas().Content(), "The 2D network map ships in v1.1.") {
+		t.Fatal("map placeholder copy is still in the window")
+	}
+}

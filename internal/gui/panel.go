@@ -21,17 +21,6 @@ func (u *ui) buildPanel() {
 	u.showPanelPlaceholder()
 }
 
-// buildMapView creates the v1.1 map placeholder shown by the toggle. The
-// real 2D ring (maplayout.Layout + canvas nodes + click-to-select) ships
-// in v1.1; the table must never depend on it.
-func (u *ui) buildMapView() {
-	u.mapView = container.NewCenter(container.NewVBox(
-		widget.NewLabelWithStyle("Network Map", fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
-		widget.NewLabel("The 2D network map ships in v1.1."),
-		widget.NewLabel("The table view is the complete inventory."),
-	))
-}
-
 // showPanelPlaceholder resets the panel to its idle hint. The label goes
 // straight into the VBox (no NewCenter) so it stretches to the panel width
 // and truncation only engages when the panel is genuinely narrow.
