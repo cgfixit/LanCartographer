@@ -42,6 +42,45 @@ dist/
 *.out
 coverage*
 
+# Environment files
+.env
+.env.*
+!.env.example
+*.env
+*.envrc
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Code coverage profiles and other test artifacts
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Dependency directories (uncomment if you vendor dependencies)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Environment files
+.env
+*.env
+*.envrc
+
+# Editor / IDE
+.idea/
+.vscode/
+
 # Vendored deps — this project does not vendor (module proxy + go.sum only)
 /vendor/
 
