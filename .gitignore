@@ -22,6 +22,16 @@
 # Go
 # ---------------------------------------------------------------------------
 
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# Environment and secret files
+.env
+.env.*
+!.env.example
+
 # Compiled binaries / build output
 *.exe
 !*.syso
