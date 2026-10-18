@@ -40,6 +40,9 @@ runs unelevated; an empty ARP cache is not evidence that root is needed.
   Keep the plist minimum OS and the CGO compilation/link deployment targets
   aligned; the runtime smoke inspects the Mach-O headers.
 - `.agents/skills/optimize/SKILL.md` — the optimize skill (see §5).
+- `.claude/skills/` — Claude Code drivers: `lan-optimize` (scan + draft PRs)
+  and `lan-guard` (`check.sh`, the scriptable invariant check). `CLAUDE.md`
+  imports this file.
 
 `go.sum` is committed. The two generated/binary files above stay tracked.
 
