@@ -44,7 +44,8 @@ networks you do not control.
 ## How it works
 
 - **Subnet discovery:** local IPv4 subnets are enumerated from your adapters via Windows adapter APIs or macOS network interfaces, then expanded into candidate host addresses.
-- **Concurrent sweep:** the sweep runs up to 64 host workers at once, and a separate global dial budget (default 128, hard cap 256) bounds how many TCP dials may be in flight — two different knobs.
+- **Host liveness:** each address is dialed on ports 445, 80, 443, 135, 139, 22, 3389, 8080, and 8443, plus any extra ports selected for the scan. Duplicate ports are skipped. The first successful connect marks the host alive and cancels the other dials. If none connect, the ARP cache is the fallback.
+- **Concurrent sweep:** the sweep runs up to 64 host workers at once, and a separate global dial budget (default 128, hard cap 256) bounds how many TCP dials may be in flight. Those are two different knobs.
 - **Port probes:** each port gets a TCP connect with an exact result — `open`, `closed`, or `timeout`; open ports carry a service label, known web ports get an HTTP/HTTPS title probe, and unrecognized ones get an HTTP probe that can identify a web service. Each request is capped at one second and 32 KiB, follows no redirects, and verifies TLS certificates.
 - **Enrichment:** SMB shares are listed via Windows `NetShareEnum` level 1 or macOS `smbutil`, and names are resolved by querying NetBIOS, mDNS, and DNS PTR concurrently (highest-priority answer wins: NetBIOS → mDNS → PTR), persisted in a MAC-keyed cache.
 - **Live events:** the engine streams per-host events over a channel, so the Fyne GUI table fills in while the scan is still running.
@@ -292,6 +293,17 @@ scanning space — thank you to their authors and communities:
 LanCartographer is an independent, original implementation. No code, artwork,
 branding, or layout is borrowed from these projects, and LanCartographer is
 not affiliated with, sponsored by, or endorsed by any of them.
+
+## In short
+
+The Fyne 2.8.1 GUI and the CLI are one Go 1.27.1 program, and both call `scan.Run`.
+A sweep uses at most 64 host workers and one dial limiter, 128 by default and 256 at the cap.
+Liveness dials the discovery ports and the selected scan ports, then falls back to the ARP cache.
+Each port probe is a TCP connect that records `open`, `closed`, or `timeout`.
+A prefix that is off-link, outside RFC 1918, or wider than a `/22` does not scan until the operator confirms it.
+The binary keeps its config in the per-user directory and does not send telemetry.
+
+Replace an existing build by following [update-guide.md](update-guide.md).
 
 ## License
 
