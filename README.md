@@ -37,7 +37,7 @@ networks you do not control.
 | Right-click actions | Open host or share in Explorer (Windows) or Finder (macOS), open its web interface with the detected port, start Remote Desktop (Windows), run Ping, or send Wake-on-LAN (confirmation required) |
 | Export | Save the inventory as CSV or JSON from the File menu (the CLI has a `--json` flag); CSV prefixes formula-like cells with an apostrophe for spreadsheet import, while JSON preserves raw values |
 | Favorites | Save and reload the current host list as favorites |
-| Themes | Dark and light themes, persisted across launches |
+| Themes | The toolbar button next to Stop reads "Light on" or "Dark on" for the theme that is active. The choice is saved and restored on the next launch |
 | First-run notice | The authorization notice is shown in a dialog on first launch; a marker file records that you have seen it |
 | Elevation button | Windows only: an unelevated process offers an Elevate button and marks failed MAC lookup as needing elevation; macOS reads the ARP cache without this button |
 

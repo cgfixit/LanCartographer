@@ -210,10 +210,10 @@ func (u *ui) buildTopBar() {
 		container.NewGridWrap(fyne.NewSize(230, u.subnet.MinSize().Height), u.subnet),
 		u.scanBtn,
 		u.stopBtn,
-		widget.NewButtonWithIcon("Save Favorites", theme.FolderIcon(), u.onSaveFavorites),
-		widget.NewButtonWithIcon("Load Favorites", theme.FolderOpenIcon(), u.onLoadFavorites),
-		widget.NewButtonWithIcon("Export", theme.DocumentSaveIcon(), u.onExport),
 		u.themeBtn,
+		widget.NewButtonWithIcon("Save", theme.FolderIcon(), u.onSaveFavorites),
+		widget.NewButtonWithIcon("Load", theme.FolderOpenIcon(), u.onLoadFavorites),
+		widget.NewButtonWithIcon("Export", theme.DocumentSaveIcon(), u.onExport),
 	}
 	if runtime.GOOS == "windows" && !u.deps.isElevated() {
 		u.elevateBtn = widget.NewButtonWithIcon("Elevate", theme.LoginIcon(), u.onElevate)
@@ -359,14 +359,6 @@ func (u *ui) maybeFirstRun() {
 	popup = widget.NewModalPopUp(container.NewVBox(label, understand), u.win.Canvas())
 	popup.Resize(fyne.NewSize(600, 180))
 	popup.Show()
-}
-
-// themeModeLabel is the toolbar button caption for the current theme mode.
-func themeModeLabel(mode string) string {
-	if mode == "dark" {
-		return "Dark"
-	}
-	return "Light"
 }
 
 // applyTheme switches the app-wide theme; anything but "dark" means light.
