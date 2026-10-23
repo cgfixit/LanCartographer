@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/local/lancartographer/internal/hostcache"
