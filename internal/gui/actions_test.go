@@ -201,6 +201,20 @@ func TestStoreSnapshotSortsAndCounts(t *testing.T) {
 	if hosts != 2 || openPorts != 1 || shares != 0 {
 		t.Errorf("counts = %d,%d,%d", hosts, openPorts, shares)
 	}
+	s.apply(scan.Event{Kind: scan.EventShareFound, Host: model.Host{
+		IP:     netip.MustParseAddr("10.0.0.3"),
+		Shares: []model.Share{{Remark: "shares: access denied"}},
+	}})
+	if _, _, shares := s.counts(); shares != 0 {
+		t.Errorf("access-denied marker counted as %d shares", shares)
+	}
+	s.apply(scan.Event{Kind: scan.EventShareFound, Host: model.Host{
+		IP:     netip.MustParseAddr("10.0.0.20"),
+		Shares: []model.Share{{Name: "Public"}},
+	}})
+	if _, _, shares := s.counts(); shares != 1 {
+		t.Errorf("discovered share count = %d, want 1", shares)
+	}
 
 	// Mutating a snapshot record must not touch the store.
 	snap[0].Name = "MUTATED"
