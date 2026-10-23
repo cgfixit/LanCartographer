@@ -18,19 +18,22 @@ labels: ["bug"]
 ## Environment
 
 - LanCartographer version or commit:
-- Binary used (LanCartographer.exe / lancartographer-cli.exe / built from source):
-- Windows version (e.g. Windows 11 23H2):
-- Elevated (run as administrator)? yes / no
+- Operating system and version (Windows 10/11 or macOS 13+):
+- Architecture (amd64 / arm64):
+- Entry point (Windows GUI/CLI, macOS app/CLI, or built from source):
+- Windows only: elevated (run as administrator)? yes / no / not applicable
 
 ## Scan target
 
-<!-- CIDR range or subnet scanned, if relevant. Do not include addresses of
-     networks you do not own. -->
+<!-- CIDR size and target type (loopback/local subnet), if relevant. Do not
+     include addresses or inventory from networks you do not own or have
+     explicit authorization to inventory. -->
 
 ## Logs and output
 
-<!-- Paste relevant stderr/CLI output or describe GUI behavior. Redact any
-     addresses from networks you are not authorized to inventory. -->
+<!-- Paste relevant stderr/CLI output or describe GUI behavior. Redact IP and
+     MAC addresses, host/share names, usernames, credentials, and other private
+     inventory data. -->
 
 ## Authorization
 

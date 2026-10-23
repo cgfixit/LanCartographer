@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import zipfile
 
 
 class Fixture(http.server.BaseHTTPRequestHandler):
@@ -32,6 +33,16 @@ def main():
     dist = Path(sys.argv[1] if len(sys.argv) > 1 else "dist").resolve()
     cli = dist / "lancartographer-cli"
     gui = dist / "LanCartographer.app/Contents/MacOS/LanCartographer"
+    license_text = (Path(__file__).resolve().parents[1] / "LICENSE").read_bytes()
+    assert (dist / "LICENSE").read_bytes() == license_text
+    assert (gui.parents[1] / "Resources/LICENSE").read_bytes() == license_text
+    archives = list(dist.glob("LanCartographer-macos-*.zip"))
+    assert archives, "macOS release archive is missing"
+    for archive in archives:
+        with zipfile.ZipFile(archive) as package:
+            assert package.read("LICENSE") == license_text, archive
+            assert package.read("LanCartographer.app/Contents/Resources/LICENSE") == license_text, archive
+    print("PASS: MIT license accompanies binaries in the app and macOS archives")
     info = plistlib.loads((dist / "LanCartographer.app/Contents/Info.plist").read_bytes())
     minimum = info["LSMinimumSystemVersion"]
     for binary in (cli, gui):

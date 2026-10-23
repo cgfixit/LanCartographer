@@ -125,8 +125,9 @@ jobs:
       - name: Generate SHA256 checksums
         shell: bash
         run: |
+          cp LICENSE dist/LICENSE
           cd dist
-          sha256sum LanCartographer.exe lancartographer-cli.exe > SHA256SUMS.txt
+          sha256sum LanCartographer.exe lancartographer-cli.exe LICENSE > SHA256SUMS.txt
 
       - name: Upload build artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -135,6 +136,7 @@ jobs:
           path: |
             dist/LanCartographer.exe
             dist/lancartographer-cli.exe
+            dist/LICENSE
             dist/SHA256SUMS.txt
 
   build-macos:
@@ -202,6 +204,7 @@ jobs:
           files: |
             dist/LanCartographer.exe
             dist/lancartographer-cli.exe
+            dist/LICENSE
             dist/SHA256SUMS.txt
             dist/LanCartographer-macos-arm64.zip
             dist/LanCartographer-macos-amd64.zip

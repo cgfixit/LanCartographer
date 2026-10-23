@@ -23,22 +23,22 @@ One concern per PR. Open as draft. Every section below is required.
 ## Test evidence (REQUIRED)
 
 <!--
-Paste the exact commands you ran and a summary of their output.
-"Not run" is NOT acceptable — the local gate must be green before review.
+Paste the exact commands and results for the affected behavior and relevant
+formatting, vet, build, or workflow checks. Broad local suites are not required
+when hosted CI provides that coverage. Examples:
 
-Expected minimum:
-
-    bash tests/ci-gate.sh                       # or the equivalent steps:
-    gofmt -l .                                  # (empty)
-    go vet ./...                                # pass
-    go generate ./... && git status --porcelain # no drift
-    CGO_ENABLED=1 CC=gcc bash deploy/build.sh          # builds
-    CGO_ENABLED=1 CC=gcc go test ./... -race    # pass
+    bash deploy/build.sh                        # native package build
+    python3 tests/macos-smoke.py dist            # packaged macOS paths
+    actionlint .github/workflows/*.yml           # changed workflows
 -->
 
 ```
 <paste commands and output summary here>
 ```
+
+### Platform and CI limitations
+
+<!-- State what was not run locally, why, and which hosted CI job covers it. -->
 
 ## Security impact
 
@@ -48,6 +48,8 @@ Expected minimum:
 - Touches engine routing / scan dispatch? **no** — <!-- explain if yes -->
 - Touches process launches (subprocess invocation)? **no** — <!-- explain if yes; launches must stay argv-only, never shell strings -->
 - Touches network probes or scan behavior? **no** — <!-- explain if yes; the CFAA authorization notice stays intact -->
+- Changes TLS verification, redirect handling, HTTP one-second/32-KiB limits, dial budget, worker limit, cancellation, or monotonic progress? **no** — <!-- explain and verify if yes -->
+- Adds telemetry or runtime downloads? **no** — <!-- explain if yes; both are prohibited -->
 
 ## UI changes
 
@@ -58,9 +60,9 @@ Expected minimum:
 
 ## Checklist
 
-- [ ] Local gate green: `gofmt -l .` empty, `go vet ./...` clean, `go generate` drift check clean
-- [ ] CGO build passes (`CGO_ENABLED=1 CC=gcc bash deploy/build.sh`)
-- [ ] Race tests pass (`CGO_ENABLED=1 CC=gcc go test ./... -race`)
+- [ ] Changed behavior exercised and exact results recorded above
+- [ ] Relevant formatting, vet, build, and workflow checks pass
+- [ ] Platform gaps and checks left to hosted CI are recorded above
 - [ ] Tests added/updated for behavior changes
 - [ ] Docs updated (README / USER-GUIDE / SECURITY as applicable)
 - [ ] CFAA authorization notice untouched — or change is intentional and called out in the Summary

@@ -109,10 +109,12 @@ lancartographer.exe --cli --range 192.168.1.0/24 --json inventory.json
 
 1. Build from source below, or download an available version's assets from
    [GitHub Releases](https://github.com/cgfixit/LanCartographer/releases).
-   Windows assets are `LanCartographer.exe` and `lancartographer-cli.exe`.
+   Windows assets are `LanCartographer.exe`, `lancartographer-cli.exe`,
+   `LICENSE`, and `SHA256SUMS.txt`. Keep the license with redistributed binaries.
    macOS archives are `LanCartographer-macos-arm64.zip` for Apple Silicon and
    `LanCartographer-macos-amd64.zip` for Intel. Each Mac archive contains
-   `LanCartographer.app`, `lancartographer-cli`, and `SHA256SUMS.txt`.
+   `LanCartographer.app`, `lancartographer-cli`, `LICENSE`, and `SHA256SUMS.txt`.
+   The app also includes the license in `Contents/Resources`.
 2. On Windows, run the GUI executable. On macOS, extract the matching archive
    and open `LanCartographer.app`. The Mac bundle is ad-hoc signed, **not
    Developer ID signed or notarized**; macOS may block a downloaded build.
@@ -305,3 +307,7 @@ Replace an existing build by following [update-guide.md](update-guide.md).
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+For development and issue reporting, see [CONTRIBUTING.md](CONTRIBUTING.md)
+and [SUPPORT.md](SUPPORT.md). Report vulnerabilities as described in
+[SECURITY.md](SECURITY.md).
