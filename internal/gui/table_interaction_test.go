@@ -198,3 +198,20 @@ func TestTableSecondaryTapOpensMenu(t *testing.T) {
 		t.Fatal("no overlay shown after secondary tap on row")
 	}
 }
+
+func TestLoadFavoritesAllowsReselectingSameCell(t *testing.T) {
+	u := newTestUI(t)
+	setTwoHosts(u)
+	u.onSaveFavorites()
+	id := widget.TableCellID{Row: 0, Col: 2}
+	u.table.Select(id)
+
+	u.onLoadFavorites()
+	if u.selectedIP != "" {
+		t.Fatal("loading favorites retained the previous host selection")
+	}
+	u.table.Select(id)
+	if u.selectedIP != "192.168.1.10" {
+		t.Fatal("selecting the same cell after reloading did not reopen the host")
+	}
+}

@@ -420,6 +420,7 @@ func (u *ui) startScan(target netip.Prefix) {
 	if u.scanning {
 		return
 	}
+	u.table.UnselectAll()
 	u.store = newHostStore()
 	u.selectedIP = ""
 	u.lastPrefix = target
@@ -537,6 +538,7 @@ func (u *ui) onLoadFavorites() {
 		dialog.ShowError(err, u.win)
 		return
 	}
+	u.table.UnselectAll()
 	u.store.set(hosts)
 	u.selectedIP = ""
 	u.showPanelPlaceholder()
