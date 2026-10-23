@@ -64,6 +64,7 @@ func fakeAliveDeps(emitScan func(emit func(model.Port)), shares []model.Share, s
 	d := defaultDeps(probe.Options{DialTimeout: time.Second})
 	d.dial = func(context.Context, netip.Addr, int) bool { return true }
 	d.arp = func(netip.Addr) bool { return false }
+	d.icmp = nil
 	if emitScan != nil {
 		d.scan = func(_ context.Context, _ netip.Addr, _ probe.Options, _ *probe.Limiter, emit func(model.Port)) {
 			emitScan(emit)
@@ -396,6 +397,7 @@ func TestRun_CancelUnwindsFast(t *testing.T) {
 	// context.Canceled. No real network is touched.
 	var active sync.WaitGroup // dial goroutines still blocked
 	d := defaultDeps(probe.Options{DialTimeout: time.Second})
+	d.icmp = nil
 	d.dial = func(ctx context.Context, _ netip.Addr, _ int) bool {
 		active.Add(1)
 		<-ctx.Done()
@@ -452,6 +454,7 @@ func TestRun_DeadHosts(t *testing.T) {
 	t.Setenv("APPDATA", t.TempDir())
 	// Two dead hosts: no host/port/share events, progress marches 0.5 -> 1.
 	d := defaultDeps(probe.Options{DialTimeout: time.Second})
+	d.icmp = nil
 	d.dial = func(context.Context, netip.Addr, int) bool { return false }
 	d.arp = func(netip.Addr) bool { return false }
 
@@ -556,6 +559,37 @@ func TestRun_StopDuringShareProbe(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Error("listShares goroutine still blocked 1s after Run returned (leak)")
 	}
+}
+
+func TestRun_ICMPFallbackCancellation(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		calls := 0
+		d := deps{
+			dial: func(context.Context, netip.Addr, int) bool { return false },
+			arp:  func(netip.Addr) bool { return false },
+			icmp: func(ctx context.Context, _ netip.Addr) bool {
+				calls++
+				<-ctx.Done()
+				return false
+			},
+		}
+		done := make(chan error, 1)
+		go func() {
+			_, err := runCollect(ctx, netip.MustParsePrefix("192.0.2.0/30"), probe.Options{Concurrency: 1}, d)
+			done <- err
+		}()
+		synctest.Wait()
+		if calls != 1 {
+			t.Errorf("ICMP probes in flight = %d, want shared budget of 1", calls)
+		}
+		cancel()
+		synctest.Wait()
+		if err := <-done; !errors.Is(err, context.Canceled) {
+			t.Errorf("run = %v, want cancellation", err)
+		}
+	})
 }
 
 func TestRun_EmptyPrefix(t *testing.T) {

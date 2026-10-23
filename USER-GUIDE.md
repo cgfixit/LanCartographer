@@ -51,8 +51,11 @@ The walk below is the actual call chain in the code, starting at
    rate) plus the selected scan ports. Duplicates are skipped. The dials share
    the scan limiter. The first success wins and cancels the rest. If no port
    answers, an ARP lookup (`SendARP` on Windows, the ARP cache on macOS) is
-   the fallback. A host can be alive with every probed port filtered. The
-   result is recorded as `FoundVia`: `"tcp"` or `"arp"`.
+   the next fallback. On macOS, a host still undetected gets one ICMP echo
+   request through `/sbin/ping`, using the same concurrency limiter and a
+   one-second timeout that Stop can cancel. A host can be alive with every
+   probed TCP port closed or filtered. The result is recorded as `FoundVia`:
+   `"tcp"`, `"arp"`, or `"icmp"`. Port states still describe the TCP probes.
    Silent host → the worker moves on; nothing is reported for dead addresses.
 
 5. **Port probe.** For each live host, `probe.ScanHost` dials every port in
