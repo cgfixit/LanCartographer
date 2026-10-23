@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/local/lancartographer/internal/hostcache"
@@ -567,6 +568,42 @@ func TestRun_EmptyPrefix(t *testing.T) {
 	}
 	if len(evs) != 1 || evs[0].Kind != EventDone || evs[0].Progress != 1 {
 		t.Errorf("events = %+v, want exactly Done/1", evs)
+	}
+}
+
+func TestRun_EmptyPrefixCancellation(t *testing.T) {
+	for _, when := range []string{"before run", "before run, buffered", "while blocked"} {
+		t.Run(when, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				if when != "while blocked" {
+					cancel()
+				}
+				out := make(chan Event)
+				if when == "before run, buffered" {
+					out = make(chan Event, 1)
+				}
+				done := make(chan error, 1)
+				go func() {
+					done <- run(ctx, netip.Prefix{}, probe.Options{}, out, deps{})
+				}()
+				synctest.Wait()
+				cancel()
+				synctest.Wait()
+				select {
+				case err := <-done:
+					if !errors.Is(err, context.Canceled) {
+						t.Fatalf("run = %v, want context.Canceled", err)
+					}
+				default:
+					// Release the blocked sender before failing the regression.
+					<-out
+					<-done
+					t.Fatal("run remained blocked sending Done after cancellation")
+				}
+			})
+		})
 	}
 }
 

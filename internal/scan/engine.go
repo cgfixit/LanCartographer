@@ -154,11 +154,18 @@ func run(ctx context.Context, target netip.Prefix, opts probe.Options, out chan<
 	if err := validateTarget(target); err != nil {
 		return err
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	hosts := discover.HostsIn(target.Masked())
 	total := len(hosts)
 	if total == 0 {
-		out <- Event{Kind: EventDone, Progress: 1}
-		return nil
+		select {
+		case out <- Event{Kind: EventDone, Progress: 1}:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
