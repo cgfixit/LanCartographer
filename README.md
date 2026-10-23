@@ -66,6 +66,10 @@ The CLI build auto-detects from its own file name (any executable whose base nam
 contains "cli", case-insensitive); passing `--cli` as the first argument also
 selects CLI mode and is accepted on both binaries.
 
+The displayed table replaces control characters in discovered text with `�`
+to keep network-supplied values from controlling the terminal or adding rows.
+JSON exports preserve the original inventory values.
+
 | Flag | Meaning | Default |
 |---|---|---|
 | `--range CIDR` | IPv4 prefix to scan, e.g. `192.168.1.0/24` | omitted: every local physical subnet |
