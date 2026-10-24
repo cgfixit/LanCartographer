@@ -58,7 +58,7 @@ func Alive(ctx context.Context, ip netip.Addr, lim *probe.Limiter, dial DialFunc
 	if success.Load() {
 		return true, "tcp"
 	}
-	if arp(ip) {
+	if ctx.Err() == nil && arp(ip) {
 		return true, "arp"
 	}
 	return false, ""

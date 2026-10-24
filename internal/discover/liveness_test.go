@@ -113,7 +113,10 @@ func TestAlive_RespectsCallerCancellation(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		cancel()
 	}()
-	alive, via := runAlive(t, ctx, testIP, probe.NewLimiter(0), dial, func(netip.Addr) bool { return false })
+	alive, via := runAlive(t, ctx, testIP, probe.NewLimiter(0), dial, func(netip.Addr) bool {
+		t.Error("arp must not be consulted after caller cancellation")
+		return false
+	})
 	if alive || via != "" {
 		t.Fatalf("got (%v, %q), want (false, \"\") after cancellation", alive, via)
 	}
