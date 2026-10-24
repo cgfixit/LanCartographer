@@ -56,6 +56,10 @@ func TestSharesSummary(t *testing.T) {
 	if got := empty.SharesSummary(); got != "0 shares" {
 		t.Errorf("SharesSummary() with no shares = %q, want %q", got, "0 shares")
 	}
+	denied := Host{Shares: []Share{{Remark: "shares: access denied"}}}
+	if got := denied.SharesSummary(); got != "shares: access denied" {
+		t.Errorf("SharesSummary() with access denied = %q", got)
+	}
 }
 
 func TestHasWebAndHasRDP(t *testing.T) {

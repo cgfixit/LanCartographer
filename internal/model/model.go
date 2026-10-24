@@ -105,10 +105,13 @@ func (h Host) OpenPortsSummary() string {
 }
 
 // SharesSummary reports the share count and the first share's UNC, e.g.
-// `2 shares (first \\192.168.1.50\DATA)`, or "0 shares" when none.
+// `2 shares (first \\192.168.1.50\DATA)`, "0 shares" when none, or access denied.
 func (h Host) SharesSummary() string {
 	if len(h.Shares) == 0 {
 		return "0 shares"
+	}
+	if len(h.Shares) == 1 && h.Shares[0].Name == "" && h.Shares[0].Remark == "shares: access denied" {
+		return h.Shares[0].Remark
 	}
 	return fmt.Sprintf("%d shares (first %s)", len(h.Shares), h.Shares[0].UNC)
 }

@@ -117,7 +117,11 @@ func (s *hostStore) counts() (hosts, openPorts, shares int) {
 				openPorts++
 			}
 		}
-		shares += len(h.Shares)
+		for _, share := range h.Shares {
+			if !isDenialShare(share) {
+				shares++
+			}
+		}
 	}
 	return hosts, openPorts, shares
 }
