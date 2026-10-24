@@ -9,9 +9,11 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/local/lancartographer/internal/discover"
 	"github.com/local/lancartographer/internal/model"
@@ -180,6 +182,42 @@ func TestJSONExportRoundTrip(t *testing.T) {
 	}
 	if len(hosts) != 1 || hosts[0].IP != h.IP {
 		t.Fatalf("round trip mismatch: %+v", hosts)
+	}
+}
+
+func TestTableSanitizesControlsWithoutChangingExport(t *testing.T) {
+	raw := "café東京\x1b[2J\r\n\t\x00\x7f\u0085\u009b"
+	h := model.Host{
+		IP: netip.MustParseAddr("192.168.1.30"), Name: raw, MAC: raw, Vendor: raw,
+		Ports:  []model.Port{{Number: 445, State: model.PortOpen, Service: raw}},
+		Shares: []model.Share{{Name: raw, Type: raw, Remark: raw}},
+	}
+	path := filepath.Join(t.TempDir(), "out.json")
+	code, stdout, stderr := runCLI(fakeDeps([]string{"192.168.1.0/24"}, h), "--json", path)
+	if code != 0 {
+		t.Fatalf("exit = %d (stderr %q)", code, stderr)
+	}
+	for _, r := range stdout {
+		if unicode.IsControl(r) && r != '\n' {
+			t.Fatalf("table contains control %U: %q", r, stdout)
+		}
+	}
+	if strings.Count(stdout, "\n") != 2 {
+		t.Fatalf("expected header and one host row: %q", stdout)
+	}
+	if got := strings.Count(stdout, "café東京�[2J�������"); got != 7 {
+		t.Fatalf("expected seven sanitized values preserving Unicode, got %d: %q", got, stdout)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var hosts []model.Host
+	if err := json.Unmarshal(data, &hosts); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(hosts, []model.Host{h}) {
+		t.Fatalf("display changed exported host: %+v", hosts)
 	}
 }
 

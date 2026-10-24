@@ -18,6 +18,7 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+	"unicode"
 
 	"github.com/local/lancartographer/internal/authz"
 	"github.com/local/lancartographer/internal/discover"
@@ -201,9 +202,20 @@ func printTable(w io.Writer, hosts []model.Host) {
 	fmt.Fprintln(tw, "IP\tNAME\tMAC\tVENDOR\tPORTS\tSHARES")
 	for _, h := range hosts {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
-			h.IP, h.Name, h.MAC, h.Vendor, h.OpenPortsSummary(), sharesCell(h))
+			tableCell(h.IP.String()), tableCell(h.Name), tableCell(h.MAC), tableCell(h.Vendor),
+			tableCell(h.OpenPortsSummary()), tableCell(sharesCell(h)))
 	}
 	tw.Flush()
+}
+
+// tableCell keeps untrusted controls out of both the terminal and tabwriter.
+func tableCell(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return '\uFFFD'
+		}
+		return r
+	}, s)
 }
 
 // sharesCell renders each share as name(type) plus :remark when the
