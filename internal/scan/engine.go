@@ -87,6 +87,7 @@ func validateTarget(target netip.Prefix) error {
 type deps struct {
 	dial       discover.DialFunc                                                                  // one TCP connect attempt
 	arp        func(netip.Addr) bool                                                              // ARP-table fallback for liveness
+	icmp       func(context.Context, netip.Addr) bool                                             // optional platform ICMP fallback
 	scan       func(context.Context, netip.Addr, probe.Options, *probe.Limiter, func(model.Port)) // port scan
 	listShares func(context.Context, netip.Addr) ([]model.Share, error)                           // SMB share enumeration
 	nbName     func(context.Context, netip.Addr) string                                           // NetBIOS name
@@ -102,7 +103,7 @@ type deps struct {
 // defaultDeps binds the real package functions. opts supplies the liveness
 // dial timeout; the other bindings are fixed.
 func defaultDeps(opts probe.Options) deps {
-	return deps{
+	d := deps{
 		dial:       tcpDial(opts.DialTimeout),
 		arp:        arpPresent,
 		scan:       probe.ScanHost,
@@ -119,6 +120,10 @@ func defaultDeps(opts probe.Options) deps {
 		},
 		saveNames: func(m map[string]hostcache.Entry) { _ = hostcache.Save(m) },
 	}
+	if runtime.GOOS == "darwin" {
+		d.icmp = probe.ICMPAlive
+	}
+	return d
 }
 
 // tcpDial is the real DialFunc: one TCP connect, closed immediately.
@@ -267,6 +272,12 @@ func runHost(ctx context.Context, ip netip.Addr, opts probe.Options, lim *probe.
 	defer cancel()
 
 	alive, foundVia := discover.Alive(hctx, ip, lim, d.dial, d.arp, opts.Ports...)
+	if !alive && d.icmp != nil && hctx.Err() == nil {
+		_ = lim.Do(hctx, func() { alive = d.icmp(hctx, ip) })
+		if alive {
+			foundVia = "icmp"
+		}
+	}
 	if !alive {
 		return
 	}
