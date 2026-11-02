@@ -8,7 +8,6 @@ package gui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/netip"
 	"os"
@@ -34,6 +33,7 @@ import (
 	"github.com/local/lancartographer/internal/model"
 	"github.com/local/lancartographer/internal/probe"
 	"github.com/local/lancartographer/internal/scan"
+	"github.com/local/lancartographer/internal/session"
 	"github.com/local/lancartographer/internal/winutil"
 	"github.com/local/lancartographer/internal/wol"
 )
@@ -89,10 +89,12 @@ type ui struct {
 	headerBtns []*widget.Button
 
 	// scan state
-	scanning bool
-	cancel   context.CancelFunc
-	started  time.Time
-	tickStop chan struct{} // closed by finishScan to end the elapsed ticker goroutine
+	scanning       bool
+	cancel         context.CancelFunc
+	started        time.Time
+	tickStop       chan struct{} // closed by finishScan to end the elapsed ticker goroutine
+	currentSession *session.Session
+	scanDone       bool
 
 	// table repaint coalescing: engine events fold into the store per event,
 	// but the sort+repaint is throttled so a fast scan costs O(events) store
@@ -214,6 +216,7 @@ func (u *ui) buildTopBar() {
 		widget.NewButtonWithIcon("Save", theme.FolderIcon(), u.onSaveFavorites),
 		widget.NewButtonWithIcon("Load", theme.FolderOpenIcon(), u.onLoadFavorites),
 		widget.NewButtonWithIcon("Export", theme.DocumentSaveIcon(), u.onExport),
+		widget.NewButtonWithIcon("Sessions", theme.HistoryIcon(), u.onSessions),
 	}
 	if runtime.GOOS == "windows" && !u.deps.isElevated() {
 		u.elevateBtn = widget.NewButtonWithIcon("Elevate", theme.LoginIcon(), u.onElevate)
@@ -309,6 +312,7 @@ func (u *ui) maybeRefreshTable() {
 func (u *ui) mainMenu() *fyne.MainMenu {
 	return fyne.NewMainMenu(
 		fyne.NewMenu("File",
+			fyne.NewMenuItem("Sessions…", u.onSessions),
 			fyne.NewMenuItem("Export…", u.onExport),
 			fyne.NewMenuItem("Save Favorites", u.onSaveFavorites),
 			fyne.NewMenuItem("Load Favorites", u.onLoadFavorites),
@@ -458,21 +462,26 @@ func (u *ui) startScan(target netip.Prefix) {
 		ProbeTimeout: 800 * time.Millisecond,
 		Concurrency:  128,
 	}
+	snapshot := session.New(target, opts, Version)
+	snapshot.StartedAt = u.started.UTC()
+	u.currentSession = &snapshot
+	u.scanDone = false
 	out := make(chan scan.Event, 64)
+	result := make(chan error, 1)
 	go func() {
-		defer close(out)
-		// A rejected target (non-IPv4, broader than /12) surfaces here;
-		// Stop's cancellation is not an error worth showing.
-		if err := scan.Run(ctx, target, opts, out); err != nil && !errors.Is(err, context.Canceled) {
-			fyne.Do(func() { u.statusErr.SetText(err.Error()) })
-		}
+		result <- scan.Run(ctx, target, opts, out)
+		close(out)
 	}()
 	go func() {
 		for ev := range out {
 			ev := ev
 			fyne.Do(func() { u.applyEvent(ev) })
 		}
-		fyne.Do(u.finishScan)
+		err := <-result
+		fyne.Do(func() {
+			u.endSession(err)
+			u.finishScan()
+		})
 	}()
 }
 
@@ -489,12 +498,19 @@ func (u *ui) applyEvent(ev scan.Event) {
 		}
 	case scan.EventProgress:
 		u.progress.SetValue(ev.Progress)
+		if u.currentSession != nil {
+			u.currentSession.Progress = ev.Progress
+		}
 	case scan.EventError:
 		if ev.Err != nil {
 			u.statusErr.SetText(ev.Err.Error())
 		}
 		u.refreshTable()
 	case scan.EventDone:
+		u.scanDone = true
+		if u.currentSession != nil {
+			u.currentSession.Progress = 1
+		}
 		u.progress.SetValue(1)
 		u.refreshTable()
 	}
@@ -533,6 +549,10 @@ func (u *ui) onSaveFavorites() {
 
 // onLoadFavorites loads saved favorites into the table WITHOUT scanning.
 func (u *ui) onLoadFavorites() {
+	if u.scanning {
+		dialog.ShowInformation("Scan in progress", "Stop the scan before replacing the inventory.", u.win)
+		return
+	}
 	hosts, err := favorites.Load()
 	if err != nil {
 		dialog.ShowError(err, u.win)
@@ -540,6 +560,7 @@ func (u *ui) onLoadFavorites() {
 	}
 	u.table.UnselectAll()
 	u.store.set(hosts)
+	u.currentSession = nil // favorites carry no scan coverage or completion metadata
 	u.selectedIP = ""
 	u.showPanelPlaceholder()
 	u.refreshTable()

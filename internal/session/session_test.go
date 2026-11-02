@@ -1,0 +1,208 @@
+package session
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/netip"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/local/lancartographer/internal/model"
+)
+
+func fixture() Session {
+	return Session{
+		Schema: 1, AppVersion: "0.1.0", Label: "private-baseline", Context: "private-site",
+		Target:     netip.MustParsePrefix("192.0.2.0/24"),
+		Profile:    Profile{[]int{80, 443}, 400, 800, 128, "inventory-v1"},
+		Source:     Source{OS: "darwin", Arch: "arm64", Interfaces: []string{"en0 192.0.2.50/24"}},
+		StartedAt:  time.Date(2026, 11, 1, 12, 0, 0, 0, time.UTC),
+		FinishedAt: time.Date(2026, 11, 1, 12, 0, 5, 0, time.UTC), State: Complete, Progress: 1,
+		Hosts: records{{IP: netip.MustParseAddr("192.0.2.10"), Alive: true, Name: "private-nas", MAC: "00:11:22:33:44:55",
+			Ports:  []model.Port{{Number: 80, State: model.PortOpen, Title: "private-title"}, {Number: 443, State: model.PortClosed}},
+			Shares: []model.Share{{Name: "private-share"}}}},
+	}
+}
+
+func TestSessionSaveReadAndAtomicFailure(t *testing.T) {
+	s := fixture()
+	path := filepath.Join(t.TempDir(), "private", "baseline.json")
+	if err := Save(path, s); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Read(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Context != s.Context || got.Hosts[0].Ports[0].Title != "private-title" {
+		t.Fatal("lost session evidence")
+	}
+	if runtime.GOOS != "windows" {
+		info, _ := os.Stat(path)
+		dir, _ := os.Stat(filepath.Dir(path))
+		if info.Mode().Perm() != 0o600 || dir.Mode().Perm() != 0o700 {
+			t.Fatal("session storage is not private")
+		}
+	}
+	s.Schema = 99
+	if err := Save(path, s); err == nil {
+		t.Fatal("accepted unsupported schema")
+	}
+	after, _ := os.ReadFile(path)
+	if !bytes.Equal(data, after) {
+		t.Fatal("invalid save damaged the old file")
+	}
+	if err := WriteFile("relative.json", data); err == nil {
+		t.Fatal("accepted relative output")
+	}
+	if err := WriteFile(path, make([]byte, MaxBytes+1)); err == nil {
+		t.Fatal("accepted oversized output")
+	}
+	after, _ = os.ReadFile(path)
+	if !bytes.Equal(data, after) {
+		t.Fatal("oversized save damaged old file")
+	}
+}
+
+func TestSessionCloneOwnsNestedEvidence(t *testing.T) {
+	original := fixture()
+	copy := original.Clone()
+	copy.Profile.Ports[0] = 22
+	copy.Source.Interfaces[0] = "other"
+	copy.Hosts[0].Ports[0].Title = "other"
+	copy.Hosts[0].Shares[0].Name = "other"
+	if original.Profile.Ports[0] != 80 || original.Source.Interfaces[0] == "other" || original.Hosts[0].Ports[0].Title != "private-title" || original.Hosts[0].Shares[0].Name != "private-share" {
+		t.Fatal("snapshot shares mutable storage")
+	}
+}
+
+func TestSessionReadRejectsUntrustedFiles(t *testing.T) {
+	data, _ := json.Marshal(fixture())
+	cases := map[string][]byte{
+		"legacy inventory":   []byte(`[{"IP":"192.0.2.10"}]`),
+		"trailing":           append(bytes.Clone(data), []byte(` {}`)...),
+		"unknown field":      bytes.Replace(data, []byte(`"schema":1`), []byte(`"schema":1,"surprise":true`), 1),
+		"unknown host field": bytes.Replace(data, []byte(`"Alive":true`), []byte(`"Alive":true,"surprise":true`), 1),
+		"too large":          bytes.Repeat([]byte(" "), MaxBytes+1),
+		"too many hosts":     []byte(`{"hosts":[` + strings.Repeat(`{},`, maxHosts) + `{}]}`),
+		"empty":              nil,
+	}
+	for name, data := range cases {
+		t.Run(name, func(t *testing.T) {
+			if _, err := Read(bytes.NewReader(data)); err == nil {
+				t.Fatal("accepted invalid session")
+			}
+		})
+	}
+	for _, mutate := range []func(*Session){
+		func(s *Session) { s.Hosts = append(s.Hosts, s.Hosts[0]) },
+		func(s *Session) { s.Hosts[0].IP = netip.MustParseAddr("198.51.100.1") },
+		func(s *Session) { s.Profile.Ports = []int{80, 80} },
+		func(s *Session) { s.Hosts[0].Ports[0].Number = 22 },
+		func(s *Session) { s.Progress = .5 },
+		func(s *Session) { s.FinishedAt = s.StartedAt.Add(-time.Second) },
+	} {
+		s := fixture()
+		mutate(&s)
+		data, _ := json.Marshal(s)
+		if _, err := Read(bytes.NewReader(data)); err == nil {
+			t.Fatal("accepted inconsistent session")
+		}
+	}
+}
+
+func TestSessionCompareCoverageAndObservations(t *testing.T) {
+	b := fixture()
+	a := b.Clone()
+	a.Hosts[0].Name = "different-name"
+	a.Hosts[0].MAC = "aa:bb:cc:dd:ee:ff"
+	a.Hosts[0].Ports[0].State = model.PortTimeout
+	c := Compare(b, a)
+	if len(c.Reasons) != 0 || len(c.Changes) != 3 {
+		t.Fatalf("unexpected comparison: %+v", c)
+	}
+	if c.Changes[2].After != model.PortTimeout {
+		t.Fatal("timeout was relabelled")
+	}
+	a.Hosts = records{}
+	c = Compare(b, a)
+	if len(c.Changes) != 1 || c.Changes[0].After != "not observed" || c.Changes[0].Field != "Address observation" {
+		t.Fatalf("absence inferred device/port state: %+v", c)
+	}
+	for name, mutate := range map[string]func(*Session){
+		"cancelled":      func(s *Session) { s.State = Cancelled; s.Progress = .4 },
+		"failed":         func(s *Session) { s.State = Failed },
+		"scope":          func(s *Session) { s.Target = netip.MustParsePrefix("192.0.2.0/25") },
+		"ports":          func(s *Session) { s.Profile.Ports = []int{80, 443, 8080} },
+		"timeout":        func(s *Session) { s.Profile.ProbeTimeoutMS = 900 },
+		"site":           func(s *Session) { s.Context = "another-client" },
+		"source":         func(s *Session) { s.Source.Interfaces = []string{"vpn 198.51.100.1/32"} },
+		"missing source": func(s *Session) { s.Source.Error = "unavailable" },
+		"version":        func(s *Session) { s.AppVersion = "0.2.0" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			a := b.Clone()
+			mutate(&a)
+			c := Compare(b, a)
+			if len(c.Reasons) == 0 || len(c.Changes) != 0 {
+				t.Fatalf("incompatible data compared: %+v", c)
+			}
+		})
+	}
+	a = b.Clone()
+	a.Profile.Ports = []int{443, 80}
+	a.Hosts[0].Ports[0], a.Hosts[0].Ports[1] = a.Hosts[0].Ports[1], a.Hosts[0].Ports[0]
+	if c := Compare(b, a); len(c.Reasons)+len(c.Changes) != 0 {
+		t.Fatal("order created a false change")
+	}
+}
+
+func TestSessionReportSelectionAndRedaction(t *testing.T) {
+	b := fixture()
+	a := b.Clone()
+	a.Hosts[0].Name = "secret-new-name"
+	a.Hosts[0].Ports[0].Title = "secret-new-title\x1b[31m\nhttps://secret.example/?token=secret"
+	c := Compare(b, a)
+	var title int
+	for i, change := range c.Changes {
+		if change.Field == "TCP 80 title" {
+			title = i
+		}
+	}
+	report, err := Report(b, a, []int{title}, true, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"192.0.2", "private", "secret", "en0", "00:11:22", "Name\n"} {
+		if strings.Contains(report, forbidden) {
+			t.Fatalf("redacted report leaked %q", forbidden)
+		}
+	}
+	if !strings.Contains(report, "Selected differences: 1 of 2") || !strings.Contains(report, "TCP 80 title") {
+		t.Fatal("lost selection or evidence field")
+	}
+	full, err := Report(b, a, []int{title}, false, "Reviewed locally")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(full, "secret-new-name") || strings.Contains(full, "\x1b") || !strings.Contains(full, "secret-new-title") || !strings.Contains(full, "Reviewed locally") {
+		t.Fatal("unselected data/control characters leaked or selected evidence lost")
+	}
+	for _, sel := range [][]int{nil, {-1}, {99}} {
+		if _, err := Report(b, a, sel, true, ""); err == nil {
+			t.Fatal("accepted invalid selection")
+		}
+	}
+	a.State = Cancelled
+	if _, err := Report(b, a, []int{title}, true, ""); err == nil {
+		t.Fatal("exported incompatible comparison")
+	}
+}
