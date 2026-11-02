@@ -1,0 +1,17 @@
+LanCartographer — selected comparison evidence
+Both scans completed with matching scope, profile and recorded source context.
+Observations are address-based; they do not establish permanent device identity.
+Not observed does not mean offline. Missing enrichment means not recorded.
+Names may come from cache. Routes/DNS are not captured; routing is OS-selected.
+Identifiers and discovered text withheld; report-local aliases are not anonymization.
+
+Selected differences: 1 of 2
+Before: 2026-11-01T12:00:00Z — 2026-11-01T12:00:05Z; complete; 100%; 1 address records
+  Context, scope and source identifiers withheld (matching in both sessions).
+After: 2026-11-01T14:00:00Z — 2026-11-01T14:00:05Z; complete; 100%; 1 address records
+  Context, scope and source identifiers withheld (matching in both sessions).
+Profile: TCP ports [80 443]; discovery dial 400ms; probe dial 800ms; concurrency 128
+
+Address-1 | MAC
+  Before: Value-2
+  After:  Value-3
