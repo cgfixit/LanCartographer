@@ -1,6 +1,6 @@
 # Contributing to LanCartographer
 
-LanCartographer requires Go 1.27.1 and CGO. Windows builds use MSYS2 UCRT64
+LanCartographer requires the Go version in [go.mod](go.mod) and CGO. Windows builds use MSYS2 UCRT64
 GCC and `goversioninfo` v1.7.0; macOS builds use Xcode Command Line Tools and
 system clang. See the [README](README.md) for setup details.
 
@@ -24,6 +24,42 @@ rewriting old results as current acceptance.
 Do not accidentally modify or remove the generated, tracked files
 `cmd/lancartographer/resource.syso` and `internal/oui/oui_data.go`. Never
 commit build output, logs, caches, credentials, or real LAN inventory.
+
+## Dependency maintenance
+
+`go.mod` owns the Go minimum and selected module requirements; commit its
+generated `go.sum` changes together. `go.sum` verifies downloaded content and
+is not a complete lockfile. CI reads the Go version from `go.mod`. Windows
+resource generation separately pins `goversioninfo` in the workflows and build
+instructions; GitHub Actions remain pinned to full commit SHAs. Dependabot's
+weekly Go/action configuration is in [.github/dependabot.yml](.github/dependabot.yml).
+
+Inspect current versions and upstream release notes before choosing explicit
+`go get module@version` updates. Keep Fyne's related dependency changes together;
+do not treat every newer transitive or upstream test-tool version as a required
+desktop upgrade. After updating, run:
+
+```bash
+go mod tidy
+go mod verify
+go mod tidy -diff
+```
+
+Use `go list -mod=readonly -m -u all` to review remaining versions. Exercise the
+native package and owned CLI fixture after Go/runtime dependency changes, and
+native dialogs/themes after a Fyne update. Record source, module versions and
+the executable hash in [docs](docs/README.md); prior screenshots and CI results
+do not verify the updated artifact. Workflow changes need actionlint and
+review of action runtime, permissions, inputs and artifact compatibility.
+Remaining indirect/action major upgrades are tracked in
+[issue #25](https://github.com/cgfixit/LanCartographer/issues/25).
+
+Keep deferred cleanup proposals in
+[issue #26](https://github.com/cgfixit/LanCartographer/issues/26), with a concrete
+benefit and preserved behavior before implementing them. Retain historical
+verification records rather than deleting them because they are old.
+
+## Safety and reporting
 
 Changes must preserve the authorization gate, zero telemetry, platform
 security boundaries, and this notice wherever it is referenced:

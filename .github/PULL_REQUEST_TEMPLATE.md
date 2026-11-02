@@ -1,5 +1,5 @@
 <!--
-Keep the branch prefix kimi/<slug> (or grok/ / claude/ / codex/ per your tool).
+Use the branch prefix required by the active agent/user instructions.
 One concern per PR. Open as draft. Every section below is required.
 -->
 

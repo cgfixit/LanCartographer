@@ -8,7 +8,7 @@ owner's decision alone — agents do not change it either way.
 ## 1. Product
 
 LanCartographer is an **original** Windows 10/11 and macOS LAN & port inventory tool:
-Go 1.27.1, Fyne v2.8.1 GUI, and a stdlib-flag CLI sharing one scan engine.
+Go and Fyne (versions in `go.mod`), with a stdlib-flag CLI sharing one scan engine.
 It is authorization-gated and zero-telemetry. It is inspired by — and must
 credit, without implying affiliation — Advanced IP Scanner (Famatech),
 Angry IP Scanner, and Nmap. The CFAA authorization sentence governs
@@ -112,7 +112,8 @@ first). It defines a 4-minute read-only scan of the repo and a scoped
 multi-PR process (one concern per PR, drafts only). Follow its process
 rather than free-styling an audit. `/lan-optimizer` loads
 `.agents/skills/lan-optimizer/SKILL.md`, which adds branch topology and
-the draft-PR gate. `todo.txt` is the current deletion list.
+the draft-PR gate. `todo.txt` links the current work and deferred cleanup issues;
+dated verification records retain their original evidence and limits.
 
 ## 6. CI status notes
 

@@ -30,7 +30,7 @@ check. See the [session workflow](USER-GUIDE.md#save-a-baseline-and-compare-a-ch
 
 ## Rebuild from this tree
 
-The Go version is the `go` line in `go.mod` (currently 1.27.1). Windows also needs MSYS2 ucrt64 gcc and `goversioninfo`. macOS needs the Xcode Command Line Tools. Both builds enable CGO because the GUI uses Fyne.
+The Go version is the `go` line in [go.mod](go.mod). Windows also needs MSYS2 ucrt64 gcc and the pinned `goversioninfo` version in the [build instructions](README.md#build-from-source). macOS needs the Xcode Command Line Tools. Both builds enable CGO because the GUI uses Fyne. Build the checked-in module versions; maintainers updating them should follow [dependency maintenance](CONTRIBUTING.md#dependency-maintenance).
 
 From the repository root:
 

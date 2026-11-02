@@ -1,7 +1,7 @@
 # LanCartographer
 
-LanCartographer is a Windows and macOS LAN inventory tool written in Go (1.27) with a
-Fyne v2.8.1 GUI. It discovers the hosts on your local network and inventories
+LanCartographer is a Windows and macOS LAN inventory tool written in Go with a
+Fyne GUI. Build and dependency versions are pinned in [go.mod](go.mod). It discovers the hosts on your local network and inventories
 what each one exposes — open TCP ports, service identities, SMB shares, names,
 MAC vendors — and presents the result as a live, sortable table with a CLI for
 scripting. Windows builds are portable `.exe` files; macOS builds include a native `.app`
@@ -199,7 +199,10 @@ files. This first slice is GUI-only; existing CLI flags and exports are unchange
 
 ## Build from source
 
-Use the Go version in `go.mod` (currently Go 1.27.1) and a CGO C compiler.
+Use the Go version in `go.mod` (currently Go 1.27.3) and a CGO C compiler.
+The direct runtime dependencies are Fyne v2.8.2 and `golang.org/x/sys` v0.49.0.
+See [dependency maintenance](CONTRIBUTING.md#dependency-maintenance) for the
+manifest/checksum workflow and the remaining indirect/action update backlog.
 
 **macOS:** install Xcode Command Line Tools, then run:
 
@@ -343,7 +346,14 @@ this machine. CLI/CI evidence is separate from native GUI evidence.
 Saved sessions, comparison, redaction and evidence export were exercised in the
 native macOS app against an owned loopback service. See the
 [session verification record](docs/verification/sessions-2026-11-01.md) for
-before/after screenshots, focused checks and platform limits.
+before/after screenshots, focused checks and platform limits, including
+dark-theme, reused-address, narrower-profile and selected-only export cases.
+Remaining native platform and size-limit acceptance is tracked in
+[issue #24](https://github.com/cgfixit/LanCartographer/issues/24).
+The [documentation index](docs/README.md) keeps dated records tied to their
+tested source and artifact; an older pass does not verify a dependency update.
+The [dependency refresh record](docs/verification/dependencies-2026-11-01.md)
+covers the rebuilt Go 1.27.3/Fyne 2.8.2 package and native session dialogs.
 
 ## Roadmap
 
@@ -370,7 +380,7 @@ not affiliated with, sponsored by, or endorsed by any of them.
 
 ## In short
 
-The Fyne 2.8.1 GUI and the CLI are one Go 1.27.1 program, and both call `scan.Run`.
+The Fyne GUI and the CLI are one Go program, and both call `scan.Run`.
 A sweep uses at most 64 host workers and one dial limiter, 128 by default and 256 at the cap.
 Liveness dials the discovery ports and the selected scan ports, then checks ARP.
 On macOS, one bounded ICMP echo request is the final fallback for hosts without open TCP ports.
