@@ -33,7 +33,9 @@ labels: ["bug"]
 
 <!-- Paste relevant stderr/CLI output or describe GUI behavior. Redact IP and
      MAC addresses, host/share names, usernames, credentials, and other private
-     inventory data. -->
+     inventory data. Session JSON is unredacted; prefer synthetic fixtures.
+     For comparison failures, include completion states and the compatibility
+     reason. Review notes/screenshots even when report redaction is enabled. -->
 
 ## Authorization
 

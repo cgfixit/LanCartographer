@@ -8,6 +8,9 @@ scripting. Windows builds are portable `.exe` files; macOS builds include a nati
 and a CLI, in separate Apple Silicon and Intel archives. There is no installer,
 background service, or telemetry.
 
+For the GUI workflow, session comparison and troubleshooting, see the
+[User Guide](USER-GUIDE.md).
+
 ![LanCartographer inventory table — light theme (sample data)](screenshots/inventory-light.png)
 
 *Dark theme, one toggle away:*
@@ -54,7 +57,7 @@ networks you do not control.
 
 ## Why LanCartographer
 
-- **Offline-first, zero telemetry:** no analytics, no phone-home, no runtime downloads — the only traffic is the scan you asked for.
+- **Local workflow, zero telemetry:** no analytics, no phone-home or runtime downloads. Scans and explicitly selected network actions generate traffic; saved-session comparison stays local.
 - **Native packaging:** portable Windows executables and a macOS app bundle plus CLI; no background service.
 - **Changes with context:** saved sessions retain coverage and completion metadata, so an interrupted scan or a different site cannot silently become evidence of a removed device.
 - **No admin required to start:** Windows uses an `asInvoker` manifest with optional elevation; macOS runs as the current user.
@@ -183,8 +186,9 @@ addresses**. Keep it private. The report's default redaction withholds those
 identifiers and discovered text, using report-local aliases for selected changes.
 It retains timestamps, counts, port numbers and coverage, so it is not
 anonymization. Turning redaction off includes selected discovered values plus
-site/scope/source metadata. Operator notes are included as entered; review them
-for identifiers before sharing. Labels/reports sanitize controls and bound long
+site/scope/source metadata. Redaction applies to the report, not the on-screen
+comparison list or saved session JSON. Operator notes are included as entered;
+review them for identifiers before sharing. Labels/reports sanitize controls and bound long
 values; raw session JSON retains the original observations.
 
 Saving, opening, comparing and exporting do not scan, contact a service or upload
@@ -249,8 +253,9 @@ and is not committed.
   Wake-on-LAN sends a UDP packet only after confirmation.
 - **No phone-home.** Zero telemetry, zero analytics, no OUI-database downloads
   at runtime — the MAC-vendor (OUI) database is embedded in the binary and was
-  current when generated. The only network traffic the tool generates is the
-  scanning you asked for.
+  current when generated. Scans include name resolution through configured
+  resolvers, which may be off-LAN. Explicit Ping, Wake-on-LAN and desktop
+  actions can also generate traffic; opening or comparing saved sessions does not.
 - **Runs unelevated by design.** The Windows manifest requests `asInvoker`
   (never `requireAdministrator`); its elevation button is optional. macOS
   does not require root for the inventory workflow.
@@ -274,9 +279,8 @@ and is not committed.
     by Stop, with a one-second cap per probe. Unresponsive addresses can add
     that delay to discovery. Devices that block TCP and ICMP and lack an ARP
     cache entry can still be missed; a completed sweep is not a complete device census.
-- **Windows 7 / 8.1:** best-effort only. Go 1.21+ dropped support for those
-  releases, so Go-built binaries — including this one — cannot support them;
-  the manifest intentionally does not claim Windows 7 compatibility.
+- **Windows 7 / 8.1:** unsupported. The current Go toolchain and application
+  manifest target Windows 10/11; the manifest does not claim Windows 7 compatibility.
 - **Authenticode:** release builds should be code-signed so SmartScreen and AV
   heuristics do not flag an unsigned network-scanning binary. Recommended, not
   required — signing is not a build blocker.

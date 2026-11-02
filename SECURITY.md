@@ -42,8 +42,8 @@ release notes at your request.
 
 In scope:
 
-- The two distributed executables (`LanCartographer.exe`,
-  `lancartographer-cli.exe`) and their scan behavior.
+- The Windows GUI/CLI executables and macOS app/CLI, including scans,
+  imported session files and evidence exports.
 - The source in this repository, including the CGO build and the
   `internal/winutil` memory-unsafe surface.
 
@@ -60,10 +60,12 @@ Security-relevant behavior is documented in the README, including:
 
 - the **authorization gate** (`internal/authz`) that must confirm authorized
   use before any scan runs,
-- **argv-only subprocess launches** (argument arrays, never `shell=True`-style
-  command strings), and
-- **zero telemetry** — the tool sends nothing off the local network being
-  inventoried.
+- **bounded desktop actions** with parsed IP/port targets and platform-specific
+  argument builders (Windows Browser/Ping invoke `cmd`; macOS Ping uses Terminal
+  AppleScript), and
+- **zero telemetry** — no analytics, crash reports or runtime OUI downloads.
+  This does not mean all traffic stays on the LAN: authorized targets, DNS/name
+  resolution and explicit desktop/network actions determine destinations.
 
 Changes that weaken the authorization gate or fail-closed behavior are
 security regressions and will be treated as such.
@@ -75,3 +77,24 @@ Spreadsheet import behavior varies, and saving and reopening a CSV in Excel
 can remove text escapes. Keep untrusted inventories as text when editing or
 re-exporting them; this hardening does not guarantee safety across spreadsheet
 save/reopen cycles. See [OWASP's CSV injection guidance](https://owasp.org/www-community/attacks/CSV_Injection).
+
+## Saved sessions and evidence
+
+Session JSON contains full, unredacted inventory and local interface addresses.
+Saving is explicit; the app does not upload or automatically share these files.
+Reads reject unsupported schemas, inconsistent records and files over 8 MiB or
+65,536 hosts. Writes use a temporary file and rename, with modes `0600` for
+files and `0700` for new directories on macOS. These permissions are not
+application-level encryption; access also depends on the destination filesystem
+and its permissions.
+
+Comparison requires compatible completed sessions. Missing observations are
+not proof of an offline device, and session files are editable records rather
+than authenticated attestations. Plain-text evidence exports contain selected
+differences and coverage context, with no active HTML or remote assets.
+
+Report redaction is on by default. It withholds identifiers and discovered
+text but retains timing, counts and numeric probe settings; aliases are not
+anonymization. It does not redact the GUI comparison list, full session JSON,
+operator notes or screenshots. Inspect what you share, especially notes and
+reports exported with redaction disabled. See the [User Guide](USER-GUIDE.md#what-is-saved-and-what-is-shared).

@@ -53,11 +53,16 @@ Workflows: `actionlint .github/workflows/*.yml` (install with
   and an independent global dial budget (`probe.Limiter`, default 128,
   clamped to 256) shared by liveness and port dials.
 - **Per-host pipeline:** liveness (`discover`: fixed port set plus the
-  scan's ports, first connect wins, ARP fallback) → port probes (`probe`:
-  TCP, then HTTP/HTTPS title under the 1 s / 32 KiB / no-redirect / verified
+  scan's ports, first connect wins, ARP fallback, then bounded ICMP on macOS)
+  → port probes (`probe`: TCP, then HTTP/HTTPS title under the 1 s / 32 KiB / no-redirect / verified
   TLS limits) → enrichment (MAC via ARP, OUI vendor, SMB shares, name
   NetBIOS > mDNS > PTR where a better answer cancels the rest) → MAC-keyed
   name cache (`hostcache`).
+- **Saved sessions.** `internal/session` validates and stores explicit scan
+  snapshots, compares compatible completed sessions and renders selected
+  evidence. `gui/sessions.go` owns UI copies and reviewed export previews; it
+  does not replace live inventory or invoke probes. See `USER-GUIDE.md` for
+  compatibility and redaction limits.
 - **Platform split by build tags.** `winutil` carries `_windows.go` /
   `_darwin.go` / `_other.go` implementations and `gui/actions_*` the
   per-OS launch actions; Fyne files are `//go:build cgo`. `*_parse.go`
