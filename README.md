@@ -37,6 +37,8 @@ networks you do not control.
 | Right-click actions | Open host or share in Explorer (Windows) or Finder (macOS), open its web interface with the detected port, start Remote Desktop (Windows), run Ping, or send Wake-on-LAN (confirmation required) |
 | Export | Save the inventory as CSV or JSON from the File menu (the CLI has a `--json` flag); CSV prefixes formula-like cells with an apostrophe for spreadsheet import, while JSON preserves raw values |
 | Favorites | Save and reload the current host list as favorites |
+| Saved sessions | Explicitly save a finished scan with scope, profile, source interfaces, timestamps and completion state; reopen it without sending probes |
+| Before/after evidence | Compare compatible completed sessions, select individual differences, preview a plain-text report and export with identifiers and discovered text redacted by default |
 | Themes | The toolbar button next to Stop reads "Light on" or "Dark on" for the theme that is active. The choice is saved and restored on the next launch |
 | First-run notice | The authorization notice is shown in a dialog on first launch; a marker file records that you have seen it |
 | Elevation button | Windows only: an unelevated process offers an Elevate button and marks failed MAC lookup as needing elevation; macOS reads the ARP cache without this button |
@@ -54,6 +56,7 @@ networks you do not control.
 
 - **Offline-first, zero telemetry:** no analytics, no phone-home, no runtime downloads — the only traffic is the scan you asked for.
 - **Native packaging:** portable Windows executables and a macOS app bundle plus CLI; no background service.
+- **Changes with context:** saved sessions retain coverage and completion metadata, so an interrupted scan or a different site cannot silently become evidence of a removed device.
 - **No admin required to start:** Windows uses an `asInvoker` manifest with optional elevation; macOS runs as the current user.
 - **Authorization-gated ranges:** out-of-scope, non-RFC1918, or overly broad targets require explicit confirmation before a single packet is sent.
 - **Original UI:** a purpose-built live table and workflow, not a reskin of an existing scanner.
@@ -129,6 +132,8 @@ lancartographer.exe --cli --range 192.168.1.0/24 --json inventory.json
    subnets when `--range` is omitted. **Stop** cancels an active scan.
 4. Select a row for details, use Finder/Explorer or Browser actions, save
    favorites, or use **File → Export…** for CSV/JSON.
+5. Use **Sessions** to save a scan, compare it with a baseline and export
+   selected evidence. See the workflow below.
 
 Per-user data lives in `%AppData%\LanCartographer\` on Windows and
 `~/Library/Application Support/LanCartographer/` on macOS:
@@ -137,10 +142,56 @@ Per-user data lives in `%AppData%\LanCartographer\` on Windows and
 - `favorites.json` — saved host lists
 - `names.json` — persistent MAC-keyed hostname cache
 - `firstrun_seen` — first-run notice acknowledgment
+- `sessions/` — default destination for explicitly saved sessions and evidence reports
 
 An explicit absolute `APPDATA` overrides this location, including for isolated
 verification fixtures. The app does not fall back to writing in its working
 directory. New data directories use mode `0700` and files `0600` on macOS.
+
+## Saved sessions and selected evidence
+
+1. Complete an authorized GUI scan and open **Sessions**. Enter a site,
+   project or network context and an optional label, then **Save after session…**.
+   The save form supplies an absolute path; change it if needed. Nothing is
+   saved automatically. Existing destinations require a replacement confirmation.
+2. Make the intended network or service change, then scan the same scope again.
+   In the Sessions window, choose **Use current scan**, enter the same context,
+   and save the new session. **Open before…** loads the baseline;
+   **Open after…** can load a saved second session instead of the current scan.
+3. Select the differences relevant to your investigation. Review the plain-text
+   preview, add optional notes, and choose **Export selected evidence…**. The
+   export writes the preview you reviewed. Clearing the selection disables export.
+
+![Native session comparison and redacted evidence preview — owned loopback service](docs/verification/sessions-2026-11-01/after.jpg)
+
+Comparison requires both sessions to have completed, with matching site/context,
+requested range, probe profile, application version and recorded source
+interfaces/platform. The view explains mismatches and disables evidence export.
+Cancelled or failed scans can still be saved with their partial observations,
+but cannot supply a completed comparison. Loading favorites does not create a
+session or claim scan coverage.
+
+Differences are observations **at an IP address**, not permanent device identity.
+An address absent from a completed sweep is **not observed**, not proven offline;
+missing enrichment is **not recorded**, not proof that a service was removed.
+Names may come from the existing cache. Source metadata is a local interface
+snapshot; sockets still use OS routing, and routes/DNS settings are not captured.
+Session files are editable records, not independently authenticated attestations.
+
+Saved session JSON contains the **full unredacted inventory and local interface
+addresses**. Keep it private. The report's default redaction withholds those
+identifiers and discovered text, using report-local aliases for selected changes.
+It retains timestamps, counts, port numbers and coverage, so it is not
+anonymization. Turning redaction off includes selected discovered values plus
+site/scope/source metadata. Operator notes are included as entered; review them
+for identifiers before sharing. Labels/reports sanitize controls and bound long
+values; raw session JSON retains the original observations.
+
+Saving, opening, comparing and exporting do not scan, contact a service or upload
+anything. Files use a versioned schema, an 8 MiB limit and a 65,536-host limit;
+unsupported, malformed or inconsistent files are rejected. Existing favorites
+and CLI inventory JSON do not carry the required metadata and are not session
+files. This first slice is GUI-only; existing CLI flags and exports are unchanged.
 
 ## Build from source
 
@@ -253,6 +304,7 @@ One line per top-level package; all application code is under `internal/`
 | `internal/wol` | Wake-on-LAN magic-packet construction and broadcast send |
 | `internal/appdata` | Native per-user paths shared by the GUI and CLI |
 | `internal/favorites` | Atomic favorites persistence in the per-user directory |
+| `internal/session` | Bounded saved-session files, coverage-aware comparison and selected plain-text evidence |
 | `internal/export` | File export dispatch (CSV/JSON) |
 | `internal/hostcache` | The persistent MAC-keyed hostname cache (`names.json`) |
 | `tools/icongen` | Icon generator run by `go generate` to produce `app.ico` |
@@ -284,8 +336,18 @@ for evidence and limits. Intel GUI interaction, macOS 13 execution,
 authenticated SMB, and downloaded Gatekeeper acceptance were not verified on
 this machine. CLI/CI evidence is separate from native GUI evidence.
 
+Saved sessions, comparison, redaction and evidence export were exercised in the
+native macOS app against an owned loopback service. See the
+[session verification record](docs/verification/sessions-2026-11-01.md) for
+before/after screenshots, focused checks and platform limits.
+
 ## Roadmap
 
+- [Issue #22](https://github.com/cgfixit/LanCartographer/issues/22) records the
+  researched expansion plan for homelabs, small-office support, network and
+  cybersecurity professionals, and developers. Saved sessions and selected
+  change evidence are the first slice; service diagnostics and later ideas are
+  proposals, not shipped capabilities.
 - **No 3D.** A 3D visualization is intentionally absent: it adds GPU/driver
   complexity and installer weight for zero inventory value.
 
