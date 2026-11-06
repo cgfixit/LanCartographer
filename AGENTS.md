@@ -27,7 +27,7 @@ runs unelevated; an empty ARP cache is not evidence that root is needed.
 - `internal/` — one package per concern: `discover`, `probe`, `scan`,
   `model`, `authz`, `oui` (`oui_data.go` is generated AND intentionally
   checked in), `winutil`, `gui`, `cli`, `wol`, `favorites`,
-  `export`, `hostcache`, `appdata`.
+  `export`, `hostcache`, `appdata`, `session`.
 - `tools/icongen/` — icon/resource generator.
 - `tests/ci-gate.sh` — Windows-oriented full gate, also represented in CI.
 - `tests/macos-smoke.py` — owned loopback fixture exercising both packaged entry points.
@@ -59,6 +59,10 @@ runs unelevated; an empty ARP cache is not evidence that root is needed.
 - Fyne widgets are updated on the UI thread (`fyne.Do` from workers).
   Apply the saved theme before creating widgets; shared panel labels must
   respond to theme changes. Subprocess arguments are built in platform files.
+- `session` owns bounded saved snapshots, compatibility checks and selected
+  plain-text reports. GUI session copies never replace the live inventory.
+  Full JSON is unredacted; report redaction is on by default. Save/open/compare/
+  export do not invoke scans or probes. See `USER-GUIDE.md` for the workflow.
 - `appdata.Path` chooses the native per-user directory, with an absolute
   `APPDATA` override for Windows/fixtures. Never fall back to cwd. Persistence
   uses temporary files renamed into place; new directories are mode 0700.

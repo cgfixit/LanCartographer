@@ -9,7 +9,17 @@ Per-user data is not inside the binary. Leave this directory in place when you u
 - Windows: `%AppData%\LanCartographer\`
 - macOS: `~/Library/Application Support/LanCartographer/`
 
-That directory holds `settings.json`, `favorites.json`, `names.json`, and `firstrun_seen`. An absolute `APPDATA` value overrides the location. The app does not write this data into its working directory.
+That directory holds `settings.json`, `favorites.json`, `names.json`,
+`firstrun_seen`, and the default `sessions/` folder for explicitly saved sessions
+and evidence reports. An absolute `APPDATA` value overrides the location. The
+app does not write this data into its working directory.
+
+Back up saved sessions you want to retain, including files saved to custom
+paths. Session JSON is unredacted; store it privately. There is no automatic
+schema migration: unsupported session versions are rejected. Comparison also
+requires matching recorded application versions and probe profiles, so an
+upgrade may require a new baseline. Do not edit metadata just to bypass that
+check. See the [session workflow](USER-GUIDE.md#save-a-baseline-and-compare-a-change).
 
 ## Replace a downloaded build
 
@@ -30,4 +40,4 @@ bash deploy/build.sh
 
 Windows output is `dist/LanCartographer.exe` and `dist/lancartographer-cli.exe`. macOS output is `dist/LanCartographer`, `dist/lancartographer-cli`, `dist/LanCartographer.app`, and a zip named for the architecture. `deploy/build.sh` moves the checked-in Windows `resource.syso` aside on macOS and restores it on exit. `dist/` is build output and is not committed.
 
-For the code tour, read [USER-GUIDE.md](USER-GUIDE.md).
+For usage, session comparison and the code tour, read [USER-GUIDE.md](USER-GUIDE.md).
