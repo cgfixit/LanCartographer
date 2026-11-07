@@ -1,7 +1,7 @@
 # Documentation and verification
 
 Use the [README](../README.md) for features/builds, the
-[User Guide](../USER-GUIDE.md) for scan and session workflows,
+[User Guide](../USER-GUIDE.md) for scan, session and Internet Quality workflows,
 [update guide](../update-guide.md) for replacing builds, and
 [contributor guide](../CONTRIBUTING.md#dependency-maintenance) for dependency
 maintenance. [Support](../SUPPORT.md) and [security reporting](../SECURITY.md)
@@ -16,6 +16,7 @@ dependency set, native platform or downloaded release.
 | Record | Coverage |
 | --- | --- |
 | [Dependency refresh, 2026-11-01](verification/dependencies-2026-11-01.md) | Go 1.27.3/Fyne 2.8.2 package, owned CLI smoke, focused checks and native session dialogs/themes |
+| [Internet Quality, 2026-11-07](verification/internet-quality-2026-11-07.md) | Live Apple measurement, native stop/close, browser handoff and packaged loopback smoke |
 | [Saved sessions, 2026-11-01](verification/sessions-2026-11-01.md) | Owned service change, save/reload, coverage comparison, selected redaction/export, light/dark native interaction and explicit platform limits |
 | [macOS packaging and native workflow](macos-verification.md) | Packaged CLI and native GUI results at the recorded revisions |
 | [CSV export, 2026-10-13](csv-verification-2026-10-13.md) | Historical CSV escaping/formula-prefix verification |

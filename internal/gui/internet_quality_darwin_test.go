@@ -5,6 +5,7 @@ package gui
 import (
 	"context"
 	"errors"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -57,5 +58,22 @@ func TestInternetQualityProcessBounds(t *testing.T) {
 	}
 	if _, err := runQualityCommand(t.Context(), t.TempDir()+"/missing"); err == nil || !strings.Contains(err.Error(), "unavailable") {
 		t.Fatalf("missing command error = %v", err)
+	}
+}
+
+func TestInternetQualityScanWaitsForMeasurement(t *testing.T) {
+	u := newTestUI(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	job := &qualityJob{view: &qualityView{}, ctx: ctx, cancel: cancel, done: make(chan struct{})}
+	u.qualityJob = job
+	target := netip.MustParsePrefix("127.0.0.1/32")
+	u.startScan(target)
+	if ctx.Err() != context.Canceled || job.scanAfter != target {
+		t.Fatalf("scan did not cancel the measurement and queue its approved target: %v, %v", ctx.Err(), job.scanAfter)
+	}
+	u.startScan(netip.MustParsePrefix("127.0.0.2/32"))
+	if u.scanning || u.currentSession != nil || job.scanAfter != target {
+		t.Fatalf("scan changed inventory or replaced its queued target before reap: %v, %v", u.scanning, job.scanAfter)
 	}
 }
