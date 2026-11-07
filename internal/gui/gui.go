@@ -21,7 +21,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -566,30 +565,24 @@ func (u *ui) onLoadFavorites() {
 	u.refreshTable()
 }
 
-// onExport asks for a path (with .csv/.json filters) and writes the
-// current inventory through the export package.
+// onExport collects the destination without opening it before replacement.
 func (u *ui) onExport() {
-	fd := dialog.NewFileSave(func(wr fyne.URIWriteCloser, err error) {
-		if err != nil {
-			dialog.ShowError(err, u.win)
-			return
-		}
-		if wr == nil {
-			return // cancelled
-		}
-		path := wr.URI().Path()
-		wr.Close()
+	path, err := appdata.Path("inventory.csv")
+	if err != nil {
+		dialog.ShowError(err, u.win)
+		return
+	}
+	showSavePath(u.win, "Export inventory", path, func(path string) error {
 		format := "csv"
-		if strings.EqualFold(filepath.Ext(path), ".json") {
+		switch strings.ToLower(filepath.Ext(path)) {
+		case ".csv":
+		case ".json":
 			format = "json"
+		default:
+			return fmt.Errorf("export: enter a .csv or .json file path")
 		}
-		if err := export.ToFile(path, u.store.snapshot(), format); err != nil {
-			dialog.ShowError(err, u.win)
-		}
-	}, u.win)
-	fd.SetFilter(storage.NewExtensionFileFilter([]string{".csv", ".json"}))
-	fd.SetFileName("inventory.csv")
-	fd.Show()
+		return export.ToFile(path, u.store.snapshot(), format)
+	})
 }
 
 // onElevate relaunches the same executable elevated and exits this

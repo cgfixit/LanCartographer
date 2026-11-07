@@ -18,8 +18,10 @@ The second half of this guide is a code tour for Python and PowerShell users.
    available Browser, Finder/Explorer, Ping and Wake-on-LAN actions; Remote
    Desktop is Windows-only. These actions are explicit and may cause network
    traffic or open another application.
-3. Use **File → Export…** for a raw inventory in CSV or JSON. Favorites save a
-   host list for later viewing. Neither contains the coverage metadata needed
+3. Use **File → Export…** for a raw inventory in CSV or JSON. Enter an absolute
+   path ending in `.csv` or `.json` and confirm replacement if it exists. A
+   failed write leaves the prior export intact. Favorites save a host list
+   for later viewing. Neither contains the coverage metadata needed
    for session comparison; loading favorites also clears the current scan's
    session snapshot and is blocked while a scan is running.
 

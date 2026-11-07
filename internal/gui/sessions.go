@@ -267,14 +267,18 @@ func (v *sessionsView) export() {
 	v.savePath("Export selected evidence", "comparison-evidence.txt", func(path string) error { return session.WriteFile(path, data) })
 }
 
-// FileSave opens/truncates a destination before its callback. A path form keeps
-// replacement atomic and leaves an existing file untouched if encoding fails.
 func (v *sessionsView) savePath(title, name string, write func(string) error) {
 	path, err := appdata.Path(filepath.Join("sessions", name))
 	if err != nil {
 		dialog.ShowError(err, v.win)
 		return
 	}
+	showSavePath(v.win, title, path, write)
+}
+
+// FileSave truncates an existing file before its callback. Only the writer
+// should open a destination after the operator confirms replacement.
+func showSavePath(win fyne.Window, title, path string, write func(string) error) {
 	entry := widget.NewEntry()
 	entry.SetText(path)
 	entry.Validator = func(s string) error {
@@ -285,10 +289,10 @@ func (v *sessionsView) savePath(title, name string, write func(string) error) {
 	}
 	save := func(path string) {
 		if err := write(path); err != nil {
-			dialog.ShowError(err, v.win)
+			dialog.ShowError(err, win)
 			return
 		}
-		dialog.ShowInformation("Saved", path, v.win)
+		dialog.ShowInformation("Saved", path, win)
 	}
 	form := dialog.NewForm(title, "Save", "Cancel", []*widget.FormItem{widget.NewFormItem("File path", entry)}, func(ok bool) {
 		if !ok {
@@ -300,13 +304,13 @@ func (v *sessionsView) savePath(title, name string, write func(string) error) {
 				if yes {
 					save(path)
 				}
-			}, v.win)
+			}, win)
 		} else if !os.IsNotExist(err) {
-			dialog.ShowError(err, v.win)
+			dialog.ShowError(err, win)
 		} else {
 			save(path)
 		}
-	}, v.win)
+	}, win)
 	form.Resize(fyne.NewSize(850, 180))
 	form.Show()
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -113,5 +115,73 @@ func TestToFileCreatesParentDirs(t *testing.T) {
 	}
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("file not created under nested parents: %v", err)
+	}
+}
+
+func TestToFileReplacesExistingInventory(t *testing.T) {
+	for _, format := range []string{"csv", "json"} {
+		t.Run(format, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "inventory."+format)
+			if err := ToFile(path, testHosts(), format); err != nil {
+				t.Fatal(err)
+			}
+			if err := ToFile(path, testHosts()[:1], format); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Contains(data, []byte("192.168.1.10")) || bytes.Contains(data, []byte("192.168.1.20")) {
+				t.Fatalf("unexpected replacement: %s", data)
+			}
+		})
+	}
+}
+
+func TestToFileRejectsReadOnlyDestination(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "inventory.json")
+	prior := []byte("prior inventory")
+	if err := os.WriteFile(path, prior, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o400); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(path, 0o600) })
+
+	if err := ToFile(path, testHosts(), "json"); err == nil {
+		t.Fatal("read-only destination accepted")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(data, prior) {
+		t.Fatalf("prior export changed: %q, %v", data, err)
+	}
+}
+
+func TestWriteFileKeepsPriorInventoryOnWriteFailure(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inventory.json")
+	prior := []byte("prior inventory")
+	if err := os.WriteFile(path, prior, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writeErr := errors.New("fixture write failed")
+	err := writeFile(path, func(w io.Writer) error {
+		if _, err := io.WriteString(w, "incomplete inventory"); err != nil {
+			return err
+		}
+		return writeErr
+	})
+	if !errors.Is(err, writeErr) {
+		t.Fatalf("got %v, want %v", err, writeErr)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(data, prior) {
+		t.Fatalf("prior export changed: %q, %v", data, err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("staging file left behind: %v, %v", entries, err)
 	}
 }
