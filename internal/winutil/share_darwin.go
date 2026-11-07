@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 // NetShareEnum enumerates the shares advertised by the host at ip via
@@ -17,14 +16,17 @@ import (
 // authentication failure (a normal null-session result) maps to
 // ErrAccessDenied; any other failure is a generic error carrying the tool's
 // own message.
-func NetShareEnum(ip string, level int) ([]ShareInfo1, error) {
+func NetShareEnum(ctx context.Context, ip string, level int) ([]ShareInfo1, error) {
 	if level != 1 {
 		return nil, fmt.Errorf("winutil: NetShareEnum level %d not supported (level 1 only)", level)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, shareEnumTimeout)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "smbutil", "view", "//"+ip).CombinedOutput()
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		msg := strings.TrimSpace(string(out))
 		lower := strings.ToLower(msg)
 		if strings.Contains(lower, "authentication") ||

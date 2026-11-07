@@ -1,6 +1,11 @@
 package winutil
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
+
+const shareEnumTimeout = 5 * time.Second
 
 // ErrAccessDenied is returned (possibly wrapped) by NetShareEnum when the
 // remote host rejects the current credentials (ERROR_ACCESS_DENIED). A null

@@ -107,7 +107,7 @@ func defaultDeps(opts probe.Options) deps {
 		dial:       tcpDial(opts.DialTimeout),
 		arp:        arpPresent,
 		scan:       probe.ScanHost,
-		listShares: func(_ context.Context, ip netip.Addr) ([]model.Share, error) { return probe.ListShares(ip) },
+		listShares: probe.ListShares,
 		nbName:     probe.NetBIOSName,
 		mdnsName:   probe.MDNSName,
 		revName:    probe.ReverseName,
@@ -403,33 +403,21 @@ func (c *nameCache) put(mac, name string) {
 // never EventError. It reports false when the context was cancelled while
 // the enumeration was in flight.
 func probeShares(ctx context.Context, h *model.Host, em *emitter, d deps) bool {
-	type res struct {
-		shares []model.Share
-		err    error
-	}
-	ch := make(chan res, 1) // buffered: the abandoned goroutine never blocks
-	go func() {
-		s, err := d.listShares(ctx, h.IP)
-		ch <- res{s, err}
-	}()
-
-	var r res
-	select {
-	case r = <-ch:
-	case <-ctx.Done():
+	shares, err := d.listShares(ctx, h.IP)
+	if ctx.Err() != nil {
 		return false
 	}
 
 	switch {
-	case errors.Is(r.err, probe.ErrAccessDenied):
+	case errors.Is(err, probe.ErrAccessDenied):
 		deny := model.Share{Remark: "shares: access denied"}
 		h.Shares = []model.Share{deny}
 		em.send(Event{Kind: EventShareFound, Host: model.Host{IP: h.IP, Shares: []model.Share{deny}}})
-	case r.err != nil:
+	case err != nil:
 		// Unreachable host, RPC failure, etc.: degrade silently.
 	default:
-		h.Shares = r.shares
-		for _, s := range r.shares {
+		h.Shares = shares
+		for _, s := range shares {
 			em.send(Event{Kind: EventShareFound, Host: model.Host{IP: h.IP, Shares: []model.Share{s}}})
 		}
 	}

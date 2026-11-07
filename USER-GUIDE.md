@@ -241,8 +241,11 @@ and exit instead of taking new jobs, and blocked channel sends bail out via
 `select { case ch <- ev; case <-ctx.Done() }`. In PowerShell terms: one
 `CancellationTokenSource.Cancel()` that every `Wait-Any` in the system
 respects — including the ones queued behind the semaphore. This does not
-mean every OS operation is interruptible: the engine can stop awaiting SMB
-enumeration while the native call finishes; macOS `smbutil` has its own timeout.
+mean every OS operation is interruptible. On macOS, Stop cancels the
+`smbutil` child and waits for it to exit. On Windows, the app waits up to
+five seconds for each enumeration and Stop ends that wait early. An in-flight
+`NetShareEnum` call keeps its slot until Windows returns. If all 64 slots
+are occupied across scans, new hosts skip share enumeration.
 
 The `emitter` type (engine.go) deserves a mention: it wraps the outbound
 event channel in a mutex so concurrent workers can't interleave sends, and
