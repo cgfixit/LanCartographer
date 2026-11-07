@@ -390,10 +390,15 @@ go test -race ./internal/session -run '^TestSession' -count=1
 
 This checks library behavior, not native dialogs. GUI changes also need actual
 native interaction; see the [session verification record](docs/verification/sessions-2026-11-01.md)
-for the exercised workflow and limits. Fyne builds need CGO and the platform
+for the exercised workflow and limits, and
+[issue #24](https://github.com/cgfixit/LanCartographer/issues/24) for pending
+platform and size-limit acceptance. Fyne builds need CGO and the platform
 C toolchain. Use `bash deploy/build.sh` for packaging, especially on macOS where
 the checked-in Windows resource must be moved aside and restored.
 
 Hosted [CI](.github/workflows/ci.yml) runs the broad Windows and native
 arm64/Intel macOS build, vet and race checks, plus packaged CLI smoke checks on
 macOS. A cross-compile or packaged CLI pass does not verify native GUI behavior.
+For dependency/toolchain updates, follow
+[dependency maintenance](CONTRIBUTING.md#dependency-maintenance) and record
+new results against the actual rebuilt artifact.
