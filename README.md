@@ -44,8 +44,9 @@ Scan only networks you own or have explicit authorization to inventory. Unauthor
    choose to trust it. Do not disable Gatekeeper.
 3. Read the first-run notice, select or enter an authorized subnet, and click
    **Scan**. The GUI scans the selected range; the CLI discovers all local
-   subnets when `--range` is omitted. **Stop** cancels the scan. In-flight SMB
-   enumeration can continue after Stop. [Issue #29](https://github.com/cgfixit/LanCartographer/issues/29)
+   subnets when `--range` is omitted. **Stop** cancels the scan, including macOS
+   `smbutil` share enumeration. On Windows, an in-flight `NetShareEnum` call
+   can finish in the background; see the [User Guide](USER-GUIDE.md).
 4. Select a row for details, use Finder/Explorer or Browser actions, save
    favorites, or use **File → Export…** for CSV/JSON.
 5. Use **Sessions** to save a scan, compare it with a baseline and export

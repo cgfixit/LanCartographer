@@ -53,10 +53,11 @@ the service. The comparison above uses product documentation.
 - Carry forward the open native and size-limit acceptance in
   [#24](https://github.com/cgfixit/LanCartographer/issues/24). Record the actual
   package, platform, visibility limits, fixture and results. Keep baseline
-  maintenance separate from the viewer. The current review tracks failed
-  inventory replacement and cancellation of in-flight SMB enumeration in
-  [#28](https://github.com/cgfixit/LanCartographer/issues/28) and
-  [#29](https://github.com/cgfixit/LanCartographer/issues/29).
+  maintenance separate from the viewer. Failed inventory replacement
+  ([#28](https://github.com/cgfixit/LanCartographer/issues/28)) and
+  cancellation of in-flight SMB enumeration
+  ([#29](https://github.com/cgfixit/LanCartographer/issues/29)) are addressed
+  by #31 and #32; their native acceptance limits stay with those PRs.
 - Try the bundled `/usr/sbin/lsof` on the minimum and a current macOS version
   from a packaged app running as the current user. Use numeric endpoints and
   machine fields (`-nP -iTCP -iUDP -F0pcftPnT`). Measure latency and output
