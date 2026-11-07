@@ -6,7 +6,7 @@
 # goversioninfo resource is Windows-only) and builds unflagged Mach-O
 # binaries — see the Darwin branch below.
 #
-# Toolchain: Go 1.27+ on PATH, plus MSYS2 mingw-w64 gcc for CGO (Fyne) on
+# Toolchain: the Go version from go.mod on PATH, plus MSYS2 mingw-w64 gcc for CGO (Fyne) on
 # Windows; on macOS the system clang is used. Install the manifest tool
 # once with:
 #   go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0

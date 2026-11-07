@@ -321,6 +321,11 @@ smoke check. For a local change, run the affected behavior plus relevant
 formatting, lint, vet, and focused regression checks; broad regression coverage
 runs in GitHub Actions.
 
+For dependency updates, use the versions in [go.mod](go.mod) and follow the
+[maintenance checklist](CONTRIBUTING.md#dependency-maintenance). The
+[verification index](docs/README.md) links each record to the revision and
+artifact it exercised.
+
 On macOS, after building:
 
 ```bash
