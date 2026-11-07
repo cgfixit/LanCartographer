@@ -96,6 +96,9 @@ type ui struct {
 	currentSession *session.Session
 	scanDone       bool
 
+	qualityView *qualityView
+	qualityJob  *qualityJob
+
 	// table repaint coalescing: engine events fold into the store per event,
 	// but the sort+repaint is throttled so a fast scan costs O(events) store
 	// updates, not O(events x n log n) re-sorts. finishScan flushes.
@@ -139,6 +142,10 @@ func Run() error {
 	u.win.Show()
 	u.maybeFirstRun()
 	a.Run()
+	if job := u.qualityJob; job != nil {
+		job.cancel()
+		<-job.done
+	}
 	return nil
 }
 
@@ -307,24 +314,26 @@ func (u *ui) maybeRefreshTable() {
 	u.refreshTable()
 }
 
-// mainMenu is the window menu bar: File (export, favorites, quit) and Help
-// (About).
+// mainMenu adds the platform-specific Tools menu on macOS.
 func (u *ui) mainMenu() *fyne.MainMenu {
-	return fyne.NewMainMenu(
-		fyne.NewMenu("File",
-			fyne.NewMenuItem("Sessions…", u.onSessions),
-			fyne.NewMenuItem("Export…", u.onExport),
-			fyne.NewMenuItem("Save Favorites", u.onSaveFavorites),
-			fyne.NewMenuItem("Load Favorites", u.onLoadFavorites),
-			fyne.NewMenuItemSeparator(),
-			fyne.NewMenuItem("Quit", func() { u.app.Quit() }),
-		),
-		fyne.NewMenu("Help",
-			fyne.NewMenuItem("About LanCartographer", func() {
-				dialog.ShowInformation("About LanCartographer", aboutText(), u.win)
-			}),
-		),
+	file := fyne.NewMenu("File",
+		fyne.NewMenuItem("Sessions…", u.onSessions),
+		fyne.NewMenuItem("Export…", u.onExport),
+		fyne.NewMenuItem("Save Favorites", u.onSaveFavorites),
+		fyne.NewMenuItem("Load Favorites", u.onLoadFavorites),
+		fyne.NewMenuItemSeparator(),
+		fyne.NewMenuItem("Quit", func() { u.app.Quit() }),
 	)
+	help := fyne.NewMenu("Help",
+		fyne.NewMenuItem("About LanCartographer", func() {
+			dialog.ShowInformation("About LanCartographer", aboutText(), u.win)
+		}),
+	)
+	if runtime.GOOS == "darwin" {
+		tools := fyne.NewMenu("Tools", fyne.NewMenuItem("Internet Quality…", u.showInternetQuality))
+		return fyne.NewMainMenu(file, tools, help)
+	}
+	return fyne.NewMainMenu(file, help)
 }
 
 // aboutText is the About box body: version, license, authorization notice,
@@ -424,11 +433,20 @@ func (u *ui) startScan(target netip.Prefix) {
 	if u.scanning {
 		return
 	}
+	if job := u.qualityJob; job != nil {
+		if !job.scanAfter.IsValid() {
+			job.scanAfter = target
+			u.scanBtn.Disable()
+			u.cancelInternetQuality()
+		}
+		return
+	}
 	u.table.UnselectAll()
 	u.store = newHostStore()
 	u.selectedIP = ""
 	u.lastPrefix = target
 	u.scanning = true
+	u.refreshQualityControls()
 	u.started = time.Now()
 	u.scanBtn.Disable()
 	u.stopBtn.Enable()
@@ -523,6 +541,7 @@ func (u *ui) finishScan() {
 		u.tickStop = nil
 	}
 	u.scanning = false
+	u.refreshQualityControls()
 	u.cancel = nil
 	u.scanBtn.Enable()
 	u.stopBtn.Disable()

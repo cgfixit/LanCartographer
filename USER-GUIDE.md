@@ -98,6 +98,30 @@ background monitoring, automatic upload or session migration.
 | Unsupported/invalid file | Use a saved session from a compatible build, within the file limits. Raw inventory JSON is not a session. |
 | Notes too long | Keep report notes within 2,000 UTF-8 bytes. |
 
+## Measure Internet Quality on macOS
+
+1. Choose **Tools → Internet Quality…**.
+2. Choose **Run Apple test…** and confirm the Apple traffic and data-use
+   disclosure. The test can saturate the connection. Use an unmetered link.
+3. Read download and upload capacity in decimal Mbps, idle latency in
+   milliseconds, and responsiveness under load in round trips per minute
+   (RPM). Lower idle latency and higher RPM indicate a more responsive path.
+   The result shows the observed interface when Apple reports it.
+
+The window shows elapsed time during the measurement. Use **Stop** or close
+the window to cancel. The app allows one Apple test at a time and limits it
+to 45 seconds. That duration does not set a data allowance. The test is
+unavailable during an inventory scan. Starting an authorized scan during
+a test ends the test before the scan starts.
+
+If Apple returns an error, check that the Mac can reach the Internet and
+try again. **Open Cloudflare in browser…** shows a separate disclosure and
+hands the test to your default browser. Cloudflare receives your public IP,
+shares anonymized measurement data and says a run can use up to 200 MB.
+The browser manages its own results. No tools need to be installed.
+[Apple Network Quality](https://support.apple.com/en-us/101942),
+[Cloudflare Speed Test](https://speed.cloudflare.com/).
+
 ## Code tour for Python and PowerShell users
 
 The rest of this guide connects Go concepts to familiar Python and PowerShell

@@ -98,3 +98,13 @@ text but retains timing, counts and numeric probe settings; aliases are not
 anonymization. It does not redact the GUI comparison list, full session JSON,
 operator notes or screenshots. Inspect what you share, especially notes and
 reports exported with redaction disabled. See the [User Guide](USER-GUIDE.md#what-is-saved-and-what-is-shared).
+
+## Internet Quality
+
+On macOS, the optional Internet Quality test sends active measurement
+traffic to Apple only after the operator confirms the provider and data
+use. The app invokes the system utility with fixed arguments and a
+deadline. Results stay in memory and are excluded from saved sessions,
+inventory exports and application logs. The separate Cloudflare action
+opens the provider's HTTPS page in the default browser after confirmation.
+Cloudflare applies its own [measurement privacy policy](https://speed.cloudflare.com/).
