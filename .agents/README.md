@@ -22,3 +22,7 @@ Copilot, or any future tool. It is not tied to one product's config format.
   library it points into.
 - Nothing in this folder is imported or executed by the application build.
   It is documentation and procedure only.
+- For dependency or toolchain changes, use `go.mod` and the pinned workflow
+  references as the version sources; follow
+  [dependency maintenance](../CONTRIBUTING.md#dependency-maintenance).
+  Keep dated verification records tied to their tested artifacts.
