@@ -1,19 +1,21 @@
 # LanCartographer
 
-LanCartographer is a Windows and macOS LAN inventory tool written in Go (1.27) with a
-Fyne v2.8.1 GUI. It discovers the hosts on your local network and inventories
-what each one exposes — open TCP ports, service identities, SMB shares, names,
-MAC vendors — and presents the result as a live, sortable table with a CLI for
-scripting. Windows builds are portable `.exe` files; macOS builds include a native `.app`
-and a CLI, in separate Apple Silicon and Intel archives. There is no installer,
-background service, or telemetry.
+LanCartographer is a local network inventory and change-verification tool for
+macOS and Windows. Use it to find a printer or NAS, inspect the TCP services a
+lab host exposes, or check what changed after maintenance. Scan an authorized
+IPv4 range, save a baseline in the GUI, and compare it with a later scan that
+used the same scope and profile. The comparison lets you select the changes
+you need and export a redacted report.
 
-For the GUI workflow, session comparison and troubleshooting, see the
-[User Guide](USER-GUIDE.md).
+The desktop app streams results as it scans. The CLI shares the scan engine
+and can write JSON for scripts. Both run on demand, with no LanCartographer
+account, background service, or telemetry.
+
+[Quick start](#quick-start) · [User Guide](USER-GUIDE.md) ·
+[CLI reference](#cli-reference) · [Build from source](#build-from-source) ·
+[Roadmap](#roadmap)
 
 ![LanCartographer inventory table — light theme (sample data)](screenshots/inventory-light.png)
-
-*Dark theme, one toggle away:*
 
 ![LanCartographer inventory table — dark theme (sample data)](screenshots/inventory-dark.png)
 
@@ -24,16 +26,66 @@ no real network data.
 
 Scan only networks you own or have explicit authorization to inventory. Unauthorized access or scanning may violate the Computer Fraud and Abuse Act, 18 U.S.C. § 1030, and similar laws.
 
-LanCartographer is an inventory aid for your own infrastructure. It is not a
-vulnerability scanner, an exploitation framework, or a reconnaissance tool for
-networks you do not control.
+## Quick start
+
+1. [Build from source](#build-from-source) or, when a tagged release is
+   available, download its assets from
+   [GitHub Releases](https://github.com/cgfixit/LanCartographer/releases).
+   Windows assets are `LanCartographer.exe`, `lancartographer-cli.exe`,
+   `LICENSE`, and `SHA256SUMS.txt`. Keep the license with redistributed binaries.
+   macOS archives are `LanCartographer-macos-arm64.zip` for Apple Silicon and
+   `LanCartographer-macos-amd64.zip` for Intel. Each Mac archive contains
+   `LanCartographer.app`, `lancartographer-cli`, `LICENSE`, and `SHA256SUMS.txt`.
+   The app also includes the license in `Contents/Resources`.
+2. On Windows, run the GUI executable. On macOS, extract the matching archive
+   and open `LanCartographer.app`. The Mac bundle is ad-hoc signed, **not
+   Developer ID signed or notarized**; macOS may block a downloaded build.
+   Verify its provenance and follow macOS Privacy & Security approval if you
+   choose to trust it. Do not disable Gatekeeper.
+3. Read the first-run notice, select or enter an authorized subnet, and click
+   **Scan**. The GUI scans the selected range; the CLI discovers all local
+   subnets when `--range` is omitted. **Stop** cancels the scan, including macOS
+   `smbutil` share enumeration. On Windows, an in-flight `NetShareEnum` call
+   can finish in the background; see the [User Guide](USER-GUIDE.md).
+4. Select a row for details, use Finder/Explorer or Browser actions, save
+   favorites, or use **File → Export…** for CSV/JSON.
+5. Use **Sessions** to save a scan, compare it with a baseline and export
+   selected evidence. See the workflow below.
+
+Per-user data lives in `%AppData%\LanCartographer\` on Windows and
+`~/Library/Application Support/LanCartographer/` on macOS:
+
+- `settings.json` — theme preference
+- `favorites.json` — saved host lists
+- `names.json` — persistent MAC-keyed hostname cache
+- `firstrun_seen` — first-run notice acknowledgment
+- `sessions/` — default destination for explicitly saved sessions and evidence reports
+
+An explicit absolute `APPDATA` overrides this location, including for isolated
+verification fixtures. The app does not fall back to writing in its working
+directory. New data directories use mode `0700` and files `0600` on macOS.
+
+## Why LanCartographer
+
+- **Find the right device.** On an authorized subnet, locate a printer or NAS
+  by its address, reported name, or vendor. Inspect its open ports and use the
+  Browser or Finder/Explorer action when available. Missing names or vendors
+  are common when a device does not respond to an enrichment probe.
+- **Verify maintenance.** Save a baseline before a firmware update or service
+  move. Scan the same scope afterward, compare the two sessions, and select
+  just the port or host observations relevant to the change. Preview the
+  report before attaching it to a ticket.
+- **Run a repeatable inventory.** Pass an explicit range and port list to the
+  CLI and save JSON for a local script. The output records what was observed
+  from the scanning computer. Use GUI sessions when the handoff needs
+  coverage, completion state and comparison context.
 
 ## Features
 
 | Area | What you get |
 |---|---|
 | Live scan | Scan the selected IPv4 subnet (or an explicitly entered range); hosts and open ports appear in the table while the scan is still running, with a progress bar and per-host events |
-| Sortable table | Seven columns (status, Name, IP, MAC, Vendor, Ports, Shares); click any header to sort; column widths are computed from window width with per-column minimums |
+| Sortable table | Sort by status, name, IP, MAC, vendor, ports or shares and select a host for details |
 | Port states | Every probed port reports `open`, `closed`, or `timeout`; open ports carry a service label (smb, http, rdp, …), web ports receive a bounded HTTP/HTTPS title probe; unrecognized services receive an HTTP probe that can identify additional web devices |
 | Share enumeration | SMB shares listed via Windows `NetShareEnum` or macOS `smbutil`; a host that denies the enumeration shows an explicit "access denied" marker instead of an empty list |
 | Name resolution | NetBIOS, mDNS, and reverse DNS (PTR) run at the same time. The highest-priority answer wins (NetBIOS, then mDNS, then PTR) and the slower lookups are cancelled. Resolved names are persisted in a MAC-keyed cache so silent devices keep their names across scans |
@@ -42,7 +94,7 @@ networks you do not control.
 | Favorites | Save and reload the current host list as favorites |
 | Saved sessions | Explicitly save a finished scan with scope, profile, source interfaces, timestamps and completion state; reopen it without sending probes |
 | Before/after evidence | Compare compatible completed sessions, select individual differences, preview a plain-text report and export with identifiers and discovered text redacted by default |
-| Themes | The toolbar button next to Stop reads "Light on" or "Dark on" for the theme that is active. The choice is saved and restored on the next launch |
+| Themes | Switch between light and dark themes and retain the choice across launches |
 | First-run notice | The authorization notice is shown in a dialog on first launch; a marker file records that you have seen it |
 | Elevation button | Windows only: an unelevated process offers an Elevate button and marks failed MAC lookup as needing elevation; macOS reads the ARP cache without this button |
 
@@ -54,15 +106,6 @@ networks you do not control.
 - **Port probes:** each port gets a TCP connect with an exact result — `open`, `closed`, or `timeout`; open ports carry a service label, known web ports get an HTTP/HTTPS title probe, and unrecognized ones get an HTTP probe that can identify a web service. Each request is capped at one second and 32 KiB, follows no redirects, and verifies TLS certificates.
 - **Enrichment:** SMB shares are listed via Windows `NetShareEnum` level 1 or macOS `smbutil`. Names come from NetBIOS, then mDNS, then DNS PTR. A higher-priority answer cancels the lookups still running. The chosen name is stored in a MAC-keyed cache.
 - **Live events:** the engine streams per-host events over a channel, so the Fyne GUI table fills in while the scan is still running.
-
-## Why LanCartographer
-
-- **Local workflow, zero telemetry:** no analytics, no phone-home or runtime downloads. Scans and explicitly selected network actions generate traffic; saved-session comparison stays local.
-- **Native packaging:** portable Windows executables and a macOS app bundle plus CLI; no background service.
-- **Changes with context:** saved sessions retain coverage and completion metadata, so an interrupted scan or a different site cannot silently become evidence of a removed device.
-- **No admin required to start:** Windows uses an `asInvoker` manifest with optional elevation; macOS runs as the current user.
-- **Authorization-gated ranges:** out-of-scope, non-RFC1918, or overly broad targets require explicit confirmation before a single packet is sent.
-- **Original UI:** a purpose-built live table and workflow, not a reskin of an existing scanner.
 
 ## CLI reference
 
@@ -115,42 +158,6 @@ lancartographer-cli.exe --cli --range 192.168.1.0/24 --ports 22,80,443,3389 --ti
 lancartographer.exe --cli --range 192.168.1.0/24 --json inventory.json
 ```
 
-## Quick start
-
-1. Build from source below, or download an available version's assets from
-   [GitHub Releases](https://github.com/cgfixit/LanCartographer/releases).
-   Windows assets are `LanCartographer.exe`, `lancartographer-cli.exe`,
-   `LICENSE`, and `SHA256SUMS.txt`. Keep the license with redistributed binaries.
-   macOS archives are `LanCartographer-macos-arm64.zip` for Apple Silicon and
-   `LanCartographer-macos-amd64.zip` for Intel. Each Mac archive contains
-   `LanCartographer.app`, `lancartographer-cli`, `LICENSE`, and `SHA256SUMS.txt`.
-   The app also includes the license in `Contents/Resources`.
-2. On Windows, run the GUI executable. On macOS, extract the matching archive
-   and open `LanCartographer.app`. The Mac bundle is ad-hoc signed, **not
-   Developer ID signed or notarized**; macOS may block a downloaded build.
-   Verify its provenance and follow macOS Privacy & Security approval if you
-   choose to trust it. Do not disable Gatekeeper.
-3. Read the first-run notice, select or enter an authorized subnet, and click
-   **Scan**. The GUI scans the selected range; the CLI discovers all local
-   subnets when `--range` is omitted. **Stop** cancels an active scan.
-4. Select a row for details, use Finder/Explorer or Browser actions, save
-   favorites, or use **File → Export…** for CSV/JSON.
-5. Use **Sessions** to save a scan, compare it with a baseline and export
-   selected evidence. See the workflow below.
-
-Per-user data lives in `%AppData%\LanCartographer\` on Windows and
-`~/Library/Application Support/LanCartographer/` on macOS:
-
-- `settings.json` — theme preference
-- `favorites.json` — saved host lists
-- `names.json` — persistent MAC-keyed hostname cache
-- `firstrun_seen` — first-run notice acknowledgment
-- `sessions/` — default destination for explicitly saved sessions and evidence reports
-
-An explicit absolute `APPDATA` overrides this location, including for isolated
-verification fixtures. The app does not fall back to writing in its working
-directory. New data directories use mode `0700` and files `0600` on macOS.
-
 ## Saved sessions and selected evidence
 
 1. Complete an authorized GUI scan and open **Sessions**. Enter a site,
@@ -199,7 +206,7 @@ files. This first slice is GUI-only; existing CLI flags and exports are unchange
 
 ## Build from source
 
-Use the Go version in `go.mod` (currently Go 1.27.1) and a CGO C compiler.
+Use the Go version and dependencies in [go.mod](go.mod) and a CGO C compiler.
 
 **macOS:** install Xcode Command Line Tools, then run:
 
@@ -352,38 +359,20 @@ before/after screenshots, focused checks and platform limits.
 
 ## Roadmap
 
-- [Issue #22](https://github.com/cgfixit/LanCartographer/issues/22) records the
-  researched expansion plan for homelabs, small-office support, network and
-  cybersecurity professionals, and developers. Saved sessions and selected
-  change evidence are the first slice; service diagnostics and later ideas are
-  proposals, not shipped capabilities.
-- **No 3D.** A 3D visualization is intentionally absent: it adds GPU/driver
-  complexity and installer weight for zero inventory value.
+[Issue #22](https://github.com/cgfixit/LanCartographer/issues/22) tracks the
+wider roadmap. The [network workbench plan](docs/network-workbench-roadmap.md)
+proposes a macOS-first Connections window for inspecting local TCP/UDP
+endpoints, followed by inventory links, focused diagnostics, Windows support,
+and bounded service discovery and monitoring. These are proposed capabilities.
 
 ## Inspiration and similar tools
 
-LanCartographer's feature set was inspired by well-known tools in the LAN
-scanning space — thank you to their authors and communities:
+LanCartographer is an independent implementation inspired by
+[Advanced IP Scanner](https://www.advanced-ip-scanner.com/) (Famatech),
+[Angry IP Scanner](https://angryip.org/), and [Nmap](https://nmap.org/).
+LanCartographer has no affiliation with these projects.
 
-- [Advanced IP Scanner](https://www.advanced-ip-scanner.com/) (Famatech)
-- [Angry IP Scanner](https://angryip.org/)
-- [Nmap](https://nmap.org/)
-
-LanCartographer is an independent, original implementation. No code, artwork,
-branding, or layout is borrowed from these projects, and LanCartographer is
-not affiliated with, sponsored by, or endorsed by any of them.
-
-## In short
-
-The Fyne 2.8.1 GUI and the CLI are one Go 1.27.1 program, and both call `scan.Run`.
-A sweep uses at most 64 host workers and one dial limiter, 128 by default and 256 at the cap.
-Liveness dials the discovery ports and the selected scan ports, then checks ARP.
-On macOS, one bounded ICMP echo request is the final fallback for hosts without open TCP ports.
-Each port probe is a TCP connect that records `open`, `closed`, or `timeout`.
-A prefix that is off-link, outside RFC 1918, or wider than a `/22` does not scan until the operator confirms it.
-The binary keeps its config in the per-user directory and does not send telemetry.
-
-Replace an existing build by following [update-guide.md](update-guide.md).
+To replace an existing build, see the [update guide](update-guide.md).
 
 ## License
 

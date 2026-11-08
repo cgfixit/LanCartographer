@@ -25,6 +25,7 @@ dependency set, native platform or downloaded release.
 ## Pending work
 
 - [#22: roadmap](https://github.com/cgfixit/LanCartographer/issues/22), including first-slice progress and later proposals.
+- [Network workbench plan](network-workbench-roadmap.md): proposed macOS-first Connections window and later phases; no implementation yet.
 - [#24: native platform and size-limit acceptance](https://github.com/cgfixit/LanCartographer/issues/24).
 - [#25: indirect dependency and action-major review](https://github.com/cgfixit/LanCartographer/issues/25).
 - [#26: legacy cleanup decisions](https://github.com/cgfixit/LanCartographer/issues/26).
