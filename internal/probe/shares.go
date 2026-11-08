@@ -1,6 +1,7 @@
 package probe
 
 import (
+	"context"
 	"net/netip"
 
 	"github.com/local/lancartographer/internal/model"
@@ -25,8 +26,8 @@ const (
 // NetShareEnum info level 1 (name, type, remark — never share contents).
 // Hidden admin shares (STYPE_SPECIAL) and non disk/print/ipc types are
 // filtered out. An access-denied remote yields ErrAccessDenied.
-func ListShares(ip netip.Addr) ([]model.Share, error) {
-	infos, err := winutil.NetShareEnum(ip.String(), 1)
+func ListShares(ctx context.Context, ip netip.Addr) ([]model.Share, error) {
+	infos, err := winutil.NetShareEnum(ctx, ip.String(), 1)
 	if err != nil {
 		return nil, err
 	}

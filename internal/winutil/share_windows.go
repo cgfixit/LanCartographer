@@ -3,6 +3,7 @@
 package winutil
 
 import (
+	"context"
 	"fmt"
 	"unsafe"
 
@@ -30,12 +31,52 @@ type shareInfo1Raw struct {
 	remark  *uint16
 }
 
+// Keep a slot until the synchronous API returns, even after Stop. A new
+// scan can skip SMB enrichment when earlier calls still occupy every slot.
+var shareEnumSlots = make(chan struct{}, 64)
+
 // NetShareEnum enumerates the shares advertised by the host at ip via
 // netapi32 NetShareEnum. Only info level 1 is supported (name, type, remark).
 // The current user token is used as-is; alternate credentials are never
 // tried. ERROR_ACCESS_DENIED (a normal null-session result) maps to
 // ErrAccessDenied.
-func NetShareEnum(ip string, level int) ([]ShareInfo1, error) {
+func NetShareEnum(ctx context.Context, ip string, level int) ([]ShareInfo1, error) {
+	ctx, cancel := context.WithTimeout(ctx, shareEnumTimeout)
+	defer cancel()
+	return awaitShareEnum(ctx, func() ([]ShareInfo1, error) { return netShareEnum(ip, level) })
+}
+
+func awaitShareEnum(ctx context.Context, enumerate func() ([]ShareInfo1, error)) ([]ShareInfo1, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	select {
+	case shareEnumSlots <- struct{}{}:
+	default:
+		return nil, fmt.Errorf("winutil: SMB enumeration is busy")
+	}
+	type result struct {
+		shares []ShareInfo1
+		err    error
+	}
+	done := make(chan result, 1)
+	go func() {
+		r := result{err: ctx.Err()}
+		if r.err == nil {
+			r.shares, r.err = enumerate()
+		}
+		<-shareEnumSlots
+		done <- r
+	}()
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case r := <-done:
+		return r.shares, r.err
+	}
+}
+
+func netShareEnum(ip string, level int) ([]ShareInfo1, error) {
 	if level != 1 {
 		return nil, fmt.Errorf("winutil: NetShareEnum level %d not supported (level 1 only)", level)
 	}

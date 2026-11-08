@@ -2,9 +2,12 @@
 
 package winutil
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
-// NetShareEnum is implemented only on Windows.
-func NetShareEnum(ip string, level int) ([]ShareInfo1, error) {
-	return nil, errors.New("winutil: NetShareEnum is only supported on Windows")
+// NetShareEnum is implemented on macOS and Windows.
+func NetShareEnum(_ context.Context, ip string, level int) ([]ShareInfo1, error) {
+	return nil, errors.New("winutil: NetShareEnum is only supported on macOS and Windows")
 }
