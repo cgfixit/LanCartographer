@@ -9,14 +9,10 @@ import (
 	"net"
 	"net/netip"
 	"strconv"
-	"strings"
 
 	"github.com/local/lancartographer/internal/model"
 	"github.com/local/lancartographer/internal/probe"
 )
-
-// specPorts is the spec port set; it must include 445 (SMB) and 3389 (RDP).
-const specPorts = "21,22,23,80,135,139,443,445,515,631,3389,5357,8080,8443,9100"
 
 // themeModeLabel is the toolbar caption for the theme that is active.
 // Anything other than "dark" is light, matching applyTheme.
@@ -27,34 +23,9 @@ func themeModeLabel(mode string) string {
 	return "Light on"
 }
 
-// parsePorts parses a comma-separated port list, deduplicating while
-// preserving order. Entries must be integers in 1..65535.
-func parsePorts(s string) ([]int, error) {
-	var out []int
-	seen := map[int]bool{}
-	for _, part := range strings.Split(s, ",") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-		n, err := strconv.Atoi(part)
-		if err != nil || n < 1 || n > 65535 {
-			return nil, fmt.Errorf("invalid port %q", part)
-		}
-		if !seen[n] {
-			seen[n] = true
-			out = append(out, n)
-		}
-	}
-	if len(out) == 0 {
-		return nil, fmt.Errorf("no ports given")
-	}
-	return out, nil
-}
-
 // defaultPorts returns the spec port set as a slice.
 func defaultPorts() []int {
-	ports, err := parsePorts(specPorts)
+	ports, err := probe.ParsePorts(probe.DefaultPortsCSV)
 	if err != nil {
 		panic("spec port set must parse: " + err.Error())
 	}

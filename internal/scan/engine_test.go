@@ -152,9 +152,6 @@ func TestRun_HostFoundEnriched(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 
-	if got := countKind(evs, EventError); got != 0 {
-		t.Fatalf("no EventError expected, got %d", got)
-	}
 	if got := countKind(evs, EventHostFound); got != 1 {
 		t.Fatalf("exactly one EventHostFound expected, got %d", got)
 	}
@@ -250,9 +247,6 @@ func TestRun_AccessDeniedShareIsNotError(t *testing.T) {
 	evs, err := runCollect(context.Background(), target, opts, d)
 	if err != nil {
 		t.Fatalf("run: %v (access denied must not fail the run)", err)
-	}
-	if got := countKind(evs, EventError); got != 0 {
-		t.Fatalf("EventError count = %d, want 0 (R10: access denied is a share, not an error)", got)
 	}
 	if got := countKind(evs, EventShareFound); got != 1 {
 		t.Fatalf("EventShareFound count = %d, want exactly the synthetic denial share", got)
@@ -464,7 +458,7 @@ func TestRun_DeadHosts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	for _, k := range []EventKind{EventHostFound, EventPortFound, EventShareFound, EventError} {
+	for _, k := range []EventKind{EventHostFound, EventPortFound, EventShareFound} {
 		if got := countKind(evs, k); got != 0 {
 			t.Errorf("kind %d count = %d, want 0", k, got)
 		}

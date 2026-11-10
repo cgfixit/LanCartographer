@@ -41,9 +41,6 @@ const (
 	EventProgress
 	// EventDone is the final event (Progress=1) on full completion.
 	EventDone
-	// EventError is reserved for engine-level failures; per-host failures
-	// never produce it.
-	EventError
 )
 
 // Event is one unit of scan output on the Run channel.
@@ -51,7 +48,6 @@ type Event struct {
 	Kind     EventKind
 	Host     model.Host
 	Progress float64
-	Err      error
 }
 
 // maxHostsInFlight bounds concurrent per-host processing (R8: a /24 must
@@ -399,9 +395,8 @@ func (c *nameCache) put(mac, name string) {
 }
 
 // probeShares enumerates the host's shares and emits one live EventShareFound
-// per share. Access denied yields a single synthetic denial share (R10),
-// never EventError. It reports false when the context was cancelled while
-// the enumeration was in flight.
+// per share. Access denied yields a single synthetic denial share (R10). It
+// reports false when cancellation interrupts enumeration.
 func probeShares(ctx context.Context, h *model.Host, em *emitter, d deps) bool {
 	shares, err := d.listShares(ctx, h.IP)
 	if ctx.Err() != nil {

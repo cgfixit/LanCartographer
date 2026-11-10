@@ -101,10 +101,9 @@ type ui struct {
 	// table repaint coalescing: engine events fold into the store per event,
 	// but the sort+repaint is throttled so a fast scan costs O(events) store
 	// updates, not O(events x n log n) re-sorts. finishScan flushes.
-	lastRefresh  time.Time
-	refreshDirty bool
-	throttle     time.Duration
-	repaints     int // test hook: counts full refreshTable invocations
+	lastRefresh time.Time
+	throttle    time.Duration
+	repaints    int // test hook: counts full refreshTable invocations
 
 	// table sorting (column index into tableColumns)
 	sortCol int
@@ -296,17 +295,13 @@ func (u *ui) refreshTable() {
 	u.refreshStatus()
 	u.updateEmptyHint()
 	u.lastRefresh = time.Now()
-	u.refreshDirty = false
 	u.repaints++
 }
 
-// maybeRefreshTable coalesces repaint requests during a scan: within the
-// throttle window it marks the table dirty (flushed by the next full
-// refresh, and always by finishScan) but still updates the empty-table
-// hint, which is cheap and must track store emptiness exactly.
+// maybeRefreshTable updates only the empty-state hint inside the throttle
+// window. The next full refresh, including finishScan, renders the inventory.
 func (u *ui) maybeRefreshTable() {
 	if u.throttle > 0 && time.Since(u.lastRefresh) < u.throttle {
-		u.refreshDirty = true
 		u.updateEmptyHint()
 		return
 	}
@@ -518,11 +513,6 @@ func (u *ui) applyEvent(ev scan.Event) {
 		if u.currentSession != nil {
 			u.currentSession.Progress = ev.Progress
 		}
-	case scan.EventError:
-		if ev.Err != nil {
-			u.statusErr.SetText(ev.Err.Error())
-		}
-		u.refreshTable()
 	case scan.EventDone:
 		u.scanDone = true
 		if u.currentSession != nil {

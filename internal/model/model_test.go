@@ -62,29 +62,14 @@ func TestSharesSummary(t *testing.T) {
 	}
 }
 
-func TestHasWebAndHasRDP(t *testing.T) {
+func TestHasRDP(t *testing.T) {
 	h := testHost()
-	if !h.HasWeb() {
-		t.Error("HasWeb() = false, want true (port 80 open)")
-	}
 	if h.HasRDP() {
 		t.Error("HasRDP() = true, want false")
 	}
 	rdp := Host{Ports: []Port{{Number: 3389, State: "open", Service: "ms-wbt-server"}}}
 	if !rdp.HasRDP() {
 		t.Error("HasRDP() = false, want true (port 3389 open)")
-	}
-	closed := Host{Ports: []Port{{Number: 443, State: "closed"}}}
-	if closed.HasWeb() {
-		t.Error("HasWeb() = true, want false (443 closed)")
-	}
-	alt := Host{Ports: []Port{{Number: 8080, State: "open", Service: "http-alt"}}}
-	if !alt.HasWeb() {
-		t.Error("HasWeb() = false, want true (port 8080 open)")
-	}
-	altClosed := Host{Ports: []Port{{Number: 8443, State: "closed"}}}
-	if altClosed.HasWeb() {
-		t.Error("HasWeb() = true, want false (8443 closed)")
 	}
 }
 

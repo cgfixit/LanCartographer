@@ -127,7 +127,6 @@ func (u *ui) buildTable() {
 		func(id widget.TableCellID, obj fyne.CanvasObject) {
 			box := obj.(*tapBox)
 			box.id = id
-			box.hostIP = ""
 			inner := box.content.(*fyne.Container)
 			label := inner.Objects[0].(*widget.Label)
 			circleC := inner.Objects[1].(*fyne.Container)
@@ -136,7 +135,6 @@ func (u *ui) buildTable() {
 				return
 			}
 			h := u.sorted[id.Row]
-			box.hostIP = h.IP.String()
 			if id.Col == 0 {
 				label.Hide()
 				circleC.Show()

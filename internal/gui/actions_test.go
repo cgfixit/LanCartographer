@@ -92,21 +92,6 @@ func TestDefaultPorts(t *testing.T) {
 	}
 }
 
-func TestParsePorts(t *testing.T) {
-	got, err := parsePorts("80, 443,80, 8080")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := []int{80, 443, 8080}; !slices.Equal(got, want) {
-		t.Errorf("parsePorts dedupe = %v, want %v", got, want)
-	}
-	for _, bad := range []string{"", "0", "65536", "abc", "80,x"} {
-		if _, err := parsePorts(bad); err == nil {
-			t.Errorf("parsePorts(%q) should fail", bad)
-		}
-	}
-}
-
 func TestSharesCell(t *testing.T) {
 	h := host("10.0.0.1")
 	if got := sharesCell(h); got != "0 shares" {
@@ -176,15 +161,12 @@ func TestStoreMergesEvents(t *testing.T) {
 		t.Errorf("re-canonical should reset shares, got %d", len(got.Shares))
 	}
 
-	// Progress/done/error events carry no host and touch nothing.
+	// Progress/done events carry no host and touch nothing.
 	if ip := s.apply(scan.Event{Kind: scan.EventProgress, Progress: 0.5}); ip != "" {
 		t.Errorf("progress ip = %q", ip)
 	}
 	if ip := s.apply(scan.Event{Kind: scan.EventDone, Progress: 1}); ip != "" {
 		t.Errorf("done ip = %q", ip)
-	}
-	if ip := s.apply(scan.Event{Kind: scan.EventError, Err: nil}); ip != "" {
-		t.Errorf("error ip = %q", ip)
 	}
 }
 
