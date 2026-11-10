@@ -27,7 +27,7 @@ const (
 // Hidden admin shares (STYPE_SPECIAL) and non disk/print/ipc types are
 // filtered out. An access-denied remote yields ErrAccessDenied.
 func ListShares(ctx context.Context, ip netip.Addr) ([]model.Share, error) {
-	infos, err := winutil.NetShareEnum(ctx, ip.String(), 1)
+	infos, err := winutil.NetShareEnum(ctx, ip.String())
 	if err != nil {
 		return nil, err
 	}
