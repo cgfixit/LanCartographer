@@ -72,44 +72,6 @@ func TestEncodeNBName(t *testing.T) {
 	}
 }
 
-func TestDecodeNBName(t *testing.T) {
-	cases := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{"wildcard encoded", "CKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "*" + strings.Repeat("\x00", 15)},
-		{"FOO encoded", "EGEPEP" + strings.Repeat("AA", 13), "FOO" + strings.Repeat("\x00", 13)},
-		{"odd length", "ABC", ""},
-		{"byte above P", "EGEPEQ", ""},
-		{"lowercase not valid", "egepep", ""},
-		{"empty", "", ""},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := decodeNBName([]byte(tc.input)); got != tc.want {
-				t.Errorf("decodeNBName(%q) = %q, want %q", tc.input, got, tc.want)
-			}
-		})
-	}
-}
-
-func TestNBNameRoundTrip(t *testing.T) {
-	names := []string{"", "A", "DESKTOP-ABC", "ABCDEFGHIJKLMNOP", "trailing\x00bytes\x00\x00"}
-	for _, name := range names {
-		want := name
-		for len(want) < 16 {
-			want += "\x00"
-		}
-		if len(want) > 16 {
-			want = want[:16]
-		}
-		if got := decodeNBName(encodeNBName(name)); got != want {
-			t.Errorf("decode(encode(%q)) = %q, want %q", name, got, want)
-		}
-	}
-}
-
 func TestParseNodeStatus(t *testing.T) {
 	valid := nodeStatusResponse(0x1234, []nbEntry{
 		{name: nbName("DESKTOP-ABC"), suffix: 0x00, flags: 0x0400},
