@@ -183,9 +183,8 @@ The walk below is the actual call chain in the code, starting at
    This does not establish that a device is powered off.
 
 5. **Port probe.** For each live host, `probe.ScanHost` dials every port in
-   the port list (the 15 defaults live in `internal/gui/actions.go` as
-   `specPorts` and in `internal/cli/cli.go` as `defaultPorts`) with a plain
-   TCP connect — `net.Dialer.DialContext`, the Go equivalent of
+   the port list with a TCP connect. The GUI and CLI share 15 defaults from
+   `probe.DefaultPortsCSV`. `net.Dialer.DialContext` is the Go equivalent of
    `socket.create_connection()` with a timeout. Each result is classified
    `open`, `closed`, or `timeout` (`internal/model/model.go`). The per-dial
    budget is 800 ms by default (the CLI's `--timeout` sets a 400 ms
@@ -361,8 +360,7 @@ made while a save dialog is open do not change the file being approved.
 
 | You want to change… | Edit |
 |---|---|
-| Default port list (GUI) | `specPorts` in `internal/gui/actions.go` |
-| Default port list (CLI) | `defaultPorts` in `internal/cli/cli.go` |
+| Default port list (GUI and CLI) | `DefaultPortsCSV` in `internal/probe/ports.go` |
 | Liveness / probe timeouts | defaults flow from `--timeout` (400 ms) in `internal/cli/cli.go`; GUI/CLI callers set `probe.Options.ProbeTimeout` to 2× the discovery timeout |
 | Discovery ports (liveness) | `DiscoveryPorts` in `internal/discover/liveness.go` |
 | Column widths / minimums | `colFractions` / `colMins` in `internal/gui/table.go` — fractions must sum to 1.0 |

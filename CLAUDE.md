@@ -47,8 +47,8 @@ Workflows: `actionlint .github/workflows/*.yml` (install with
 - **Event stream contract** (`internal/scan/engine.go`): live
   `EventPortFound`/`EventShareFound` during probing, exactly one enriched
   `EventHostFound` per alive host, monotonic `EventProgress`, then
-  `EventDone`. Per-host failures degrade to empty fields, never
-  `EventError`. The GUI table and the CLI table both depend on this order.
+  `EventDone` on completion. Per-host failures degrade to empty fields.
+  Scan-level failures are returned by `scan.Run`.
 - **Two concurrency knobs, not one.** `maxHostsInFlight = 64` host workers,
   and an independent global dial budget (`probe.Limiter`, default 128,
   clamped to 256) shared by liveness and port dials.

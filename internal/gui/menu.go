@@ -22,7 +22,6 @@ type tapBox struct {
 	widget.BaseWidget
 	content     fyne.CanvasObject
 	id          widget.TableCellID
-	hostIP      string
 	onPrimary   func()
 	onSecondary func(*fyne.PointEvent)
 }

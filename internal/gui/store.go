@@ -17,7 +17,6 @@ import (
 type hostStore struct {
 	mu    sync.Mutex
 	hosts map[string]*model.Host
-	order []string // insertion order of first appearance, for stable listing
 }
 
 func newHostStore() *hostStore {
@@ -39,7 +38,6 @@ func (s *hostStore) apply(ev scan.Event) string {
 	if !ok {
 		h = &model.Host{IP: ev.Host.IP}
 		s.hosts[ip] = h
-		s.order = append(s.order, ip)
 	}
 	if ev.Kind == scan.EventHostFound {
 		// Canonical record wins wholesale — but never downgrade Alive.
@@ -63,7 +61,6 @@ func (s *hostStore) set(hosts []model.Host) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.hosts = map[string]*model.Host{}
-	s.order = s.order[:0]
 	for i := range hosts {
 		h := hosts[i]
 		key := h.IP.String()
@@ -71,7 +68,6 @@ func (s *hostStore) set(hosts []model.Host) {
 			continue
 		}
 		s.hosts[key] = &h
-		s.order = append(s.order, key)
 	}
 }
 
@@ -81,8 +77,8 @@ func (s *hostStore) snapshot() []model.Host {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := make([]model.Host, 0, len(s.hosts))
-	for _, ip := range s.order {
-		out = append(out, *s.hosts[ip])
+	for _, h := range s.hosts {
+		out = append(out, *h)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].IP.Compare(out[j].IP) < 0 })
 	return out

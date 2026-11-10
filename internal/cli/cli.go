@@ -14,7 +14,6 @@ import (
 	"io"
 	"net/netip"
 	"sort"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -27,9 +26,6 @@ import (
 	"github.com/local/lancartographer/internal/probe"
 	"github.com/local/lancartographer/internal/scan"
 )
-
-// defaultPorts is the spec port set; it must include 445 (SMB).
-const defaultPorts = "21,22,23,80,135,139,443,445,515,631,3389,5357,8080,8443,9100"
 
 // deps is the testability seam (same pattern as the scan engine): every
 // external effect the CLI needs binds here, with Run wiring the real
@@ -56,7 +52,7 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 	fs := flag.NewFlagSet("lancartographer", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	rangeArg := fs.String("range", "", "CIDR range to scan (default: every local physical subnet)")
-	portsArg := fs.String("ports", defaultPorts, "comma-separated TCP ports to probe")
+	portsArg := fs.String("ports", probe.DefaultPortsCSV, "comma-separated TCP ports to probe")
 	timeout := fs.Duration("timeout", 400*time.Millisecond,
 		"per-host dial timeout; the per-dial probe timeout is 2x this value")
 	concurrency := fs.Int("concurrency", 128, "dial concurrency (engine clamps to 256)")
@@ -66,7 +62,7 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 		return 2 // flag package already reported to stderr
 	}
 
-	ports, err := parsePorts(*portsArg)
+	ports, err := probe.ParsePorts(*portsArg)
 	if err != nil {
 		fmt.Fprintf(stderr, "lancartographer: --ports: %v\n", err)
 		return 2
@@ -176,23 +172,6 @@ func scanOne(target netip.Prefix, opts probe.Options, scanRun func(context.Conte
 	close(events) // Run never sends after returning
 	hosts := <-done
 	return hosts, err
-}
-
-// parsePorts parses a comma-separated port list, validating range.
-func parsePorts(s string) ([]int, error) {
-	var ports []int
-	for _, part := range strings.Split(s, ",") {
-		part = strings.TrimSpace(part)
-		n, err := strconv.Atoi(part)
-		if err != nil || n < 1 || n > 65535 {
-			return nil, fmt.Errorf("invalid port %q", part)
-		}
-		ports = append(ports, n)
-	}
-	if len(ports) == 0 {
-		return nil, fmt.Errorf("empty port list")
-	}
-	return ports, nil
 }
 
 // printTable writes the inventory table: IP, NAME, MAC, VENDOR, PORTS,

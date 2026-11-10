@@ -57,26 +57,6 @@ type Host struct {
 	Shares   []Share
 }
 
-// webPorts is the set of TCP ports classified as web services (must match
-// the probe package's Web classification). Single home for HasWeb and the
-// GUI globe badge.
-var webPorts = []int{80, 443, 8080, 8443}
-
-// HasWeb reports whether the host has an open web port (80, 443, 8080, 8443).
-func (h Host) HasWeb() bool {
-	for _, p := range h.Ports {
-		if p.State != PortOpen {
-			continue
-		}
-		for _, wp := range webPorts {
-			if p.Number == wp {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // HasRDP reports whether the host has RDP (port 3389) open.
 func (h Host) HasRDP() bool {
 	for _, p := range h.Ports {

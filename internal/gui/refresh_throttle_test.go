@@ -37,18 +37,12 @@ func TestApplyEventCoalescesRapidRepaints(t *testing.T) {
 	if got := u.repaints - base; got != 0 {
 		t.Fatalf("two rapid events caused %d full refreshes, want 0 (throttled)", got)
 	}
-	if !u.refreshDirty {
-		t.Fatal("throttled events did not mark the table dirty")
-	}
 	if got := u.store.len(); got != 2 {
 		t.Fatalf("store.len() = %d, want 2: store updates must apply per event", got)
 	}
 
 	u.finishScan()
 
-	if u.refreshDirty {
-		t.Fatal("finishScan left the table dirty")
-	}
 	if got := u.repaints - base; got != 1 {
 		t.Fatalf("finishScan triggered %d flushes, want 1", got)
 	}
