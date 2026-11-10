@@ -204,6 +204,19 @@ unsupported, malformed or inconsistent files are rejected. Existing favorites
 and CLI inventory JSON do not carry the required metadata and are not session
 files. This first slice is GUI-only; existing CLI flags and exports are unchanged.
 
+## Internet Quality on macOS
+
+Open **Tools → Internet Quality…** to measure download and upload capacity,
+idle latency, and responsiveness under load. Confirm **Run Apple test…** to
+send measurement traffic to Apple using the built-in macOS utility. Use an
+unmetered connection. **Stop** and closing the window end the measurement.
+The result stays in the window and the existing inventory and sessions
+continue to operate independently.
+
+**Open Cloudflare in browser…** is a separate action with its own provider
+disclosure. See the [Internet Quality guide](USER-GUIDE.md#measure-internet-quality-on-macos)
+for what the numbers mean and how to handle a failed run.
+
 ## Build from source
 
 Use the Go version and dependencies in [go.mod](go.mod) and a CGO C compiler.
