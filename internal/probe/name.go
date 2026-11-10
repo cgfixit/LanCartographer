@@ -93,24 +93,6 @@ func encodeNBName(name string) []byte {
 	return out
 }
 
-// decodeNBName is the inverse of encodeNBName: pairs of 'A'+nibble bytes
-// decode to raw bytes. Input must be non-empty, even-length, and use only
-// bytes 'A' through 'P'; anything else yields "".
-func decodeNBName(b []byte) string {
-	if len(b) == 0 || len(b)%2 != 0 {
-		return ""
-	}
-	out := make([]byte, len(b)/2)
-	for i := 0; i < len(b); i += 2 {
-		hi, lo := b[i], b[i+1]
-		if hi < 'A' || hi > 'P' || lo < 'A' || lo > 'P' {
-			return ""
-		}
-		out[i/2] = (hi-'A')<<4 | (lo - 'A')
-	}
-	return string(out)
-}
-
 // parseNodeStatus extracts the first 15-character name from a NODE STATUS
 // RESPONSE (RFC 1002 §4.2.18). Matching the transaction ID is the caller's
 // job; this checks structure only: a parseable header, question, answer

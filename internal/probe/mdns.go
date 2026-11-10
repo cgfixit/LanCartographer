@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"net"
 	"net/netip"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -89,7 +90,7 @@ func buildMDNSQuery(id uint16, ip netip.Addr) []byte {
 	b = binary.BigEndian.AppendUint16(b, 0)      // ARCOUNT
 	a4 := ip.As4()
 	for i := 3; i >= 0; i-- { // reverse the dotted quad
-		digits := itoa(int(a4[i]))
+		digits := strconv.Itoa(int(a4[i]))
 		b = append(b, byte(len(digits)))
 		b = append(b, digits...)
 	}
@@ -101,22 +102,6 @@ func buildMDNSQuery(id uint16, ip netip.Addr) []byte {
 	b = binary.BigEndian.AppendUint16(b, 0x000C) // PTR
 	b = binary.BigEndian.AppendUint16(b, 0x0001) // IN
 	return b
-}
-
-// itoa renders a single 0-255 octet as decimal digits; the reversed
-// in-addr.arpa labels never exceed one byte of text.
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var d [3]byte
-	i := len(d)
-	for n > 0 {
-		i--
-		d[i] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(d[i:])
 }
 
 // parsePTRName extracts the first PTR answer's rdata hostname from an mDNS
