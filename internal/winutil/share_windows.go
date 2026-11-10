@@ -40,10 +40,10 @@ var shareEnumSlots = make(chan struct{}, 64)
 // The current user token is used as-is; alternate credentials are never
 // tried. ERROR_ACCESS_DENIED (a normal null-session result) maps to
 // ErrAccessDenied.
-func NetShareEnum(ctx context.Context, ip string, level int) ([]ShareInfo1, error) {
+func NetShareEnum(ctx context.Context, ip string) ([]ShareInfo1, error) {
 	ctx, cancel := context.WithTimeout(ctx, shareEnumTimeout)
 	defer cancel()
-	return awaitShareEnum(ctx, func() ([]ShareInfo1, error) { return netShareEnum(ip, level) })
+	return awaitShareEnum(ctx, func() ([]ShareInfo1, error) { return netShareEnum(ip) })
 }
 
 func awaitShareEnum(ctx context.Context, enumerate func() ([]ShareInfo1, error)) ([]ShareInfo1, error) {
@@ -76,11 +76,7 @@ func awaitShareEnum(ctx context.Context, enumerate func() ([]ShareInfo1, error))
 	}
 }
 
-func netShareEnum(ip string, level int) ([]ShareInfo1, error) {
-	if level != 1 {
-		return nil, fmt.Errorf("winutil: NetShareEnum level %d not supported (level 1 only)", level)
-	}
-
+func netShareEnum(ip string) ([]ShareInfo1, error) {
 	server, err := windows.UTF16PtrFromString(`\\` + ip)
 	if err != nil {
 		return nil, fmt.Errorf("winutil: invalid server name: %w", err)
@@ -90,9 +86,9 @@ func netShareEnum(ip string, level int) ([]ShareInfo1, error) {
 	var entriesRead, totalEntries, resume uint32
 	ret, _, _ := procNetShareEnum.Call(
 		uintptr(unsafe.Pointer(server)), // serverName: \\ip, always passed
-		uintptr(level),
-		uintptr(unsafe.Pointer(&buf)), // buf: API-allocated out-buffer (must be NetApiBufferFree'd)
-		maxPreferredLength,            // prefmaxlen: one buffer, no resume loop
+		1,                               // SHARE_INFO_1 (name, type, remark)
+		uintptr(unsafe.Pointer(&buf)),   // buf: API-allocated out-buffer (must be NetApiBufferFree'd)
+		maxPreferredLength,              // prefmaxlen: one buffer, no resume loop
 		uintptr(unsafe.Pointer(&entriesRead)),
 		uintptr(unsafe.Pointer(&totalEntries)),
 		uintptr(unsafe.Pointer(&resume)), // unused with MAX_PREFERRED_LENGTH
