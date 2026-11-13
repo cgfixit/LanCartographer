@@ -233,6 +233,45 @@ func TestJSONExportFailureExits2(t *testing.T) {
 	}
 }
 
+func TestJSONStdout(t *testing.T) {
+	h := model.Host{IP: netip.MustParseAddr("192.168.1.30"), Alive: true, Name: "dev\nserver\x1b"}
+	for _, hosts := range [][]model.Host{{h}, {}} {
+		d := fakeDeps([]string{"192.168.1.0/24"}, hosts...)
+		d.exportToFile = func(string, []model.Host, string) error {
+			t.Fatal("stdout mode attempted a file export")
+			return nil
+		}
+		code, stdout, stderr := runCLI(d, "--json", "-")
+		var got []model.Host
+		if code != 0 || stderr != "" || json.Unmarshal([]byte(stdout), &got) != nil || !reflect.DeepEqual(got, hosts) {
+			t.Fatalf("exit=%d stdout=%q stderr=%q hosts=%+v", code, stdout, stderr, got)
+		}
+	}
+}
+
+type failedWriter struct{}
+
+func (failedWriter) Write([]byte) (int, error) { return 0, fmt.Errorf("output unavailable") }
+
+func TestJSONStdoutFailure(t *testing.T) {
+	var stderr bytes.Buffer
+	code := run([]string{"--json", "-"}, failedWriter{}, &stderr, fakeDeps([]string{"192.168.1.0/24"}))
+	if code != 2 || !strings.Contains(stderr.String(), "output unavailable") {
+		t.Fatalf("exit=%d stderr=%q", code, stderr.String())
+	}
+}
+
+func TestJSONStdoutScanFailure(t *testing.T) {
+	d := fakeDeps([]string{"192.168.1.0/24"})
+	d.scanRun = func(context.Context, netip.Prefix, probe.Options, chan<- scan.Event) error {
+		return fmt.Errorf("scan unavailable")
+	}
+	code, stdout, stderr := runCLI(d, "--json", "-")
+	if code != 2 || stdout != "" || !strings.Contains(stderr, "scan unavailable") {
+		t.Fatalf("exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+}
+
 // httpFixture starts a listener that answers every connection with a
 // minimal HTTP/1.0 response. Binding failure is tolerated when tolerateBusy
 // is set (the port may already be served — liveness dials still succeed).

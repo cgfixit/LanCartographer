@@ -110,7 +110,8 @@ directory. New data directories use mode `0700` and files `0600` on macOS.
 ## CLI reference
 
 `lancartographer-cli.exe` (Windows) or `./lancartographer-cli` (macOS) drives the same engine as the GUI and prints a table
-(IP, NAME, MAC, VENDOR, PORTS, SHARES) to stdout. Diagnostics go to stderr.
+(IP, NAME, MAC, VENDOR, PORTS, SHARES) to stdout by default. Use `--json -`
+for JSON-only stdout suitable for pipes. Diagnostics go to stderr.
 The CLI build auto-detects from its own file name (any executable whose base name
 contains "cli", case-insensitive); passing `--cli` as the first argument also
 selects CLI mode and is accepted on both binaries.
@@ -125,7 +126,7 @@ JSON exports preserve the original inventory values.
 | `--ports` | Comma-separated TCP ports to probe (1–65535) | `21,22,23,80,135,139,443,445,515,631,3389,5357,8080,8443,9100` |
 | `--timeout` | Per-host dial timeout; the per-dial probe timeout is 2× this value | `400ms` |
 | `--concurrency` | Global concurrent-dial budget (engine clamps to 256) | `128` |
-| `--json PATH` | Also write the inventory as JSON to `PATH` | off |
+| `--json PATH` | Also write JSON to `PATH`; `-` writes only JSON to stdout | off |
 | `--i-am-authorized` | Confirm authorization for ranges that require confirmation | off |
 
 A range requires confirmation — and therefore `--i-am-authorized` — when it is
@@ -157,6 +158,21 @@ lancartographer-cli.exe --cli --range 192.168.1.0/24 --ports 22,80,443,3389 --ti
 # Same invocations via the GUI binary's --cli token
 lancartographer.exe --cli --range 192.168.1.0/24 --json inventory.json
 ```
+
+For a local development server, pipe the raw inventory into a JSON tool:
+
+```bash
+./lancartographer-cli --range 127.0.0.1/32 --ports 3000,5432,8080 \
+  --i-am-authorized --json - | jq '.[].Ports[] | select(.State == "open")'
+```
+
+`--json -` emits one array after a successful scan, including `[]` if no hosts
+were observed. It does not print a table or create a file named `-`; use
+`--json ./-` if that filename is intended. It uses the same unredacted inventory
+format as a JSON file, without session coverage metadata. Scan or authorization
+failures leave stdout empty and report a nonzero exit status on stderr; an
+output-write failure can leave partial JSON, so check the exit status. In shells
+that support it, `set -o pipefail` also exposes scanner failures in pipelines.
 
 ## Saved sessions and selected evidence
 

@@ -62,10 +62,11 @@ def main():
             args = ["--range", "127.0.0.1/32", "--ports", str(port), "--timeout", "100ms"]
             for binary, prefix in ((cli, []), (gui, ["--cli"])):
                 before = Fixture.requests
-                refused = subprocess.run([str(binary), *prefix, *args], env=env,
+                refused = subprocess.run([str(binary), *prefix, *args, "--json", "-"], env=env,
                                          capture_output=True, text=True, timeout=10)
                 assert refused.returncode == 2, refused
                 assert "requires confirmation" in refused.stderr, refused.stderr
+                assert refused.stdout == "", refused.stdout
                 assert Fixture.requests == before, "refused scan contacted the HTTP fixture"
                 dest = Path(tmp) / "inventory.json"
                 done = subprocess.run([str(binary), *prefix, *args, "--i-am-authorized", "--json", str(dest)],
@@ -77,7 +78,13 @@ def main():
                 assert any(p["Number"] == port and p["State"] == "open" and
                            p.get("Title") == "LanCartographer loopback fixture" for p in ports), ports
                 assert hosts[0].get("MAC", "") != "needs elevation", hosts
+                streamed = subprocess.run([str(binary), *prefix, *args, "--i-am-authorized", "--json", "-"],
+                                          cwd=tmp, env=env, capture_output=True, text=True, timeout=10)
+                assert streamed.returncode == 0, streamed.stderr
+                assert json.loads(streamed.stdout) == hosts, streamed.stdout
+                assert not (Path(tmp) / "-").exists(), "stdout mode created a file named -"
                 print(f"PASS: {binary.name}: authorized scan, HTTP title, JSON export; refusal exits 2")
+                print(f"PASS: {binary.name}: JSON-only stdout matches file export; no file named -")
     finally:
         server.shutdown()
         server.server_close()
