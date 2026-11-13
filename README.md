@@ -173,6 +173,8 @@ format as a JSON file, without session coverage metadata. Scan or authorization
 failures leave stdout empty and report a nonzero exit status on stderr; an
 output-write failure can leave partial JSON, so check the exit status. In shells
 that support it, `set -o pipefail` also exposes scanner failures in pipelines.
+See the [verification record](docs/verification/cli-json-stdout-2026-11-13.md)
+for exercised entry points and platform limits.
 
 ## Saved sessions and selected evidence
 
