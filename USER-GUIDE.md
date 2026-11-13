@@ -41,9 +41,16 @@ not limited to traffic on the listed ports. Port controls are locked while a
 scan runs or waits for Internet Quality to stop. Saved sessions record the
 chosen profile, so comparisons with different port lists are incompatible.
 
+When an open custom port is identified as Web by the existing HTTP
+probe, **Browser** opens that HTTP endpoint with its port number. Standard
+web ports keep their existing preference. An open TCP port alone does not
+enable Browser, and this is not a TLS or application-health check.
+
 For a service on this computer, scan `127.0.0.1/32` with its listening port.
 A successful loopback result does not establish LAN reachability: repeat from
 an authorized LAN client against the server's LAN address to check that path.
+See the [native verification record](docs/verification/developer-ports-2026-11-13.md)
+for the exercised workflow and platform limits.
 
 ## Save a baseline and compare a change
 

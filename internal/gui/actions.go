@@ -42,6 +42,11 @@ func browserURL(h model.Host) string {
 			return scheme + "://" + address
 		}
 	}
+	for _, p := range h.Ports {
+		if p.State == model.PortOpen && p.Service == "Web" && p.Number >= 1 && p.Number <= 65535 {
+			return "http://" + net.JoinHostPort(h.IP.String(), strconv.Itoa(p.Number))
+		}
+	}
 	return ""
 }
 
