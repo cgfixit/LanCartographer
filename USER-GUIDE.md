@@ -11,7 +11,8 @@ The second half of this guide is a code tour for Python and PowerShell users.
 > Scan only networks you own or have explicit authorization to inventory. Unauthorized access or scanning may violate the Computer Fraud and Abuse Act, 18 U.S.C. § 1030, and similar laws.
 
 1. Open the Windows executable or macOS app, read the first-run notice, and
-   select or enter an authorized IPv4 range. Click **Scan** and confirm if the
+   select or enter an authorized IPv4 range. Set **TCP ports** to the services
+   you want to inventory, then click **Scan** and confirm if the
    range requires it. **Stop** cancels an active scan; partial results are not
    evidence of complete coverage.
 2. Select a host to inspect its ports, titles and SMB shares. Right-click for
@@ -24,6 +25,25 @@ The second half of this guide is a code tour for Python and PowerShell users.
    for later viewing. Neither contains the coverage metadata needed
    for session comparison; loading favorites also clears the current scan's
    session snapshot and is blocked while a scan is running.
+
+### Choose ports for a development service
+
+Enter comma-separated port numbers from 1 to 65535, such as `3000,5432,8080`
+for a development web server, PostgreSQL and an alternate HTTP service.
+**Default ports** restores the standard inventory list. Empty fields, ranges
+such as `3000-3010` and non-numeric values are rejected before scanning; the
+previous inventory stays visible. The choice lasts for the current app run.
+
+The field chooses the ports whose states appear in the inventory. Discovery
+still uses its usual TCP ports plus your selected ports, followed by the
+existing ARP/ICMP fallbacks; name and SMB enrichment are unchanged. A scan is
+not limited to traffic on the listed ports. Port controls are locked while a
+scan runs or waits for Internet Quality to stop. Saved sessions record the
+chosen profile, so comparisons with different port lists are incompatible.
+
+For a service on this computer, scan `127.0.0.1/32` with its listening port.
+A successful loopback result does not establish LAN reachability: repeat from
+an authorized LAN client against the server's LAN address to check that path.
 
 ## Save a baseline and compare a change
 

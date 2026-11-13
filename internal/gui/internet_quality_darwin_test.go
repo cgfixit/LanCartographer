@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"net/netip"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -68,12 +69,16 @@ func TestInternetQualityScanWaitsForMeasurement(t *testing.T) {
 	job := &qualityJob{view: &qualityView{}, ctx: ctx, cancel: cancel, done: make(chan struct{})}
 	u.qualityJob = job
 	target := netip.MustParsePrefix("127.0.0.1/32")
-	u.startScan(target)
-	if ctx.Err() != context.Canceled || job.scanAfter != target {
+	u.ports.SetText("3000,5432")
+	u.startScan(target, []int{3000, 5432})
+	if ctx.Err() != context.Canceled || job.scanAfter != target || !slices.Equal(job.portsAfter, []int{3000, 5432}) {
 		t.Fatalf("scan did not cancel the measurement and queue its approved target: %v, %v", ctx.Err(), job.scanAfter)
 	}
-	u.startScan(netip.MustParsePrefix("127.0.0.2/32"))
-	if u.scanning || u.currentSession != nil || job.scanAfter != target {
+	u.startScan(netip.MustParsePrefix("127.0.0.2/32"), []int{80})
+	if u.scanning || u.currentSession != nil || job.scanAfter != target || !slices.Equal(job.portsAfter, []int{3000, 5432}) {
 		t.Fatalf("scan changed inventory or replaced its queued target before reap: %v, %v", u.scanning, job.scanAfter)
+	}
+	if !u.ports.Disabled() || !u.resetPorts.Disabled() {
+		t.Fatal("port controls remain editable while the scan waits for the measurement")
 	}
 }

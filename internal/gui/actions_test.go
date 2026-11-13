@@ -2,7 +2,6 @@ package gui
 
 import (
 	"net/netip"
-	"slices"
 	"testing"
 
 	"github.com/local/lancartographer/internal/model"
@@ -81,14 +80,6 @@ func TestBroadcastAddr(t *testing.T) {
 		if got := broadcastAddr(p); got != want {
 			t.Errorf("broadcastAddr(%s) = %q, want %q", cidr, got, want)
 		}
-	}
-}
-
-func TestDefaultPorts(t *testing.T) {
-	ports := defaultPorts()
-	want := []int{21, 22, 23, 80, 135, 139, 443, 445, 515, 631, 3389, 5357, 8080, 8443, 9100}
-	if !slices.Equal(ports, want) {
-		t.Errorf("defaultPorts = %v, want %v", ports, want)
 	}
 }
 

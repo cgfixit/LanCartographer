@@ -23,15 +23,6 @@ func themeModeLabel(mode string) string {
 	return "Light on"
 }
 
-// defaultPorts returns the spec port set as a slice.
-func defaultPorts() []int {
-	ports, err := probe.ParsePorts(probe.DefaultPortsCSV)
-	if err != nil {
-		panic("spec port set must parse: " + err.Error())
-	}
-	return ports
-}
-
 // browserURL selects an open web endpoint in the existing preference order.
 // Preserve non-default ports: opening an 8080 service at port 80 is wrong.
 func browserURL(h model.Host) string {
