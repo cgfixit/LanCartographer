@@ -138,10 +138,10 @@ background monitoring, automatic upload or session migration.
    The result shows the observed interface when Apple reports it.
 
 The window shows elapsed time during the measurement. Use **Stop** or close
-the window to cancel. The app allows one Apple test at a time and limits it
-to 45 seconds. That duration does not set a data allowance. The test is
-unavailable during an inventory scan. Starting an authorized scan during
-a test ends the test before the scan starts.
+the window to cancel. The Apple test has a 45-second time limit and can use
+substantial data. Apple tests and Wi-Fi captures run one at a time and are
+unavailable during an inventory scan. Starting an authorized scan ends the
+current measurement before the scan starts.
 
 If Apple returns an error, check that the Mac can reach the Internet and
 try again. **Open Cloudflare in browser…** shows a separate disclosure and
@@ -150,6 +150,29 @@ shares anonymized measurement data and says a run can use up to 200 MB.
 The browser manages its own results. No tools need to be installed.
 [Apple Network Quality](https://support.apple.com/en-us/101942),
 [Cloudflare Speed Test](https://speed.cloudflare.com/).
+
+### Compare Wi-Fi before and after a change
+
+1. Choose **Tools → Internet Quality… → Wi-Fi** and select **Capture baseline**.
+2. Make one change, such as moving the Mac closer to the access point. Stay
+   on the same Wi-Fi network and select **Capture after**.
+3. Compare the two samples. Use **Capture after** again to repeat the follow-up
+   measurement or **Replace baseline** to start over.
+
+Each sample reads link metrics from macOS and sends up to five ICMP echo
+requests to the default gateway through the Wi-Fi interface. This is a
+read-only diagnostic. Results stay in the window until you close it.
+
+| Reading | How to interpret it |
+| --- | --- |
+| Signal and signal to noise | Signal closer to zero in dBm is stronger. Higher signal to noise in dB means more separation from the background noise. |
+| Band, channel and transmit link rate | The rate describes the negotiated Wi-Fi link. Use the Internet tab to measure internet throughput. |
+| Gateway replies and average round trip | Check the reply count alongside the average. Some gateways ignore or limit ICMP replies. With zero replies, there is no round-trip average. |
+| Signal and latency changes | Signal deltas require matching interfaces and gateway addresses. Latency deltas also require a usable average in each sample. Verify that you stayed on the same Wi-Fi network because two networks can use the same gateway address. |
+
+Repeat a surprising result before drawing a conclusion. Scroll below the
+samples to see the deltas if the bottom of the comparison is out of view.
+[View the captured comparison](docs/verification/wifi-diagnostics/after.jpg).
 
 ## Code tour for Python and PowerShell users
 

@@ -77,6 +77,20 @@ func runInternetQuality(ctx context.Context) (qualityResult, error) {
 }
 
 func runQualityCommand(parent context.Context, path string, args ...string) (qualityResult, error) {
+	output, err := runDiagnosticCommand(parent, path, args...)
+	switch {
+	case parent.Err() != nil, errors.Is(err, errQualityOutputLimit):
+		return qualityResult{}, err
+	case errors.Is(err, os.ErrNotExist):
+		return qualityResult{}, errors.New("Apple Network Quality is unavailable on this Mac. You can try Cloudflare in your browser")
+	case err != nil:
+		return qualityResult{}, errors.New("The Apple test failed. Check Internet access and try again")
+	default:
+		return parseQualityResult(output)
+	}
+}
+
+func runDiagnosticCommand(parent context.Context, path string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	stdout := &qualityOutput{cancel: cancel}
@@ -89,15 +103,11 @@ func runQualityCommand(parent context.Context, path string, args ...string) (qua
 	err := cmd.Run()
 	switch {
 	case parent.Err() != nil:
-		return qualityResult{}, parent.Err()
+		return nil, parent.Err()
 	case ctx.Err() != nil:
-		return qualityResult{}, errQualityOutputLimit
-	case errors.Is(err, os.ErrNotExist):
-		return qualityResult{}, errors.New("Apple Network Quality is unavailable on this Mac. You can try Cloudflare in your browser")
-	case err != nil:
-		return qualityResult{}, errors.New("The Apple test failed. Check Internet access and try again")
+		return nil, errQualityOutputLimit
 	default:
-		return parseQualityResult(stdout.data.Bytes())
+		return stdout.data.Bytes(), err
 	}
 }
 
@@ -109,6 +119,7 @@ type qualityView struct {
 	status   *widget.Label
 	result   *widget.Label
 	progress *widget.ProgressBarInfinite
+	wifi     *wifiQualityView
 }
 
 type qualityJob struct {
@@ -116,6 +127,7 @@ type qualityJob struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	done       chan struct{}
+	name       string
 	scanAfter  netip.Prefix
 	portsAfter []int
 }
@@ -140,7 +152,13 @@ func (u *ui) showInternetQuality() {
 			"This sends test traffic to Apple and can use substantial data or slow down other traffic. Run on an unmetered connection.",
 			func(ok bool) {
 				if ok {
-					u.startInternetQuality(v, runInternetQuality)
+					if u.qualityView != v || u.qualityJob != nil || u.scanning {
+						return
+					}
+					v.result.SetText("")
+					startQualityMeasurement(u, v, "Apple test", runInternetQuality, func(r qualityResult) {
+						v.result.SetText(formatInternetQuality(r))
+					})
 				}
 			}, v.win).Show()
 	})
@@ -167,13 +185,16 @@ func (u *ui) showInternetQuality() {
 	})
 	intro := widget.NewLabel("Measure Internet speed, idle latency and responsiveness under load from this Mac. Results stay in this window.")
 	intro.Wrapping = fyne.TextWrapWord
-	v.win.SetContent(container.NewPadded(container.NewBorder(nil, widget.NewButton("Close", v.win.Close), nil, nil,
-		container.NewVScroll(container.NewVBox(
-			intro, container.NewHBox(v.run, v.stop), v.progress, v.status, v.result,
-			widget.NewSeparator(), v.browser,
-		)),
-	)))
-	v.win.Resize(fyne.NewSize(510, 390))
+	internet := container.NewVScroll(container.NewVBox(intro, v.run, v.result, widget.NewSeparator(), v.browser))
+	v.wifi = newWiFiQualityView(u, v)
+	tabs := container.NewAppTabs(container.NewTabItem("Internet", internet))
+	if v.wifi != nil {
+		tabs.Append(container.NewTabItem("Wi-Fi", v.wifi.content))
+	}
+	footer := container.NewVBox(v.progress, v.status,
+		container.NewGridWithColumns(2, v.stop, widget.NewButton("Close", v.win.Close)))
+	v.win.SetContent(container.NewPadded(container.NewBorder(nil, footer, nil, nil, tabs)))
+	v.win.Resize(fyne.NewSize(550, 530))
 	v.win.SetOnClosed(func() {
 		v.progress.Stop()
 		u.qualityView = nil
@@ -192,6 +213,10 @@ func (u *ui) refreshQualityControls() {
 	v.run.Disable()
 	v.stop.Disable()
 	v.browser.Disable()
+	available := u.qualityJob == nil && !u.scanning
+	if v.wifi != nil {
+		v.wifi.refresh(available)
+	}
 	if u.qualityJob == nil {
 		v.browser.Enable()
 		if !u.scanning {
@@ -205,15 +230,14 @@ func (u *ui) refreshQualityControls() {
 	}
 }
 
-func (u *ui) startInternetQuality(v *qualityView, run func(context.Context) (qualityResult, error)) {
+func startQualityMeasurement[T any](u *ui, v *qualityView, name string, run func(context.Context) (T, error), render func(T)) {
 	if u.qualityView != v || u.qualityJob != nil || u.scanning {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	job := &qualityJob{view: v, ctx: ctx, cancel: cancel, done: make(chan struct{})}
+	job := &qualityJob{view: v, ctx: ctx, cancel: cancel, done: make(chan struct{}), name: name}
 	u.qualityJob = job
-	v.result.SetText("")
-	v.status.SetText("Measuring with Apple…")
+	v.status.SetText("Running " + name + "…")
 	v.progress.Show()
 	v.progress.Start()
 	u.refreshQualityControls()
@@ -229,7 +253,7 @@ func (u *ui) startInternetQuality(v *qualityView, run func(context.Context) (qua
 				elapsed := time.Since(started).Round(time.Second)
 				fyne.Do(func() {
 					if u.qualityView == v && u.qualityJob == job && ctx.Err() == nil {
-						v.status.SetText(fmt.Sprintf("Measuring with Apple… %s", elapsed))
+						v.status.SetText(fmt.Sprintf("Running %s… %s", name, elapsed))
 					}
 				})
 			}
@@ -238,7 +262,7 @@ func (u *ui) startInternetQuality(v *qualityView, run func(context.Context) (qua
 	go func() {
 		result, err := run(ctx)
 		close(job.done)
-		fyne.Do(func() { u.finishInternetQuality(job, result, err) })
+		fyne.Do(func() { u.finishInternetQuality(job, err, func() { render(result) }) })
 	}()
 }
 
@@ -246,13 +270,13 @@ func (u *ui) cancelInternetQuality() {
 	if job := u.qualityJob; job != nil {
 		job.cancel()
 		if u.qualityView == job.view {
-			job.view.status.SetText("Stopping Apple test…")
+			job.view.status.SetText("Stopping " + job.name + "…")
 		}
 		u.refreshQualityControls()
 	}
 }
 
-func (u *ui) finishInternetQuality(job *qualityJob, r qualityResult, err error) {
+func (u *ui) finishInternetQuality(job *qualityJob, err error, render func()) {
 	u.qualityJob = nil
 	v := job.view
 	if u.qualityView == v {
@@ -262,23 +286,12 @@ func (u *ui) finishInternetQuality(job *qualityJob, r qualityResult, err error) 
 		case job.ctx.Err() != nil || errors.Is(err, context.Canceled):
 			v.status.SetText("Cancelled")
 		case errors.Is(err, context.DeadlineExceeded):
-			v.status.SetText("Timed out. You can retry or open Cloudflare in your browser.")
+			v.status.SetText("Timed out. You can retry.")
 		case err != nil:
 			v.status.SetText(err.Error())
 		default:
-			v.status.SetText("Complete · Apple Network Quality · " + time.Now().Format("Jan 2, 15:04:05"))
-			iface := "Unavailable"
-			if len(r.Interface) > 0 && len(r.Interface) <= 16 {
-				valid := true
-				for _, c := range r.Interface {
-					valid = valid && (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9')
-				}
-				if valid {
-					iface = r.Interface
-				}
-			}
-			v.result.SetText(fmt.Sprintf("Download  %.1f Mbps\nUpload  %.1f Mbps\nIdle latency  %.1f ms\nResponsiveness under load  %.0f RPM\nInterface  %s",
-				*r.Download/1e6, *r.Upload/1e6, *r.Idle, *r.RPM, iface))
+			v.status.SetText("Complete · " + job.name + " · " + time.Now().Format("Jan 2, 15:04:05"))
+			render()
 		}
 	}
 	job.cancel()
@@ -286,4 +299,25 @@ func (u *ui) finishInternetQuality(job *qualityJob, r qualityResult, err error) 
 		u.startScan(job.scanAfter, job.portsAfter)
 	}
 	u.refreshQualityControls()
+}
+
+func validDiagnosticInterface(name string) bool {
+	if len(name) == 0 || len(name) > 15 {
+		return false
+	}
+	for _, c := range name {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func formatInternetQuality(r qualityResult) string {
+	iface := r.Interface
+	if !validDiagnosticInterface(iface) {
+		iface = "Unavailable"
+	}
+	return fmt.Sprintf("Download  %.1f Mbps\nUpload  %.1f Mbps\nIdle latency  %.1f ms\nResponsiveness under load  %.0f RPM\nInterface  %s",
+		*r.Download/1e6, *r.Upload/1e6, *r.Idle, *r.RPM, iface)
 }

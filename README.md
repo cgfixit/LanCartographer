@@ -231,6 +231,14 @@ unmetered connection. **Stop** and closing the window end the measurement.
 The result stays in the window and the existing inventory and sessions
 continue to operate independently.
 
+Open the **Wi-Fi** tab and select **Capture baseline**. After making one change,
+select **Capture after** to compare signal, noise, band, channel, transmit link
+rate and gateway latency. Each capture sends up to five pings to the Wi-Fi
+gateway. See the
+[Wi-Fi comparison guide](USER-GUIDE.md#compare-wi-fi-before-and-after-a-change).
+
+![Internet Quality Wi-Fi tab with baseline and after samples and their signal and gateway latency changes](docs/verification/wifi-diagnostics/after.jpg)
+
 **Open Cloudflare in browser…** is a separate action with its own provider
 disclosure. See the [Internet Quality guide](USER-GUIDE.md#measure-internet-quality-on-macos)
 for what the numbers mean and how to handle a failed run.
