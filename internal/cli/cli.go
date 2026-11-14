@@ -1,7 +1,7 @@
 // Package cli is LanCartographer's table interface: it parses flags,
 // applies the authorization gate, drives the scan engine (one --range
 // target, or every local subnet when --range is omitted), and prints a
-// tabwriter table of the merged inventory to stdout. All diagnostics go
+// table or --json - JSON of the merged inventory to stdout. All diagnostics go
 // to stderr. Exit codes: 0 scan completed; 2 bad arguments or an
 // authorization-gate refusal (or a failed --json export); 3 no usable
 // local interfaces (only reachable on the omitted --range path).
@@ -56,7 +56,7 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 	timeout := fs.Duration("timeout", 400*time.Millisecond,
 		"per-host dial timeout; the per-dial probe timeout is 2x this value")
 	concurrency := fs.Int("concurrency", 128, "dial concurrency (engine clamps to 256)")
-	jsonPath := fs.String("json", "", "also write the inventory as JSON to PATH")
+	jsonPath := fs.String("json", "", "also write JSON to PATH; use - for JSON-only stdout")
 	authorized := fs.Bool("i-am-authorized", false, "confirm authorization for ranges that require it")
 	if err := fs.Parse(args); err != nil {
 		return 2 // flag package already reported to stderr
@@ -138,6 +138,13 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 	}
 	sort.Slice(hosts, func(i, j int) bool { return hosts[i].IP.Compare(hosts[j].IP) < 0 })
 
+	if *jsonPath == "-" {
+		if err := model.WriteJSON(stdout, hosts); err != nil {
+			fmt.Fprintf(stderr, "lancartographer: JSON stdout failed: %v\n", err)
+			return 2
+		}
+		return 0
+	}
 	printTable(stdout, hosts)
 
 	if *jsonPath != "" {
