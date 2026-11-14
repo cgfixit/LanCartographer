@@ -58,6 +58,8 @@ type ui struct {
 
 	topBar     *fyne.Container
 	subnet     *widget.SelectEntry
+	ports      *widget.Entry
+	resetPorts *widget.Button
 	scanBtn    *widget.Button
 	stopBtn    *widget.Button
 	themeBtn   *widget.Button
@@ -166,13 +168,19 @@ func newUI(a fyne.App, w fyne.Window, deps guiDeps) *ui {
 	u.settings, _ = LoadSettings()
 	u.progress = widget.NewProgressBar()
 	u.buildTopBar()
+	u.ports = widget.NewEntry()
+	u.ports.SetText(probe.DefaultPortsCSV)
+	u.ports.SetPlaceHolder("Comma-separated TCP ports, e.g. 3000,5432,8080")
+	u.resetPorts = widget.NewButton("Default ports", func() { u.ports.SetText(probe.DefaultPortsCSV) })
 	u.buildPanel()
 	u.buildTable()
 	u.buildStatusBar()
 	u.refreshTable()
 
 	u.win.SetContent(container.NewBorder(
-		container.NewVBox(u.topBar, u.progress),
+		container.NewVBox(u.topBar,
+			container.NewBorder(nil, nil, widget.NewLabel("TCP ports"), u.resetPorts, u.ports),
+			u.progress),
 		u.statusBar, nil, nil,
 		u.split))
 	u.win.SetMainMenu(u.mainMenu())
@@ -407,30 +415,38 @@ func (u *ui) onScan() {
 		u.statusErr.SetText("invalid subnet: " + err.Error())
 		return
 	}
+	ports, err := probe.ParsePorts(u.ports.Text)
+	if err != nil {
+		u.statusErr.SetText("TCP ports: " + err.Error())
+		return
+	}
 	target := p.Masked()
 	if authz.NeedsConfirmation(target, u.local) {
 		dialog.ShowConfirm("Confirm scan target",
 			authz.Notice+"\n\nYou asked to scan "+target.String()+", which is outside your local subnets, not private space, or broader than a /22.\n\nScan anyway?",
 			func(ok bool) {
 				if ok {
-					u.startScan(target)
+					u.startScan(target, ports)
 				}
 			}, u.win)
 		return
 	}
-	u.startScan(target)
+	u.startScan(target, ports)
 }
 
 // startScan resets the inventory and launches the engine on a goroutine.
 // Events pump back onto the UI thread through fyne.Do.
-func (u *ui) startScan(target netip.Prefix) {
+func (u *ui) startScan(target netip.Prefix, ports []int) {
 	if u.scanning {
 		return
 	}
 	if job := u.qualityJob; job != nil {
 		if !job.scanAfter.IsValid() {
 			job.scanAfter = target
+			job.portsAfter = ports
 			u.scanBtn.Disable()
+			u.ports.Disable()
+			u.resetPorts.Disable()
 			u.cancelInternetQuality()
 		}
 		return
@@ -443,6 +459,8 @@ func (u *ui) startScan(target netip.Prefix) {
 	u.refreshQualityControls()
 	u.started = time.Now()
 	u.scanBtn.Disable()
+	u.ports.Disable()
+	u.resetPorts.Disable()
 	u.stopBtn.Enable()
 	u.statusScan.Show()
 	u.progress.SetValue(0)
@@ -469,7 +487,7 @@ func (u *ui) startScan(target netip.Prefix) {
 	}()
 
 	opts := probe.Options{
-		Ports:        defaultPorts(),
+		Ports:        ports,
 		DialTimeout:  400 * time.Millisecond,
 		ProbeTimeout: 800 * time.Millisecond,
 		Concurrency:  128,
@@ -533,6 +551,8 @@ func (u *ui) finishScan() {
 	u.refreshQualityControls()
 	u.cancel = nil
 	u.scanBtn.Enable()
+	u.ports.Enable()
+	u.resetPorts.Enable()
 	u.stopBtn.Disable()
 	u.statusScan.Hide()
 	u.statusElaps.SetText(time.Since(u.started).Round(time.Millisecond).String())

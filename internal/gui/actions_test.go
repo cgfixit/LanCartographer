@@ -2,7 +2,6 @@ package gui
 
 import (
 	"net/netip"
-	"slices"
 	"testing"
 
 	"github.com/local/lancartographer/internal/model"
@@ -29,11 +28,19 @@ func TestBrowserURL(t *testing.T) {
 		{"443 only", []model.Port{open(443)}, "https://10.0.0.1"},
 		{"443 plus 80", []model.Port{open(443), open(80)}, "http://10.0.0.1"},
 		{"closed 443 only", []model.Port{{Number: 443, State: model.PortClosed}}, ""},
+		{"detected development web server", []model.Port{{Number: 3000, State: model.PortOpen, Service: "Web"}}, "http://10.0.0.1:3000"},
+		{"unidentified custom port", []model.Port{open(3000)}, ""},
+		{"closed custom web port", []model.Port{{Number: 3000, State: model.PortClosed, Service: "Web"}}, ""},
+		{"invalid imported web port", []model.Port{{Number: 65536, State: model.PortOpen, Service: "Web"}}, ""},
+		{"standard web preference", []model.Port{{Number: 3000, State: model.PortOpen, Service: "Web"}, open(443)}, "https://10.0.0.1"},
 	}
 	for _, c := range cases {
 		if got := browserURL(host("10.0.0.1", c.ports...)); got != c.want {
 			t.Errorf("%s: browserURL = %q, want %q", c.name, got, c.want)
 		}
+	}
+	if got := browserURL(host("::1", model.Port{Number: 3000, State: model.PortOpen, Service: "Web"})); got != "http://[::1]:3000" {
+		t.Fatalf("imported IPv6 web endpoint = %q", got)
 	}
 }
 
@@ -81,14 +88,6 @@ func TestBroadcastAddr(t *testing.T) {
 		if got := broadcastAddr(p); got != want {
 			t.Errorf("broadcastAddr(%s) = %q, want %q", cidr, got, want)
 		}
-	}
-}
-
-func TestDefaultPorts(t *testing.T) {
-	ports := defaultPorts()
-	want := []int{21, 22, 23, 80, 135, 139, 443, 445, 515, 631, 3389, 5357, 8080, 8443, 9100}
-	if !slices.Equal(ports, want) {
-		t.Errorf("defaultPorts = %v, want %v", ports, want)
 	}
 }
 
