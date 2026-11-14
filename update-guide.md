@@ -28,6 +28,10 @@ check. See the [session workflow](USER-GUIDE.md#save-a-baseline-and-compare-a-ch
 3. On macOS, use `LanCartographer-macos-arm64.zip` on Apple Silicon or `LanCartographer-macos-amd64.zip` on Intel. Replace `LanCartographer.app` and `lancartographer-cli` from that archive.
 4. If macOS blocks a downloaded app, approve it in Privacy & Security. The bundle is ad-hoc signed. It is not Developer ID signed or notarized. Do not disable Gatekeeper.
 
+For a macOS build from a specific merge to `main`, look for its
+`main-<commit SHA>` prerelease on the Releases page. Both architecture ZIPs
+contain the same bundle layout as the versioned releases.
+
 ## Rebuild from this tree
 
 The Go version is the `go` line in [go.mod](go.mod). Windows also needs MSYS2 ucrt64 gcc and the pinned `goversioninfo` version in the [build instructions](README.md#build-from-source). macOS needs the Xcode Command Line Tools. Both builds enable CGO because the GUI uses Fyne. Build the checked-in module versions; maintainers updating them should follow [dependency maintenance](CONTRIBUTING.md#dependency-maintenance).

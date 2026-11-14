@@ -25,6 +25,19 @@ Do not accidentally modify or remove the generated, tracked files
 `cmd/lancartographer/resource.syso` and `internal/oui/oui_data.go`. Never
 commit build output, logs, caches, credentials, or real LAN inventory.
 
+## Releases
+
+The [macOS main prerelease workflow](.github/workflows/release-main-macos.yml)
+publishes the Apple Silicon and Intel ZIPs built by CI for each pull request
+merged into `main`. It waits at least five minutes after CI, Gitleaks, and
+CodeQL pass on the same commit, then publishes both ZIPs under
+`main-<commit SHA>`. Runner queue time and uploading can add to the delay.
+Use a `v*` tag for a versioned Windows and macOS release.
+
+GitHub can reject tag creation if a newer merge changes workflow files before
+an older commit is released. In that case, create `main-<commit SHA>` on the
+verified commit with a workflow-authorized account and rerun the release job.
+
 ## Dependency maintenance
 
 `go.mod` owns the Go minimum and selected module requirements; commit its

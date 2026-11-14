@@ -1,0 +1,135 @@
+name: macOS main prerelease
+
+on:
+  workflow_run:
+    workflows: [CI, gitleaks, CodeQL]
+    branches: [main]
+    types: [completed]
+
+concurrency:
+  group: macos-main-prerelease-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  gate:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'dynamic')
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      ci_run_id: ${{ steps.check.outputs.ci_run_id }}
+    steps:
+      - name: Wait five minutes after the merge commit's checks pass
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          repo="repos/$GITHUB_REPOSITORY"
+          merged=$(gh api "$repo/commits/$SHA/pulls" --paginate --jq \
+            '.[] | select(.base.ref == "main" and .merged_at != null) | .merge_commit_sha')
+          if ! grep -Fxq "$SHA" <<< "$merged"; then
+            echo "No pull request merged into main at $SHA."
+            exit 0
+          fi
+
+          deadline=$(( $(date +%s) + 1800 ))
+          while (( $(date +%s) < deadline )); do
+            # Default-setup CodeQL uses a dynamic workflow with the run name "Push on main".
+            checks=$(gh api "$repo/actions/runs?branch=main&head_sha=$SHA&per_page=100" --paginate --slurp | jq -c '
+              [.[].workflow_runs[]] as $runs
+              | [
+                  [".github/workflows/ci.yml", "push", "CI"],
+                  [".github/workflows/gitleaks.yml", "push", "gitleaks"],
+                  ["dynamic/github-code-scanning/codeql", "dynamic", "Push on main"]
+                ]
+              | map(. as [$path, $event, $name] | $runs
+                  | map(select(.path == $path and .event == $event and .name == $name))
+                  | max_by(.run_number))')
+            if jq -e 'any(.[]; .status == "completed" and .conclusion != "success")' <<< "$checks" >/dev/null; then
+              echo "A required check did not pass for $SHA."
+              exit 0
+            fi
+            if jq -e 'all(.[]; .status == "completed" and .conclusion == "success")' <<< "$checks" >/dev/null; then
+              ready_at=$(jq 'map(.updated_at | fromdateiso8601) | max + 300' <<< "$checks")
+              if (( $(date +%s) >= ready_at )); then
+                echo "ci_run_id=$(jq -r '.[0].id' <<< "$checks")" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for CI, gitleaks and CodeQL at $SHA." >&2
+          exit 1
+
+  publish:
+    needs: gate
+    if: needs.gate.outputs.ci_run_id != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      TAG: main-${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Check whether this prerelease is already published
+        id: release
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2016 # GraphQL variables are passed separately.
+          release=$(gh api graphql -f query='
+            query($owner: String!, $name: String!, $tag: String!, $ref: String!) {
+              repository(owner: $owner, name: $name) {
+                release(tagName: $tag) { isDraft }
+                ref(qualifiedName: $ref) { target { oid } }
+              }
+            }' -f owner="${GITHUB_REPOSITORY%/*}" -f name="${GITHUB_REPOSITORY#*/}" -f tag="$TAG" \
+            -f ref="refs/tags/$TAG" --jq '.data.repository')
+          if ! jq -e --arg sha "$SHA" '.ref == null or .ref.target.oid == $sha' <<< "$release" >/dev/null; then
+            echo "Existing tag $TAG points at a different commit." >&2
+            exit 1
+          fi
+          jq -r '"published=\(.release.isDraft == false)"' <<< "$release" >> "$GITHUB_OUTPUT"
+
+      - name: Download the verified macOS ZIPs from CI
+        if: steps.release.outputs.published == 'false'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: LanCartographer-macos-*
+          path: ${{ runner.temp }}/macos-release
+          merge-multiple: true
+          run-id: ${{ needs.gate.outputs.ci_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Upload both assets to the prerelease draft
+        if: steps.release.outputs.published == 'false'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: ${{ env.TAG }}
+          target_commitish: ${{ env.SHA }}
+          name: macOS build for ${{ env.SHA }}
+          body: Apple Silicon and Intel app bundles from the successful CI run for this merge.
+          draft: true
+          prerelease: true
+          make_latest: false
+          fail_on_unmatched_files: true
+          files: |
+            ${{ runner.temp }}/macos-release/LanCartographer-macos-arm64.zip
+            ${{ runner.temp }}/macos-release/LanCartographer-macos-amd64.zip
+
+      - name: Publish the complete prerelease
+        if: steps.release.outputs.published == 'false'
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
