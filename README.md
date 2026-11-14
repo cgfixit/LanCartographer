@@ -64,6 +64,8 @@ Per-user data lives in `%AppData%\LanCartographer\` on Windows and
 An explicit absolute `APPDATA` overrides this location, including for isolated
 verification fixtures. The app does not fall back to writing in its working
 directory. New data directories use mode `0700` and files `0600` on macOS.
+Favorites, hostname cache and theme saves write a temporary file before
+replacing the destination. A failed save cleans up that attempt's temporary file.
 
 ## Why LanCartographer
 
