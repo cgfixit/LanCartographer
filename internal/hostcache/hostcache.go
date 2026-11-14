@@ -75,13 +75,12 @@ func Save(m Map) error {
 		return err
 	}
 	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
 	if err := json.NewEncoder(tmp).Encode(m); err != nil {
 		tmp.Close()
-		os.Remove(tmpName)
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
 		return err
 	}
 	return os.Rename(tmpName, p)

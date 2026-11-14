@@ -57,13 +57,12 @@ func Save(hosts []model.Host) error {
 		return err
 	}
 	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
 	if err := model.WriteJSON(tmp, hosts); err != nil {
 		tmp.Close()
-		os.Remove(tmpName)
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
 		return err
 	}
 	return os.Rename(tmpName, p)
