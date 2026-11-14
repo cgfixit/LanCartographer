@@ -17,6 +17,7 @@ dependency set, native platform or downloaded release.
 | --- | --- |
 | [Dependency refresh, 2026-11-01](verification/dependencies-2026-11-01.md) | Go 1.27.3/Fyne 2.8.2 package, owned CLI smoke, focused checks and native session dialogs/themes |
 | [Internet Quality, 2026-11-07](verification/internet-quality-2026-11-07.md) | Live Apple measurement, native stop/close, browser handoff and packaged loopback smoke |
+| [Wi-Fi diagnostics, 2026-11-14](verification/wifi-diagnostics-2026-11-14.md) | Native before/after screenshots, live gateway replies, cancellation and packaged loopback smoke |
 | [Saved sessions, 2026-11-01](verification/sessions-2026-11-01.md) | Owned service change, save/reload, coverage comparison, selected redaction/export, light/dark native interaction and explicit platform limits |
 | [macOS packaging and native workflow](macos-verification.md) | Packaged CLI and native GUI results at the recorded revisions |
 | [CSV export, 2026-10-13](csv-verification-2026-10-13.md) | Historical CSV escaping/formula-prefix verification |
