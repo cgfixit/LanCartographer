@@ -231,6 +231,9 @@ unmetered connection. **Stop** and closing the window end the measurement.
 The result stays in the window and the existing inventory and sessions
 continue to operate independently.
 
+The **Wi-Fi** tab compares link health and local gateway latency before and
+after a change without writing network settings.
+
 **Open Cloudflare in browser…** is a separate action with its own provider
 disclosure. See the [Internet Quality guide](USER-GUIDE.md#measure-internet-quality-on-macos)
 for what the numbers mean and how to handle a failed run.

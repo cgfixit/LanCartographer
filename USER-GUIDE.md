@@ -151,6 +151,20 @@ The browser manages its own results. No tools need to be installed.
 [Apple Network Quality](https://support.apple.com/en-us/101942),
 [Cloudflare Speed Test](https://speed.cloudflare.com/).
 
+### Compare Wi-Fi before and after a change
+
+1. Open the **Wi-Fi** tab in **Internet Quality** and select **Capture baseline**.
+2. After making a change, select **Capture after**. Compare signal, noise,
+   channel, negotiated transmit rate and gateway round-trip time where available.
+3. Use **Replace baseline** to start a new comparison. Both samples stay in the
+   window until you close it.
+
+Each sample reads the current link and sends up to five ICMP echo requests to
+the default gateway on that Wi-Fi interface. Some gateways ignore ICMP. A missing
+reply or gateway leaves limited evidence about Wi-Fi performance. Compare on
+the same network and repeat a surprising result. The app makes no changes to
+macOS or router settings.
+
 ## Code tour for Python and PowerShell users
 
 The rest of this guide connects Go concepts to familiar Python and PowerShell
