@@ -8,19 +8,71 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/local/lancartographer/internal/model"
 	"github.com/local/lancartographer/internal/probe"
 )
 
-// themeModeLabel is the toolbar caption for the theme that is active.
-// Anything other than "dark" is light, matching applyTheme.
+// themeModeLabel is the theme button caption. It names the theme the
+// button switches TO, so the label reads as an action; anything other than
+// "dark" is light, matching applyTheme.
 func themeModeLabel(mode string) string {
 	if mode == "dark" {
-		return "Dark on"
+		return "Light theme"
 	}
-	return "Light on"
+	return "Dark theme"
+}
+
+// plural renders a count with its noun: "1 host", "4 hosts".
+func plural(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return strconv.Itoa(n) + " " + noun + "s"
+}
+
+// emptyCell marks a value the scan did not learn; it is displayed dimmed.
+const emptyCell = "—"
+
+// portsCell is the table's compact open-port list: "22 SSH, 443 Web,
+// 18443". Only open ports are listed, so the state word is omitted; an
+// unidentified service shows the number alone. The CLI keeps the longer
+// model.OpenPortsSummary form.
+func portsCell(h model.Host) string {
+	var open []model.Port
+	for _, p := range h.Ports {
+		if p.State == model.PortOpen {
+			open = append(open, p)
+		}
+	}
+	sort.Slice(open, func(i, j int) bool { return open[i].Number < open[j].Number })
+	parts := make([]string, 0, len(open))
+	for _, p := range open {
+		part := strconv.Itoa(p.Number)
+		if p.Service != "" && p.Service != "unknown" {
+			part += " " + p.Service
+		}
+		parts = append(parts, part)
+	}
+	return strings.Join(parts, ", ")
+}
+
+// foundViaLabel explains how discovery saw the host.
+func foundViaLabel(v string) string {
+	switch v {
+	case "tcp":
+		return "TCP connection"
+	case "arp":
+		return "ARP cache"
+	case "icmp":
+		return "Ping (ICMP echo)"
+	case "":
+		return emptyCell
+	}
+	return v
 }
 
 // browserURL selects an open web endpoint in the existing preference order.
@@ -89,7 +141,7 @@ func broadcastAddr(p netip.Prefix) string {
 // otherwise the count plus the first share name.
 func sharesCell(h model.Host) string {
 	if len(h.Shares) == 0 {
-		return "0 shares"
+		return ""
 	}
 	if len(h.Shares) == 1 && h.Shares[0].Name == "" && h.Shares[0].Remark == "shares: access denied" {
 		return "access denied"
@@ -98,7 +150,7 @@ func sharesCell(h model.Host) string {
 	if first == "" {
 		first = h.Shares[0].UNC
 	}
-	return fmt.Sprintf("%d shares (%s)", len(h.Shares), first)
+	return fmt.Sprintf("%s (%s)", plural(len(h.Shares), "share"), first)
 }
 
 // isDenialShare reports whether s is the synthetic access-denied record.

@@ -21,6 +21,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -76,7 +77,6 @@ type ui struct {
 	statusShare *widget.Label
 	statusElaps *widget.Label
 	statusErr   *widget.Label
-	statusScan  *widget.Label
 
 	// status-bar rule rectangles, live-recolored by applyTheme
 	statusSeparators []*canvas.Rectangle
@@ -132,7 +132,7 @@ func Run() error {
 		a.Settings().SetTheme(theme.LightTheme())
 	}
 	w := a.NewWindow("LanCartographer")
-	w.Resize(fyne.NewSize(1120, 680))
+	w.Resize(fyne.NewSize(1280, 760))
 
 	u := newUI(a, w, guiDeps{
 		localSubnets: discover.LocalSubnets,
@@ -173,6 +173,7 @@ func newUI(a fyne.App, w fyne.Window, deps guiDeps) *ui {
 	u.captureLocalSubnets()
 	u.settings, _ = LoadSettings()
 	u.progress = widget.NewProgressBar()
+	u.progress.Hide() // shown only while a scan runs
 	u.buildTopBar()
 	u.ports = widget.NewEntry()
 	u.ports.SetText(probe.DefaultPortsCSV)
@@ -227,15 +228,17 @@ func (u *ui) buildTopBar() {
 
 	u.themeBtn = widget.NewButtonWithIcon(themeModeLabel(u.settings.Theme), theme.ColorPaletteIcon(), u.onThemeToggle)
 
+	// Scan controls on the left; tools and output on the right. Favorites
+	// live in the File menu, so the toolbar holds only the main workflow.
 	items := []fyne.CanvasObject{
 		container.NewGridWrap(fyne.NewSize(230, u.subnet.MinSize().Height), u.subnet),
 		u.scanBtn,
 		u.stopBtn,
-		u.themeBtn,
-		widget.NewButtonWithIcon("Save", theme.FolderIcon(), u.onSaveFavorites),
-		widget.NewButtonWithIcon("Load", theme.FolderOpenIcon(), u.onLoadFavorites),
-		widget.NewButtonWithIcon("Export", theme.DocumentSaveIcon(), u.onExport),
+		layout.NewSpacer(),
+		widget.NewButtonWithIcon("Check Service", theme.SearchIcon(), func() { u.showServiceCheck(nil) }),
 		widget.NewButtonWithIcon("Sessions", theme.HistoryIcon(), u.onSessions),
+		widget.NewButtonWithIcon("Export", theme.DocumentSaveIcon(), u.onExport),
+		u.themeBtn,
 	}
 	if runtime.GOOS == "windows" && !u.deps.isElevated() {
 		u.elevateBtn = widget.NewButtonWithIcon("Elevate", theme.LoginIcon(), u.onElevate)
@@ -249,18 +252,16 @@ func (u *ui) buildTopBar() {
 // confirmation dialog.
 const statusReminder = "Scan only networks you own or have authorization to inventory."
 
-// buildStatusBar creates the bottom strip: counts separated by thin rules
-// on the left, and on the right a scanning indicator plus the standing
-// authorization reminder.
+// buildStatusBar creates the bottom strip: counts and the scan state
+// ("Ready", "Scanning · 3s", a duration, or "Stopped · 2s") separated by
+// thin rules on the left, and the standing authorization reminder on the
+// right.
 func (u *ui) buildStatusBar() {
-	u.statusHosts = widget.NewLabel("0 hosts")
-	u.statusPorts = widget.NewLabel("0 open ports")
-	u.statusShare = widget.NewLabel("0 shares")
-	u.statusElaps = widget.NewLabel("0.0s")
+	u.statusHosts = widget.NewLabel(plural(0, "host"))
+	u.statusPorts = widget.NewLabel(plural(0, "open port"))
+	u.statusShare = widget.NewLabel(plural(0, "share"))
+	u.statusElaps = widget.NewLabel("Ready")
 	u.statusErr = widget.NewLabel("")
-	u.statusScan = widget.NewLabel("Scanning…")
-	u.statusScan.Importance = widget.WarningImportance
-	u.statusScan.Hide()
 	reminder := widget.NewLabel(statusReminder)
 	reminder.Importance = widget.WarningImportance
 	reminder.Alignment = fyne.TextAlignTrailing
@@ -269,7 +270,9 @@ func (u *ui) buildStatusBar() {
 	// shrunk the Border right slot to "…" at every window width. The
 	// GridWrap pins the full-sentence width as the minimum; on very narrow
 	// windows the label still ellipsizes within it.
-	reminderMin := reminder.MinSize()
+	// A little slack keeps the sentence whole after a runtime theme switch,
+	// whose text metrics can differ by a few pixels from the startup theme.
+	reminderMin := reminder.MinSize().AddWidthHeight(12, 0)
 	reminder.Truncation = fyne.TextTruncateEllipsis
 	u.statusSeparators = nil
 	counters := container.NewHBox(
@@ -277,7 +280,7 @@ func (u *ui) buildStatusBar() {
 		u.statusShare, u.thinSeparator(), u.statusElaps, u.thinSeparator(),
 		u.statusErr)
 	u.statusBar = container.NewBorder(nil, nil, counters,
-		container.NewHBox(u.statusScan, container.NewGridWrap(reminderMin, reminder)))
+		container.NewGridWrap(reminderMin, reminder))
 }
 
 // statusSeparators tracks the live status-bar rule rectangles so applyTheme
@@ -297,9 +300,9 @@ func (u *ui) thinSeparator() fyne.CanvasObject {
 // refreshStatus recomputes the status-bar counts from the store.
 func (u *ui) refreshStatus() {
 	hosts, openPorts, shares := u.store.counts()
-	u.statusHosts.SetText(fmt.Sprintf("%d hosts", hosts))
-	u.statusPorts.SetText(fmt.Sprintf("%d open ports", openPorts))
-	u.statusShare.SetText(fmt.Sprintf("%d shares", shares))
+	u.statusHosts.SetText(plural(hosts, "host"))
+	u.statusPorts.SetText(plural(openPorts, "open port"))
+	u.statusShare.SetText(plural(shares, "share"))
 }
 
 // refreshTable re-sorts the store snapshot behind the table and repaints.
@@ -368,18 +371,25 @@ func (u *ui) maybeFirstRun() {
 	}
 	label := widget.NewLabel(authz.Notice)
 	label.Wrapping = fyne.TextWrapWord
-	var popup *widget.PopUp
+	how := widget.NewLabel("You choose every range before it is scanned, and anything outside your local subnets asks for confirmation first.")
+	how.Wrapping = fyne.TextWrapWord
+	how.TextStyle = fyne.TextStyle{Italic: true}
+	var d dialog.Dialog
 	understand := widget.NewButton("I understand", func() {
 		if pathErr == nil {
 			if err := os.MkdirAll(filepath.Dir(p), 0o700); err == nil {
 				_ = os.WriteFile(p, []byte(time.Now().Format(time.RFC3339)), 0o600)
 			}
 		}
-		popup.Hide()
+		d.Hide()
 	})
-	popup = widget.NewModalPopUp(container.NewVBox(label, understand), u.win.Canvas())
-	popup.Resize(fyne.NewSize(600, 180))
-	popup.Show()
+	understand.Importance = widget.HighImportance
+	// Only the button records the marker; dismissing any other way shows
+	// the notice again on the next launch, as before.
+	d = dialog.NewCustomWithoutButtons("Before you scan",
+		container.NewVBox(label, how, container.NewCenter(understand)), u.win)
+	d.Resize(fyne.NewSize(560, 0))
+	d.Show()
 }
 
 // applyTheme switches the app-wide theme; anything but "dark" means light.
@@ -394,6 +404,9 @@ func (u *ui) applyTheme(mode string) {
 	for _, rule := range u.statusSeparators {
 		rule.FillColor = theme.Color(theme.ColorNameSeparator)
 		rule.Refresh()
+	}
+	if u.table != nil {
+		u.table.Refresh() // re-tint the selected row for the new theme
 	}
 }
 
@@ -468,8 +481,9 @@ func (u *ui) startScan(target netip.Prefix, ports []int) {
 	u.ports.Disable()
 	u.resetPorts.Disable()
 	u.stopBtn.Enable()
-	u.statusScan.Show()
 	u.progress.SetValue(0)
+	u.progress.Show()
+	u.statusElaps.SetText("Scanning · 0s")
 	u.showPanelPlaceholder()
 	u.refreshTable()
 
@@ -485,7 +499,7 @@ func (u *ui) startScan(target netip.Prefix, ports []int) {
 			select {
 			case <-ticker.C:
 				elapsed := time.Since(started).Round(time.Second)
-				fyne.Do(func() { u.statusElaps.SetText(elapsed.String()) })
+				fyne.Do(func() { u.statusElaps.SetText("Scanning · " + elapsed.String()) })
 			case <-stop:
 				return
 			}
@@ -560,8 +574,13 @@ func (u *ui) finishScan() {
 	u.ports.Enable()
 	u.resetPorts.Enable()
 	u.stopBtn.Disable()
-	u.statusScan.Hide()
-	u.statusElaps.SetText(time.Since(u.started).Round(time.Millisecond).String())
+	u.progress.Hide()
+	took := time.Since(u.started).Round(time.Millisecond).String()
+	if u.scanDone {
+		u.statusElaps.SetText(took)
+	} else {
+		u.statusElaps.SetText("Stopped · " + took)
+	}
 	u.refreshTable() // final flush: settled state is exact even if throttled
 }
 

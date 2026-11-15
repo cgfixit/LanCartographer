@@ -4,6 +4,9 @@ package gui
 
 import (
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -12,6 +15,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/local/lancartographer/internal/model"
+	"github.com/local/lancartographer/internal/servicecheck"
 )
 
 // buildPanel creates the right-hand side panel container. It is rebuilt on
@@ -27,7 +31,10 @@ func (u *ui) buildPanel() {
 func (u *ui) showPanelPlaceholder() {
 	hint := widget.NewLabel("Select a host to see details.")
 	hint.Truncation = fyne.TextTruncateEllipsis
-	u.panel.Objects = []fyne.CanvasObject{hint}
+	tip := widget.NewLabel("Right-click a host for copy, open and check actions.")
+	tip.Wrapping = fyne.TextWrapWord
+	tip.TextStyle = fyne.TextStyle{Italic: true}
+	u.panel.Objects = []fyne.CanvasObject{container.NewVBox(hint, tip)}
 	u.panel.Refresh()
 }
 
@@ -49,7 +56,7 @@ func (u *ui) showHost(h model.Host) {
 		menu(panelKV("IP", h.IP.String())),
 		menu(panelKV("MAC", h.MAC)),
 		menu(panelKV("Vendor", h.Vendor)),
-		menu(panelKV("Found via", h.FoundVia)),
+		menu(panelKV("Found via", foundViaLabel(h.FoundVia))),
 	)
 
 	// Action buttons, enabled per the host's actual surface.
@@ -77,22 +84,22 @@ func (u *ui) showHost(h model.Host) {
 			u.confirmWOL(h)
 		}))
 	}
+	checkHost := widget.NewButtonWithIcon("Check service…", theme.SearchIcon(), func() {
+		u.showServiceCheck(servicePrefillFor(h))
+	})
 
-	// Ports section: one row per probed port, open rows badged.
-	ports := container.NewVBox(sectionHeader("Ports"))
-	if len(h.Ports) == 0 {
-		ports.Add(widget.NewLabel("No ports probed yet."))
-	} else {
-		for _, p := range h.Ports {
-			ports.Add(menu(u.portRow(h, p)))
-		}
-	}
+	// Ports section: open ports first, each with a prefilled Check action;
+	// closed and unanswered ports collapse into one dim line each.
+	ports := container.NewVBox(u.portsSection(h, menu)...)
 
 	// Shares section: never lists files; denial records show their remark.
 	shares := container.NewVBox(sectionHeader("Shares"))
 	switch {
 	case len(h.Shares) == 0:
-		shares.Add(widget.NewLabel("None (445 closed or access denied)."))
+		none := widget.NewLabel("None found. Port 445 was closed, or the host did not allow listing.")
+		none.Wrapping = fyne.TextWrapWord
+		none.TextStyle = fyne.TextStyle{Italic: true}
+		shares.Add(none)
 	default:
 		for _, s := range h.Shares {
 			shares.Add(u.shareRow(h, s))
@@ -108,6 +115,7 @@ func (u *ui) showHost(h model.Host) {
 		sectionHeader("Identity"),
 		ident,
 		actions,
+		checkHost,
 		widget.NewSeparator(),
 		ports,
 		widget.NewSeparator(),
@@ -115,6 +123,53 @@ func (u *ui) showHost(h model.Host) {
 		layout.NewSpacer(),
 	}
 	u.panel.Refresh()
+}
+
+// portsSection lists open ports (with a Check action that only prefills
+// Check Service) and summarizes the rest.
+func (u *ui) portsSection(h model.Host, menu func(fyne.CanvasObject) fyne.CanvasObject) []fyne.CanvasObject {
+	var open []model.Port
+	var closed, silent []string
+	for _, p := range h.Ports {
+		switch p.State {
+		case model.PortOpen:
+			open = append(open, p)
+		case model.PortTimeout:
+			silent = append(silent, strconv.Itoa(p.Number))
+		default:
+			closed = append(closed, strconv.Itoa(p.Number))
+		}
+	}
+	header := "Ports"
+	if len(h.Ports) > 0 {
+		header = fmt.Sprintf("Ports · %d open of %d probed", len(open), len(h.Ports))
+	}
+	out := []fyne.CanvasObject{sectionHeader(header)}
+	if len(h.Ports) == 0 {
+		return append(out, widget.NewLabel("No ports probed yet."))
+	}
+	if len(open) == 0 {
+		none := widget.NewLabel("No open ports among those probed.")
+		none.TextStyle = fyne.TextStyle{Italic: true}
+		out = append(out, none)
+	}
+	sort.Slice(open, func(i, j int) bool { return open[i].Number < open[j].Number })
+	for _, p := range open {
+		out = append(out, menu(u.portRow(h, p)))
+	}
+	for _, group := range []struct {
+		label string
+		ports []string
+	}{{"Closed", closed}, {"No answer", silent}} {
+		if len(group.ports) == 0 {
+			continue
+		}
+		line := widget.NewLabel(group.label + ": " + strings.Join(group.ports, ", "))
+		line.Wrapping = fyne.TextWrapWord
+		line.TextStyle = fyne.TextStyle{Italic: true}
+		out = append(out, line)
+	}
+	return out
 }
 
 // sectionHeader uses a themed widget so switching themes recolors it.
@@ -128,35 +183,37 @@ func sectionHeader(text string) fyne.CanvasObject {
 func panelKV(key, value string) fyne.CanvasObject {
 	k := widget.NewLabelWithStyle(key, fyne.TextAlignTrailing, fyne.TextStyle{Bold: true})
 	v := widget.NewLabel(value)
+	if value == "" || value == emptyCell {
+		v.SetText(emptyCell)
+		v.Importance = widget.LowImportance
+	}
 	v.Truncation = fyne.TextTruncateEllipsis
 	return container.NewBorder(nil, nil,
 		container.NewGridWrap(fyne.NewSize(90, k.MinSize().Height), k), nil, v)
 }
 
-// portRow renders one probed port: state, number, service, HTTP title.
-// Open rows carry a badge: globe for web, folder for SMB, desktop for RDP.
+// portRow renders one open port: number, service and HTTP title, plus a
+// Check action that prefills Check Service with this port. Prefilling
+// contacts nothing; the check itself still asks for confirmation.
 func (u *ui) portRow(h model.Host, p model.Port) fyne.CanvasObject {
-	state := widget.NewLabel(p.State)
-	if p.State == model.PortOpen {
-		state.Importance = widget.SuccessImportance
+	text := strconv.Itoa(p.Number)
+	if p.Service != "" && p.Service != "unknown" {
+		text += "  " + p.Service
 	}
-	text := fmt.Sprintf("%d  %s", p.Number, p.Service)
 	if p.Title != "" {
 		text += "  —  " + p.Title
 	}
-	row := container.NewHBox(state, widget.NewLabel(text))
-	if p.State != model.PortOpen {
-		return row
-	}
-	switch p.Number {
-	case 80, 443, 8080, 8443:
-		row.Add(widget.NewIcon(theme.GridIcon()))
-	case 445:
-		row.Add(widget.NewIcon(theme.FolderIcon()))
-	case 3389:
-		row.Add(widget.NewIcon(theme.DesktopIcon()))
-	}
-	return row
+	label := widget.NewLabel(text)
+	label.Truncation = fyne.TextTruncateEllipsis
+	check := widget.NewButton("Check…", func() {
+		protocol := servicecheck.SuggestProtocol(p.Number)
+		if protocol == servicecheck.TCP && p.Service == "Web" {
+			protocol = servicecheck.HTTP
+		}
+		u.showServiceCheck(&servicePrefill{host: h.IP.String(), port: p.Number, protocol: protocol})
+	})
+	check.Importance = widget.LowImportance
+	return container.NewBorder(nil, nil, nil, check, label)
 }
 
 // shareRow renders one share: a folder icon and bold name on the first

@@ -16,6 +16,7 @@ dependency set, native platform or downloaded release.
 | Record | Coverage |
 | --- | --- |
 | [Dependency refresh, 2026-11-01](verification/dependencies-2026-11-01.md) | Go 1.27.3/Fyne 2.8.2 package, owned CLI smoke, focused checks and native session dialogs/themes |
+| [Main window flow, 2026-11-15](verification/ui-flow-2026-11-15.md) | Before/after inventory with the same sample data, first-run notice, stop/finish states, favorites/export regressions and the unchanged CLI table |
 | [Check Service, 2026-11-15](verification/check-service-2026-11-15.md) | Owned loopback fixtures for every stage outcome, rendered X11 GUI interaction (decline, prefill, Stop, close, quit), race-checked tests and stated platform limits |
 | [Internet Quality, 2026-11-07](verification/internet-quality-2026-11-07.md) | Live Apple measurement, native stop/close, browser handoff and packaged loopback smoke |
 | [Wi-Fi diagnostics, 2026-11-14](verification/wifi-diagnostics-2026-11-14.md) | Native before/after screenshots, live gateway replies, cancellation and packaged loopback smoke |

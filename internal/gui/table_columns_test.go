@@ -104,7 +104,7 @@ func TestComputeColWidths(t *testing.T) {
 	})
 
 	t.Run("avail below min-sum clamps every column to its minimum", func(t *testing.T) {
-		ws := computeColWidths(700) // min-sum is 745
+		ws := computeColWidths(700) // min-sum is 750
 		for i, w := range ws {
 			if w != colMins[i] {
 				t.Errorf("col %d width = %v, want min %v", i, w, colMins[i])
