@@ -31,7 +31,16 @@ and you install it with
 | not pinned to a commit SHA | A `uses:` line names a tag or branch | Pin `owner/action@<40-hex> # vX.Y.Z`. Resolve with `git ls-remote https://github.com/<owner>/<action> 'refs/tags/vX.Y.Z^{}'` (the peeled `^{}` line is the commit for annotated tags). Keep the `# vX.Y.Z` comment so Dependabot can bump it. |
 | secret other than GITHUB_TOKEN | A workflow now needs a credential | Not allowed without the owner's sign-off (`AGENTS.md` §4). |
 | installs a tool at @latest | `go install …@latest` in a workflow | Pin the version; `curl -s https://proxy.golang.org/<module>/@latest` shows the current one. |
-| contents: write outside release.yml | CI or gitleaks gained write access | Only the release publish job writes. |
+| top-level permissions (missing, `read-all`, `write-all`, grant write, lack `contents: read`) | A workflow's top-level `permissions:` is absent, a blanket scope, or writable | Use `permissions: {}` (deny-all; each job opts in) or a map with `contents: read` and no `write`. Writes go on the job that needs them. |
+| contents: write outside the release publish jobs | A job other than `release.yml:release` or `release-main-macos.yml:publish` gained `contents: write` or `write-all` | Drop it. Adding a job to the allowlist (`WRITE_ALLOWED` in `check.sh`) is its own PR with the reason. |
+
+The write allowlist is job-scoped, not file-scoped. Both entries publish a
+GitHub release, which needs `contents: write`: `release.yml:release` for `v*`
+tags, and `release-main-macos.yml:publish` for the macOS prerelease after a
+merge to `main`. The latter is only reachable through its `gate` job, which
+keeps `contents: read` and checks the triggering run is a same-repo push. A
+write grant in any other job, in `gate`, at the top level, or in a new
+workflow fails.
 
 ## Limits
 

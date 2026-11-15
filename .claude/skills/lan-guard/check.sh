@@ -68,12 +68,49 @@ else
 fi
 
 # Workflow hardening.
-for wf in .github/workflows/*.yml; do
-    if grep -qE '^permissions:' "$wf" && awk '/^permissions:/{p=1;next} p&&/^[^ ]/{exit} p' "$wf" | grep -q 'contents: read'; then
-        pass "$wf: top-level contents: read"
+# Top-level permissions: either deny-all (`permissions: {}`, jobs opt in) or a
+# block/flow map that grants contents: read and nothing writable. Absent,
+# read-all, write-all and any top-level `: write` fail.
+toplevel_perms() { # prints "ok", or the reason it is not
+    local wf=$1 line value body
+    line=$(grep -m1 -E '^permissions:' "$wf") || { echo "missing top-level permissions"; return; }
+    value=$(printf '%s' "$line" | sed -E 's/^permissions:[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//')
+    case "$value" in
+        '{}') echo ok; return ;;
+        '') body=$(awk '/^permissions:/{p=1;next} p&&/^[^ #]/{exit} p' "$wf" | sed -E 's/#.*$//') ;;
+        '{'*'}') body=$(printf '%s' "$value" | tr ',{}' '\n  ') ;;
+        *) echo "top-level permissions: $value"; return ;;
+    esac
+    if printf '%s\n' "$body" | grep -qE ':[[:space:]]*write'; then
+        echo "top-level permissions grant write"
+    elif printf '%s\n' "$body" | grep -qE '^[[:space:]]*contents:[[:space:]]*read[[:space:]]*$'; then
+        echo ok
     else
-        fail "$wf: missing top-level permissions with contents: read"
+        echo "top-level permissions lack contents: read"
     fi
+}
+# contents: write is allowed only in these job-level blocks, each of which
+# publishes a GitHub release. Everything else, including any new workflow,
+# fails. Matches print as "<workflow>:<job>".
+WRITE_ALLOWED=' release.yml:release release-main-macos.yml:publish '
+write_grants() { # file -> "<base>:<job>" per contents: write / write-all line under jobs
+    awk -v base="${1##*/}" '
+        /^[^ #]/ { injobs = ($0 ~ /^jobs:/); job = ""; next }
+        injobs && /^  [A-Za-z0-9_-]+:/ { job = $1; sub(/:$/, "", job); next }
+        injobs && job != "" && /^[^#]*(contents:[[:space:]]*write|permissions:[[:space:]]*write-all)/ { print base ":" job }
+    ' "$1"
+}
+WRITE_VIOLATIONS=""
+for wf in .github/workflows/*.yml; do
+    why=$(toplevel_perms "$wf")
+    if [ "$why" = ok ]; then
+        pass "$wf: top-level permissions are contents: read or deny-all"
+    else
+        fail "$wf: $why (need contents: read or {})"
+    fi
+    for grant in $(write_grants "$wf"); do
+        case "$WRITE_ALLOWED" in *" $grant "*) ;; *) WRITE_VIOLATIONS="$WRITE_VIOLATIONS $grant" ;; esac
+    done
     if grep -q 'pull_request_target' "$wf"; then fail "$wf: uses pull_request_target"; fi
     unpinned=$(grep -nE '^\s*(- )?uses:\s*[^./][^@]*@' "$wf" | grep -vE '@[0-9a-f]{40}( |$)' || true)
     if [ -n "$unpinned" ]; then
@@ -85,10 +122,10 @@ for wf in .github/workflows/*.yml; do
     if [ -n "$secrets" ]; then fail "$wf: uses a secret other than GITHUB_TOKEN: $secrets"; fi
     if grep -q '@latest' "$wf"; then fail "$wf: installs a tool at @latest"; fi
 done
-if grep -q 'contents: write' .github/workflows/ci.yml .github/workflows/gitleaks.yml; then
-    fail "contents: write outside the release publish job"
+if [ -n "$WRITE_VIOLATIONS" ]; then
+    fail "contents: write outside the release publish jobs:$WRITE_VIOLATIONS"
 else
-    pass "contents: write only in release.yml"
+    pass "contents: write only in release.yml:release and release-main-macos.yml:publish"
 fi
 
 if command -v actionlint >/dev/null 2>&1; then
