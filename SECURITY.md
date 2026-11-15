@@ -99,6 +99,21 @@ anonymization. It does not redact the GUI comparison list, full session JSON,
 operator notes or screenshots. Inspect what you share, especially notes and
 reports exported with redaction disabled. See the [User Guide](USER-GUIDE.md#what-is-saved-and-what-is-shared).
 
+## Check Service
+
+**Tools → Check Service…** contacts a service only after the operator
+confirms the exact address, port and protocol; the confirmation repeats the
+authorization notice and declining sends nothing. Resolving a name uses the
+system resolver (hosts file, configured DNS or, on macOS, multicast DNS for
+`.local` names). The check then dials only the confirmed address: it never
+re-resolves the name, uses no proxy, never disables TLS verification, never
+follows redirects and sends at most one `GET /` without credentials. Connect
+and TLS stages have three-second deadlines; HTTP keeps the one-second and
+32 KiB body limits with a 32 KiB header cap. Server-provided text is reduced
+to printable single-line text before display. Results stay in memory and are
+excluded from saved sessions, exports and logs; **Copy results** writes them
+to the clipboard only on request.
+
 ## Internet Quality
 
 On macOS, the optional Internet Quality test sends active measurement

@@ -127,6 +127,57 @@ background monitoring, automatic upload or session migration.
 | Unsupported/invalid file | Use a saved session from a compatible build, within the file limits. Raw inventory JSON is not a session. |
 | Notes too long | Keep report notes within 2,000 UTF-8 bytes. |
 
+## Check a service
+
+Use **Tools → Check Service…** on Windows or macOS to answer "can this
+computer reach my NAS, printer or web app, and where does it fail?" You can
+also right-click a host in the inventory and choose **Check service…**. That
+fills in the host's address and its most likely web port; filling in the form
+sends nothing.
+
+1. Enter a host name or IP address and a port. Choose **TCP** (connect only),
+   **TLS** (connect and verify the certificate), **HTTP** (one `GET /`) or
+   **HTTPS** (verified TLS, then one `GET /`). Common ports suggest a protocol
+   until you choose one yourself.
+2. For a name, select **Resolve**. The lookup uses this computer's resolver:
+   the hosts file, the configured DNS servers or, for `.local` names on macOS,
+   multicast DNS on the local network. Pick one of the returned addresses (at
+   most 16 are shown).
+3. Select **Check…** or press Return. The confirmation names the exact address,
+   port and traffic, adds a caution when the address is outside your local
+   subnets or public, and repeats the authorization notice. **No** sends
+   nothing.
+
+![Check Service with a resolved name, a connection and an HTTP answer](docs/verification/check-service/resolve-http-light.jpg)
+
+| Stage | Passed means | Common failures and what to try |
+| --- | --- | --- |
+| Resolve | The name returned at least one address. | *Name not found*: check spelling, the search domain, or whether this network's DNS knows the name. *Did not answer within 5 s*: the resolver is unreachable. |
+| Connect | A TCP connection opened to the chosen address. The source address shows which local address this computer used. | *Refused*: nothing listens on that port, or a firewall rejected it. *No answer within 3 s*: the host is offline, a firewall drops the traffic, or the address is wrong. *No route*: this computer has no path to that network. |
+| TLS | The certificate is trusted by this computer and valid for the name you entered. Shows the TLS version, certificate names, issuer and expiry. Expiry within 14 days is a warning. | *Not trusted*: self-signed and private-CA certificates fail; the app does not bypass verification. *Not valid for*: the certificate names a different host. *Expired* or *not valid until*: renew it, or check this computer's clock. *Did not answer with TLS*: try HTTP or TCP. |
+| HTTP | The service answered with an HTTP status. Shows the `Server` header and page title. A redirect is shown and not followed. 401 or 403 means the service answered and wants sign-in. A 5xx status is a warning. | *No HTTP response within 1 s*, or *not HTTP*: the port may run another protocol or need TLS. |
+
+What a check does and does not do:
+
+- It opens one TCP connection to the one address you confirmed, without a
+  proxy. It never looks the name up again, so a DNS answer that changes after
+  you confirm cannot redirect the check.
+- TLS verifies against this computer's trust store using the name you entered
+  (also sent as SNI). HTTP sends that name as `Host`. The HTTP stage keeps the
+  inventory limits: one second, 32 KiB of body and no redirects. Response
+  headers are capped at 32 KiB.
+- IPv4 and IPv6 addresses work. A link-local IPv6 address needs its
+  interface, for example `fe80::1%en0`. Enter internationalized names in their
+  `xn--` form.
+- A result is an observation from this computer at the time shown. A failure
+  does not prove the server or a firewall is at fault, and a success does not
+  show what another client, VPN or container sees.
+- One check runs at a time. **Stop** or closing the window cancels it and
+  closes the connection. A check is independent of inventory scans.
+- Results stay in the window. They are not saved in sessions, exports or
+  logs. **Copy results** puts the host, address and stage text on the
+  clipboard only when you select it.
+
 ## Measure Internet Quality on macOS
 
 1. Choose **Tools → Internet Quality…**.
@@ -387,6 +438,11 @@ review it hard.
   Scans include DNS/name-resolution traffic that can reach off-LAN resolvers.
   Explicit Ping, Wake-on-LAN and desktop actions can also send traffic. Saved
   session open/compare/export adds no probes or uploads.
+- **Check Service contacts one confirmed address.** `internal/servicecheck`
+  dials only the address the operator confirmed, never re-resolves the name,
+  uses no HTTP transport (so no proxy or redirect can apply) and never skips
+  TLS verification. Text from the server is reduced to printable single-line
+  text before display.
 - **Local evidence has privacy limits.** Full session JSON is unredacted;
   selected reports default to redaction. Notes and screenshots need separate
   review. See the session workflow above and [SECURITY.md](SECURITY.md).

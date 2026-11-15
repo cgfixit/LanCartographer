@@ -96,6 +96,7 @@ replacing the destination. A failed save cleans up that attempt's temporary file
 | Favorites | Save and reload the current host list as favorites |
 | Saved sessions | Explicitly save a finished scan with scope, profile, source interfaces, timestamps and completion state; reopen it without sending probes |
 | Before/after evidence | Compare compatible completed sessions, select individual differences, preview a plain-text report and export with identifiers and discovered text redacted by default |
+| Check Service | **Tools → Check Service…** (Windows and macOS) checks one confirmed host and port in separate resolve, connect, verified TLS and HTTP stages, and shows which stage failed and why |
 | Themes | Switch between light and dark themes and retain the choice across launches |
 | First-run notice | The authorization notice is shown in a dialog on first launch; a marker file records that you have seen it |
 | Elevation button | Windows only: an unelevated process offers an Elevate button and marks failed MAC lookup as needing elevation; macOS reads the ARP cache without this button |
@@ -224,6 +225,25 @@ unsupported, malformed or inconsistent files are rejected. Existing favorites
 and CLI inventory JSON do not carry the required metadata and are not session
 files. This first slice is GUI-only; existing CLI flags and exports are unchanged.
 
+## Check a service
+
+Open **Tools → Check Service…**, or right-click a host and choose **Check
+service…** to prefill its address and web port. Enter a name or address, a
+port and a protocol (TCP, TLS, HTTP or HTTPS). For a name, **Resolve** first
+and pick one returned address. **Check…** shows a confirmation that names the
+exact address, port and traffic, and repeats the authorization notice.
+
+![Check Service opened from an inventory row, showing connect and HTTP stages in the dark theme](docs/verification/check-service/inventory-prefill-dark.jpg)
+
+Each stage reports Passed, Warning, Failed or Skipped with a plain-language
+reason: a refused or silent port, an untrusted, mismatched or expiring
+certificate, a non-TLS or non-HTTP answer, a redirect (shown, not followed) or
+an HTTP status. The check opens one connection to the confirmed address. It
+never re-resolves the name, uses no proxy and never skips TLS verification.
+HTTP keeps the inventory's one-second and 32 KiB limits. Results stay in the
+window and are copied only on request. See the
+[Check Service guide](USER-GUIDE.md#check-a-service).
+
 ## Internet Quality on macOS
 
 Open **Tools → Internet Quality…** to measure download and upload capacity,
@@ -299,6 +319,10 @@ and is not committed.
   uses `open` for URLs and a Terminal AppleScript for Ping. Ping targets come
   only from parsed IP literals, and macOS share names are URL-escaped.
   Wake-on-LAN sends a UDP packet only after confirmation.
+- **Single-endpoint service checks.** Check Service connects only after a
+  confirmation that names the address, port and traffic. It dials that one
+  address without a second lookup or proxy, verifies TLS against the entered
+  name, follows no redirects and bounds every stage by time and size.
 - **No phone-home.** Zero telemetry, zero analytics, no OUI-database downloads
   at runtime — the MAC-vendor (OUI) database is embedded in the binary and was
   current when generated. Scans include name resolution through configured
@@ -357,6 +381,7 @@ One line per top-level package; all application code is under `internal/`
 | `internal/appdata` | Native per-user paths shared by the GUI and CLI |
 | `internal/favorites` | Atomic favorites persistence in the per-user directory |
 | `internal/session` | Bounded saved-session files, coverage-aware comparison and selected plain-text evidence |
+| `internal/servicecheck` | One confirmed endpoint: bounded name lookup, then connect, verified TLS and HTTP stages on a pinned address |
 | `internal/export` | File export dispatch (CSV/JSON) |
 | `internal/hostcache` | The persistent MAC-keyed hostname cache (`names.json`) |
 | `tools/icongen` | Icon generator run by `go generate` to produce `app.ico` |
@@ -405,6 +430,9 @@ wider roadmap. The [network workbench plan](docs/network-workbench-roadmap.md)
 proposes a macOS-first Connections window for inspecting local TCP/UDP
 endpoints, followed by inventory links, focused diagnostics, Windows support,
 and bounded service discovery and monitoring. These are proposed capabilities.
+Check Service, the single-endpoint diagnosis from roadmap item 2 and
+[#33](https://github.com/cgfixit/LanCartographer/issues/33), is available on
+Windows and macOS.
 
 ## Inspiration and similar tools
 

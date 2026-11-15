@@ -65,6 +65,10 @@ func HTTPTitle(ctx context.Context, ip netip.Addr, port int, https bool) (status
 	return resp.StatusCode, extractTitle(string(body)), nil
 }
 
+// ExtractTitle returns the first <title> element's text from body, with
+// the same unescaping, trimming and 80-rune limit as the inventory probe.
+func ExtractTitle(body string) string { return extractTitle(body) }
+
 // extractTitle finds the first <title>...</title> element (case-insensitive,
 // attributes tolerated), unescapes HTML entities, trims whitespace, and
 // truncates to 80 runes.

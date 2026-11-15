@@ -116,6 +116,9 @@ func (u *ui) showHostMenu(h model.Host, e *fyne.PointEvent) {
 			u.confirmWOL(h)
 		}))
 	}
+	items = append(items, fyne.NewMenuItem("Check service…", func() {
+		u.showServiceCheck(servicePrefillFor(h))
+	}))
 	u.popupMenu(fyne.NewMenu("Host", items...), e)
 }
 

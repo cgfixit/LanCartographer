@@ -99,6 +99,7 @@ type ui struct {
 
 	qualityView *qualityView
 	qualityJob  *qualityJob
+	serviceView *serviceView
 
 	// table repaint coalescing: engine events fold into the store per event,
 	// but the sort+repaint is throttled so a fast scan costs O(events) store
@@ -143,6 +144,11 @@ func Run() error {
 	u.maybeFirstRun()
 	a.Run()
 	if job := u.qualityJob; job != nil {
+		job.cancel()
+		<-job.done
+	}
+	if v := u.serviceView; v != nil && v.job != nil {
+		job := v.job
 		job.cancel()
 		<-job.done
 	}
@@ -316,7 +322,7 @@ func (u *ui) maybeRefreshTable() {
 	u.refreshTable()
 }
 
-// mainMenu adds the platform-specific Tools menu on macOS.
+// mainMenu builds File, Tools and Help. Internet Quality is macOS-only.
 func (u *ui) mainMenu() *fyne.MainMenu {
 	file := fyne.NewMenu("File",
 		fyne.NewMenuItem("Sessions…", u.onSessions),
@@ -331,11 +337,11 @@ func (u *ui) mainMenu() *fyne.MainMenu {
 			dialog.ShowInformation("About LanCartographer", aboutText(), u.win)
 		}),
 	)
+	tools := fyne.NewMenu("Tools", fyne.NewMenuItem("Check Service…", func() { u.showServiceCheck(nil) }))
 	if runtime.GOOS == "darwin" {
-		tools := fyne.NewMenu("Tools", fyne.NewMenuItem("Internet Quality…", u.showInternetQuality))
-		return fyne.NewMainMenu(file, tools, help)
+		tools.Items = append(tools.Items, fyne.NewMenuItem("Internet Quality…", u.showInternetQuality))
 	}
-	return fyne.NewMainMenu(file, help)
+	return fyne.NewMainMenu(file, tools, help)
 }
 
 // aboutText is the About box body: version, license, authorization notice,
