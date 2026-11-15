@@ -116,6 +116,28 @@ func TestCheckDoesNotFollowRedirects(t *testing.T) {
 	}
 }
 
+func TestCheckSkipsInterimResponses(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	go func() {
+		c, err := l.Accept()
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		buf := make([]byte, 4096)
+		c.Read(buf)
+		c.Write([]byte("HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 503 Busy\r\nContent-Length: 0\r\n\r\n"))
+	}()
+	r, _ := Check(context.Background(), Target{Host: "127.0.0.1", Addr: loopback, Port: portOf(l.Addr()), Protocol: HTTP}, Options{})
+	if got := stage(t, r, "HTTP"); got.Outcome != Warning || !strings.Contains(got.Detail, "503") {
+		t.Fatalf("HTTP stage = %+v, want the final 503 as a warning", got)
+	}
+}
+
 func TestCheckConnectOutcomes(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -203,6 +225,8 @@ func TestParseHost(t *testing.T) {
 		{"fe80::1", "", false},
 		{"fe80::1%utun9", "", false},
 		{"10.0.0.1%en0", "", false},
+		{"::ffff:10.0.0.1%en0", "", false},
+		{"fe80::1%en0\x00", "", false},
 		{"https://nas.lan", "", false},
 		{"nas.lan/admin", "", false},
 		{"nas.lan:443", "", false},

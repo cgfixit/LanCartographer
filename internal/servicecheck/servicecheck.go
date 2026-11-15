@@ -217,6 +217,9 @@ func unmap(a netip.Addr) netip.Addr {
 }
 
 func checkLiteral(a netip.Addr, ifaceExists func(string) bool) error {
+	if a.Is4In6() && a.Zone() != "" {
+		return errors.New("An interface zone is only valid on a link-local IPv6 address.")
+	}
 	a = unmap(a)
 	if !a.IsValid() || a.IsUnspecified() || a.IsMulticast() || a == netip.AddrFrom4([4]byte{255, 255, 255, 255}) {
 		return errors.New("Enter one unicast host address.")
@@ -226,8 +229,11 @@ func checkLiteral(a netip.Addr, ifaceExists func(string) bool) error {
 		if zone == "" {
 			return errors.New("A link-local IPv6 address needs its interface, for example fe80::1%en0.")
 		}
+		if clean(zone, 16) != zone {
+			return errors.New("That interface name is not valid.")
+		}
 		if ifaceExists == nil || !ifaceExists(zone) {
-			return fmt.Errorf("Interface %q is not present on this computer.", clean(zone, 16))
+			return fmt.Errorf("Interface %q is not present on this computer.", zone)
 		}
 		return nil
 	}

@@ -283,6 +283,12 @@ func request(conn net.Conn, t Target) (stage Stage) {
 	limited := &io.LimitedReader{R: conn, N: httpHeaderCap}
 	br := bufio.NewReader(limited)
 	resp, err := http.ReadResponse(br, req)
+	// Skip interim 1xx answers (100 Continue, 103 Early Hints) within the
+	// same deadline and byte cap; report the final status.
+	for err == nil && resp.StatusCode >= 100 && resp.StatusCode < 200 && resp.StatusCode != http.StatusSwitchingProtocols {
+		resp.Body.Close()
+		resp, err = http.ReadResponse(br, req)
+	}
 	if err != nil {
 		stage.Outcome = Failed
 		if limited.N == 0 {
@@ -307,6 +313,9 @@ func request(conn net.Conn, t Target) (stage Stage) {
 		stage.Detail += " · “" + clean(title, 80) + "”"
 	}
 	switch {
+	case resp.StatusCode == http.StatusSwitchingProtocols:
+		stage.Outcome = Warning
+		stage.Detail += " · the service switched protocols instead of answering the request"
 	case resp.StatusCode >= 300 && resp.StatusCode < 400:
 		if loc := clean(resp.Header.Get("Location"), 96); loc != "" {
 			stage.Detail += " · redirect to " + loc + " (not followed)"

@@ -104,6 +104,8 @@ func TestServiceConfirmTextNamesEndpointScopeAndNotice(t *testing.T) {
 		"2001:db8::1": "public IPv6",
 		"fd00::1":     "private IPv6",
 		"127.0.0.1":   "loopback",
+		"169.254.1.9": "link-local address",
+		"100.64.1.1":  "carrier-grade NAT",
 	} {
 		target.Addr = netip.MustParseAddr(addr)
 		if got := serviceConfirmText(target, local); !strings.Contains(got, want) {
@@ -176,7 +178,7 @@ func TestServiceCheckRunsAgainstOwnedFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	finished := jobFinished(v)
-	u.runServiceCheck(v, target)
+	u.runServiceCheck(v, target, nil)
 	wait(t, finished)
 	if v.last.Outcome() != servicecheck.Passed || !strings.HasPrefix(v.status.Text, "Service reachable") {
 		t.Fatalf("status %q, result %+v", v.status.Text, v.last.Stages)
@@ -208,7 +210,7 @@ func TestServiceCheckCancelDropsLateResult(t *testing.T) {
 	v.protocol.SetSelected("TLS")
 	target, _ := v.serviceTarget()
 	finished := jobFinished(v)
-	u.runServiceCheck(v, target)
+	u.runServiceCheck(v, target, nil)
 	if v.job == nil || v.stop.Disabled() || !v.check.Disabled() {
 		t.Fatal("running check should enable only Stop")
 	}

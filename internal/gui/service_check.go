@@ -49,6 +49,7 @@ type serviceView struct {
 	last         *servicecheck.Result
 	job          *serviceJob
 	afterJob     func() // test hook: runs after a job's UI callback
+	confirming   bool   // a confirmation dialog is open; prefill waits
 }
 
 // serviceJob is one resolve or check. Results from a job that is no longer
@@ -69,8 +70,17 @@ type servicePrefill struct {
 
 const serviceAddressPlaceholder = "Resolve the name first"
 
+// interfaceExists accepts an interface name (en0) or, as Windows uses for
+// IPv6 zones, a numeric interface index (fe80::1%12).
 func interfaceExists(name string) bool {
-	_, err := net.InterfaceByName(name)
+	if _, err := net.InterfaceByName(name); err == nil {
+		return true
+	}
+	index, err := strconv.Atoi(name)
+	if err != nil || index <= 0 {
+		return false
+	}
+	_, err = net.InterfaceByIndex(index)
 	return err == nil
 }
 
@@ -78,7 +88,7 @@ func interfaceExists(name string) bool {
 // prefill when no job is running.
 func (u *ui) showServiceCheck(prefill *servicePrefill) {
 	if v := u.serviceView; v != nil {
-		if prefill != nil && v.job == nil {
+		if prefill != nil && v.job == nil && !v.confirming {
 			v.apply(prefill)
 		}
 		v.win.RequestFocus()
@@ -365,15 +375,17 @@ func (u *ui) confirmServiceCheck(v *serviceView) {
 		v.status.SetText(err.Error())
 		return
 	}
+	resolveStage := v.resolveStage
+	v.confirming = true
 	dialog.NewConfirm("Check this service?", serviceConfirmText(target, u.local), func(ok bool) {
+		v.confirming = false
 		if ok && u.serviceView == v {
-			u.runServiceCheck(v, target)
+			u.runServiceCheck(v, target, resolveStage)
 		}
 	}, v.win).Show()
 }
 
-func (u *ui) runServiceCheck(v *serviceView, target servicecheck.Target) {
-	resolveStage := v.resolveStage
+func (u *ui) runServiceCheck(v *serviceView, target servicecheck.Target, resolveStage *servicecheck.Stage) {
 	v.clearResults()
 	startServiceJob(u, v, "Checking "+target.Endpoint(), func(ctx context.Context) servicecheck.Result {
 		r, err := servicecheck.Check(ctx, target, servicecheck.Options{})
@@ -428,10 +440,14 @@ func serviceScopeNote(addr netip.Addr, local []netip.Prefix) string {
 		return ""
 	case addr.Is4() && authz.IsRFC1918(single):
 		return "Caution: " + addr.String() + " is outside this computer's local subnets."
+	case addr.Is4() && addr.IsLinkLocalUnicast():
+		return "Caution: " + addr.String() + " is a link-local address outside this computer's local subnets."
+	case addr.Is4() && netip.MustParsePrefix("100.64.0.0/10").Contains(addr):
+		return "Caution: " + addr.String() + " is shared carrier-grade NAT space outside your local networks."
 	case addr.Is4():
 		return "Caution: " + addr.String() + " is a public address outside your local networks."
 	case addr.IsPrivate() || addr.IsLinkLocalUnicast():
-		return "This is a private IPv6 address. The inventory scan covers IPv4 only."
+		return "Caution: this is a private IPv6 address, which the IPv4 subnet check cannot place. The inventory scan covers IPv4 only."
 	}
 	return "Caution: this is a public IPv6 address outside your local networks."
 }

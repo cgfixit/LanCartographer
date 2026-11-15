@@ -81,6 +81,20 @@ The servicecheck tests were checked against two mutations: sending the IP as
 the TLS server name failed three tests, and enabling `InsecureSkipVerify`
 failed all three certificate-failure cases.
 
+## Independent review
+
+A separate review pass, which did not see this record, read the engine and window
+code and probed loopback fixtures. It found no path to an address other than the
+confirmed one, no way to skip TLS verification and no unbounded resource use.
+It reported six minor issues, all fixed with regression tests: an interim
+`100 Continue` hid the final status (interim answers are now skipped, and `101`
+is a warning); numeric IPv6 zones, the Windows form, were refused; a zone on
+an IPv4-mapped address was silently dropped; a control character in a zone
+gave a misleading message; a prefill could change the form while the
+confirmation was open (prefill now waits and the resolve stage is captured
+when the dialog opens); and 169.254/16, 100.64/10 and private IPv6 got
+imprecise scope wording.
+
 ## Limits
 
 - No Windows or macOS native run. Hosted CI provides the Windows gate and the

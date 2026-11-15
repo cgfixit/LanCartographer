@@ -167,7 +167,8 @@ What a check does and does not do:
   inventory limits: one second, 32 KiB of body and no redirects. Response
   headers are capped at 32 KiB.
 - IPv4 and IPv6 addresses work. A link-local IPv6 address needs its
-  interface, for example `fe80::1%en0`. Enter internationalized names in their
+  interface, for example `fe80::1%en0` on macOS or `fe80::1%12` (the interface
+  index) on Windows. Enter internationalized names in their
   `xn--` form.
 - A result is an observation from this computer at the time shown. A failure
   does not prove the server or a firewall is at fault, and a success does not
