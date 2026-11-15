@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/local/lancartographer/internal/model"
@@ -23,8 +24,10 @@ var tableColumns = []string{"", "Name", "IP", "MAC", "Vendor", "Ports", "Shares"
 // width; the fractions must sum to exactly 1.0. colMins floors each column
 // so it never collapses below a readable width (the table h-scrolls when
 // the minimums exceed the available width).
-var colFractions = []float32{0.045, 0.155, 0.115, 0.145, 0.135, 0.225, 0.18}
-var colMins = []float32{40, 110, 95, 130, 100, 150, 120}
+// IP and MAC are sized so a full IPv4 address and a MAC never truncate;
+// Ports gets the most room because it carries the most text.
+var colFractions = []float32{0.04, 0.16, 0.14, 0.165, 0.12, 0.235, 0.14}
+var colMins = []float32{40, 110, 125, 135, 90, 150, 100}
 
 // computeColWidths splits avail across the columns by fraction, clamping
 // any column that would fall below its minimum and redistributing the
@@ -118,7 +121,8 @@ func (u *ui) buildTable() {
 			label := widget.NewLabel("")
 			label.Truncation = fyne.TextTruncateEllipsis
 			circle := canvas.NewCircle(transparent)
-			box := newTapBox(container.NewStack(label, container.NewCenter(
+			rowBG := canvas.NewRectangle(transparent)
+			box := newTapBox(container.NewStack(rowBG, label, container.NewCenter(
 				container.NewGridWrap(fyne.NewSize(12, 12), circle))))
 			box.onPrimary = func() { u.table.Select(box.id) }
 			box.onSecondary = func(e *fyne.PointEvent) { u.showRowMenu(box.id, e) }
@@ -128,13 +132,24 @@ func (u *ui) buildTable() {
 			box := obj.(*tapBox)
 			box.id = id
 			inner := box.content.(*fyne.Container)
-			label := inner.Objects[0].(*widget.Label)
-			circleC := inner.Objects[1].(*fyne.Container)
+			rowBG := inner.Objects[0].(*canvas.Rectangle)
+			label := inner.Objects[1].(*widget.Label)
+			circleC := inner.Objects[2].(*fyne.Container)
 			circle := circleC.Objects[0].(*fyne.Container).Objects[0].(*canvas.Circle)
 			if id.Row >= len(u.sorted) {
 				return
 			}
 			h := u.sorted[id.Row]
+			// Paint the whole selected row in the table's own selection
+			// color, so it reads as one row rather than one clicked cell.
+			bg := color.Color(transparent)
+			if u.selectedIP != "" && h.IP.String() == u.selectedIP {
+				bg = theme.Color(theme.ColorNameSelection)
+			}
+			if rowBG.FillColor != bg {
+				rowBG.FillColor = bg
+				rowBG.Refresh()
+			}
 			if id.Col == 0 {
 				label.Hide()
 				circleC.Show()
@@ -148,7 +163,13 @@ func (u *ui) buildTable() {
 			}
 			circleC.Hide()
 			label.Show()
-			label.SetText(cellText(h, id.Col))
+			text := cellText(h, id.Col)
+			label.Importance = widget.MediumImportance
+			if text == "" {
+				text = emptyCell
+				label.Importance = widget.LowImportance
+			}
+			label.SetText(text) // SetText also repaints the importance change
 		},
 	)
 	u.table.OnSelected = func(id widget.TableCellID) {
@@ -157,6 +178,7 @@ func (u *ui) buildTable() {
 		}
 		u.selectedIP = u.sorted[id.Row].IP.String()
 		u.showSelectedHost()
+		u.table.Refresh() // repaint the row highlight on every column
 	}
 
 	u.headerBtns = make([]*widget.Button, len(tableColumns))
@@ -207,16 +229,20 @@ func (u *ui) updateEmptyHint() {
 		u.table.Show()
 		return
 	}
-	if u.scanning {
+	switch {
+	case u.scanning:
 		u.emptyTitle.SetText("Scanning " + strings.TrimSpace(u.subnet.Text) + "…")
-		u.emptySub.SetText("")
-	} else {
+		u.emptySub.SetText("Hosts appear here as they answer.")
+	case u.lastPrefix.IsValid():
+		u.emptyTitle.SetText("No hosts answered in " + u.lastPrefix.String())
+		u.emptySub.SetText("Check the subnet and TCP ports, then scan again.")
+	default:
 		target := strings.TrimSpace(u.subnet.Text)
 		if target == "" {
-			target = "your subnet"
+			target = "an authorized subnet"
 		}
 		u.emptyTitle.SetText("No hosts yet")
-		u.emptySub.SetText("Click Scan to inventory " + target)
+		u.emptySub.SetText("Click Scan to inventory " + target + ".")
 	}
 	u.table.Hide()
 	u.emptyHint.Show()
@@ -268,7 +294,7 @@ func cellText(h model.Host, col int) string {
 	case 4:
 		return h.Vendor
 	case 5:
-		return h.OpenPortsSummary()
+		return portsCell(h)
 	case 6:
 		return sharesCell(h)
 	}

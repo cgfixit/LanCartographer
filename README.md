@@ -47,8 +47,10 @@ Scan only networks you own or have explicit authorization to inventory. Unauthor
    subnets when `--range` is omitted. **Stop** cancels the scan, including macOS
    `smbutil` share enumeration. On Windows, an in-flight `NetShareEnum` call
    can finish in the background; see the [User Guide](USER-GUIDE.md).
-4. Select a row for details, use Finder/Explorer or Browser actions, save
-   favorites, or use **File → Export…** for CSV/JSON.
+4. Select a row for details. Open ports come first, each with **Check…** to
+   test that service; right-click a row for copy, Finder/Explorer, Browser
+   and Ping actions. Use **Export** for CSV/JSON and **File → Save
+   Favorites** to keep a host list.
 5. Use **Sessions** to save a scan, compare it with a baseline and export
    selected evidence. See the workflow below.
 
@@ -87,17 +89,18 @@ replacing the destination. A failed save cleans up that attempt's temporary file
 | Area | What you get |
 |---|---|
 | Live scan | Scan the selected IPv4 subnet (or an explicitly entered range); hosts and open ports appear in the table while the scan is still running, with a progress bar and per-host events |
-| Sortable table | Sort by status, name, IP, MAC, vendor, ports or shares and select a host for details |
+| Sortable table | Sort by status, name, IP, MAC, vendor, ports or shares. The selected host's whole row highlights, open ports read compactly (`22 SSH, 443 Web`), and values the scan did not learn show a dim `—` |
+| Host details | The side panel lists open ports first, each with a **Check…** action that prefills Check Service; closed and unanswered ports collapse into one line each |
 | Port states | Every probed port reports `open`, `closed`, or `timeout`; open ports carry a service label (smb, http, rdp, …), web ports receive a bounded HTTP/HTTPS title probe; unrecognized services receive an HTTP probe that can identify additional web devices |
 | Share enumeration | SMB shares listed via Windows `NetShareEnum` or macOS `smbutil`; a host that denies the enumeration shows an explicit "access denied" marker instead of an empty list |
 | Name resolution | NetBIOS, mDNS, and reverse DNS (PTR) run at the same time. The highest-priority answer wins (NetBIOS, then mDNS, then PTR) and the slower lookups are cancelled. Resolved names are persisted in a MAC-keyed cache so silent devices keep their names across scans |
 | Right-click actions | Open host or share in Explorer (Windows) or Finder (macOS), open its web interface with the detected port, start Remote Desktop (Windows), run Ping, or send Wake-on-LAN (confirmation required) |
 | Export | Save the inventory as CSV or JSON from the File menu (the CLI has a `--json` flag); CSV prefixes formula-like cells with an apostrophe for spreadsheet import, while JSON preserves raw values |
-| Favorites | Save and reload the current host list as favorites |
+| Favorites | **File → Save Favorites** and **Load Favorites** keep a host list for later viewing |
 | Saved sessions | Explicitly save a finished scan with scope, profile, source interfaces, timestamps and completion state; reopen it without sending probes |
 | Before/after evidence | Compare compatible completed sessions, select individual differences, preview a plain-text report and export with identifiers and discovered text redacted by default |
 | Check Service | **Tools → Check Service…** (Windows and macOS) checks one confirmed host and port in separate resolve, connect, verified TLS and HTTP stages, and shows which stage failed and why |
-| Themes | Switch between light and dark themes and retain the choice across launches |
+| Themes | The toolbar's **Dark theme** / **Light theme** button switches themes and the choice is kept across launches |
 | First-run notice | The authorization notice is shown in a dialog on first launch; a marker file records that you have seen it |
 | Elevation button | Windows only: an unelevated process offers an Elevate button and marks failed MAC lookup as needing elevation; macOS reads the ARP cache without this button |
 

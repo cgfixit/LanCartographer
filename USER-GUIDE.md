@@ -15,14 +15,20 @@ The second half of this guide is a code tour for Python and PowerShell users.
    you want to inventory, then click **Scan** and confirm if the
    range requires it. **Stop** cancels an active scan; partial results are not
    evidence of complete coverage.
-2. Select a host to inspect its ports, titles and SMB shares. Right-click for
-   available Browser, Finder/Explorer, Ping and Wake-on-LAN actions; Remote
-   Desktop is Windows-only. These actions are explicit and may cause network
-   traffic or open another application.
+2. Select a host to inspect it; its whole row stays highlighted. The panel
+   lists open ports first, with page titles where the HTTP probe found one,
+   and each open port has **Check…**, which fills in
+   [Check Service](#check-a-service) without contacting anything. Closed and
+   unanswered ports are summarized below them. A dim `—` means the scan did
+   not learn that value. Right-click for available Browser, Finder/Explorer,
+   Ping and Wake-on-LAN actions; Remote Desktop is Windows-only. These actions
+   are explicit and may cause network traffic or open another application.
+   The status bar shows `Ready`, `Scanning · 3s`, the duration of a finished
+   scan, or `Stopped · 2s`; the progress bar appears only while scanning.
 3. Use **File → Export…** for a raw inventory in CSV or JSON. Enter an absolute
    path ending in `.csv` or `.json` and confirm replacement if it exists. A
-   failed write leaves the prior export intact. Favorites save a host list
-   for later viewing. Neither contains the coverage metadata needed
+   failed write leaves the prior export intact. **File → Save Favorites** and
+   **Load Favorites** keep a host list for later viewing. Neither contains the coverage metadata needed
    for session comparison; loading favorites also clears the current scan's
    session snapshot and is blocked while a scan is running.
 

@@ -44,15 +44,33 @@ func TestBrowserURL(t *testing.T) {
 	}
 }
 
-func TestThemeModeLabel(t *testing.T) {
-	if got := themeModeLabel("light"); got != "Light on" {
-		t.Fatalf("light label = %q, want %q", got, "Light on")
+func TestThemeModeLabelNamesTheSwitchTarget(t *testing.T) {
+	for mode, want := range map[string]string{"light": "Dark theme", "dark": "Light theme", "other": "Dark theme"} {
+		if got := themeModeLabel(mode); got != want {
+			t.Fatalf("themeModeLabel(%q) = %q, want %q", mode, got, want)
+		}
 	}
-	if got := themeModeLabel("dark"); got != "Dark on" {
-		t.Fatalf("dark label = %q, want %q", got, "Dark on")
+}
+
+func TestDisplayHelpers(t *testing.T) {
+	h := host("10.0.0.1",
+		model.Port{Number: 443, State: model.PortOpen, Service: "Web"},
+		model.Port{Number: 80, State: model.PortClosed},
+		model.Port{Number: 18443, State: model.PortOpen, Service: "unknown"},
+		model.Port{Number: 22, State: model.PortOpen, Service: "SSH"})
+	if got := portsCell(h); got != "22 SSH, 443 Web, 18443" {
+		t.Fatalf("portsCell = %q", got)
 	}
-	if got := themeModeLabel("other"); got != "Light on" {
-		t.Fatalf("unknown label = %q, want %q", got, "Light on")
+	if got := portsCell(host("10.0.0.2")); got != "" {
+		t.Fatalf("portsCell without open ports = %q", got)
+	}
+	for in, want := range map[string]string{"tcp": "TCP connection", "arp": "ARP cache", "icmp": "Ping (ICMP echo)", "": "—", "other": "other"} {
+		if got := foundViaLabel(in); got != want {
+			t.Fatalf("foundViaLabel(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if plural(1, "host") != "1 host" || plural(0, "host") != "0 hosts" || plural(4, "open port") != "4 open ports" {
+		t.Fatal("plural mismatch")
 	}
 }
 
@@ -93,7 +111,7 @@ func TestBroadcastAddr(t *testing.T) {
 
 func TestSharesCell(t *testing.T) {
 	h := host("10.0.0.1")
-	if got := sharesCell(h); got != "0 shares" {
+	if got := sharesCell(h); got != "" {
 		t.Errorf("empty = %q", got)
 	}
 	h.Shares = []model.Share{{Remark: "shares: access denied"}}
