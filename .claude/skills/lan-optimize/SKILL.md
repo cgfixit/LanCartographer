@@ -213,9 +213,9 @@ changing repository settings or visibility.
   no `gh` at all — use the GitHub MCP tools.
 - **Largest file ≠ worst file.** `internal/gui/gui.go` and `internal/probe`
   lead the LOC table; confirm a defect before proposing a refactor.
-- **CodeQL.** `AGENTS.md` §6 says the CodeQL workflow was removed, but
-  GitHub's default code-scanning setup can still run outside
-  `.github/workflows/`. Check the Actions run list before claiming either.
+- **CodeQL.** It runs through default code-scanning setup (`AGENTS.md` §6),
+  so it has no file in `.github/workflows/`. Look for its Analyze checks in
+  the Actions run list before you say it is on or off.
 
 ---
 

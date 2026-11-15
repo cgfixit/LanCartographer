@@ -117,6 +117,10 @@ dated verification records retain their original evidence and limits.
 
 ## 6. CI status notes
 
-CodeQL was removed while the repository was private. Check current visibility,
-plan, workflow configuration, and authorization before proposing restoration;
-an absent security workflow is not a passing security scan.
+CodeQL runs through GitHub's default code-scanning setup, not a file in
+`.github/workflows/`. It analyzes `actions`, `go` and `python` on pull requests
+and on push to `main` (the dynamic workflow
+`dynamic/github-code-scanning/codeql`, run name "Push on main").
+`release-main-macos.yml` waits for that run alongside CI and gitleaks. Do not
+add a CodeQL workflow file without first turning off default setup. If the
+Analyze checks stop appearing, the scan is off: a missing check is not a pass.
