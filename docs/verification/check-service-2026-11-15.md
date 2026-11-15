@@ -1,6 +1,6 @@
 # Check Service verification
 
-Source: branch `claude/affectionate-bell-l75qlr` on `main` at `ba08bf1`,
+Source: branch `claude/affectionate-bell-l75qlr`, developed on `main` at `ba08bf1` and merged with `4de96c7`,
 built with Go 1.27.3 and Fyne 2.8.2. Environment: Linux x86_64 container,
 Xvfb X11 display with Mesa software rendering, driven with `xdotool` mouse and
 keyboard input. Linux is not a supported GUI target; to render the window, the
@@ -101,10 +101,10 @@ imprecise scope wording.
   macOS builds and race tests. The refused/unreachable mapping on Windows uses
   Winsock error codes and was compiled, not exercised.
 - `internal/probe` `TestScanHost_TimeoutPort` fails in this container with or
-  without this change: the sandbox refuses TEST-NET-1 instead of dropping it.
-- `lan-guard` reported one failure that predates this branch:
-  `release-main-macos.yml` declares top-level `permissions: {}`, which the
-  script does not recognize. Every probe, TLS, redirect, listener and notice
-  check passed. `actionlint` was not run because no workflow changed.
+  without this change (re-run on a clean `origin/main` worktree at `4de96c7`):
+  the sandbox refuses TEST-NET-1 instead of dropping it.
+- After merging `main` at `4de96c7`, which includes the `lan-guard`
+  deny-all permissions fix from #49, `lan-guard` passed. `actionlint` was not
+  run because this branch changes no workflow.
 - The live checks used loopback only. LAN, VPN, IPv6 and `.local` resolution
   remain native acceptance items.
