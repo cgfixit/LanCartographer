@@ -16,7 +16,7 @@ Session work must keep full saved JSON distinct from selected, redacted reports.
 Use synthetic records and disposable data directories for parser/comparison
 checks; exercise changed dialogs in the native app. Preserve rejection of
 incompatible or incomplete comparisons, and record screenshots without real
-LAN data. Update the [User Guide](USER-GUIDE.md), README and relevant privacy/
+LAN data. Update the [User Guide](docs/USER-GUIDE.md), README and relevant privacy/
 update guidance when changing the workflow or file format. Keep dated verification
 records tied to what was actually exercised; add new evidence rather than
 rewriting old results as current acceptance.

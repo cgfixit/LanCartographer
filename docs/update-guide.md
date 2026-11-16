@@ -34,7 +34,7 @@ contain the same bundle layout as the versioned releases.
 
 ## Rebuild from this tree
 
-The Go version is the `go` line in [go.mod](go.mod). Windows also needs MSYS2 ucrt64 gcc and the pinned `goversioninfo` version in the [build instructions](README.md#build-from-source). macOS needs the Xcode Command Line Tools. Both builds enable CGO because the GUI uses Fyne. Build the checked-in module versions; maintainers updating them should follow [dependency maintenance](CONTRIBUTING.md#dependency-maintenance).
+The Go version is the `go` line in [go.mod](../go.mod). Windows also needs MSYS2 ucrt64 gcc and the pinned `goversioninfo` version in the [build instructions](../README.md#build-from-source). macOS needs the Xcode Command Line Tools. Both builds enable CGO because the GUI uses Fyne. Build the checked-in module versions; maintainers updating them should follow [dependency maintenance](../CONTRIBUTING.md#dependency-maintenance).
 
 From the repository root:
 
