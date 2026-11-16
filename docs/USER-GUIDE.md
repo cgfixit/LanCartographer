@@ -251,7 +251,7 @@ ideas, then follows the actual scan and session boundaries.
 | `interface` | Python duck typing, but declared and checked at compile time. A function that takes `io.Writer` accepts anything with a `Write` method — like a protocol/ABC, enforced before runtime. |
 | struct embedding | Mixin / inheritance-lite. Embedding `sync.Mutex` in a struct promotes its methods — the Go idiom for "this struct has a lock," comparable to `$this.Lock()` conventions you'd hand-roll. |
 | pointer (`*Host`) | Passing a list by reference instead of a copy. Go is pass-by-value everywhere; a pointer is how a function mutates the caller's struct. Most of this codebase passes structs by value unless mutation is the point. |
-| `cgo` | `ctypes` / `CDLL` — calling C from Go. This project deliberately avoids cgo for OS APIs; see "Talking to the OS without .NET" below. |
+| `cgo` | `ctypes` / `CDLL` — calling C from Go. This project avoids cgo for OS APIs except the macOS Wi-Fi diagnostics (CoreWLAN); see "Talking to the OS without .NET" below. |
 | single compiled exe | PyInstaller output, but first-class: one static-ish binary, no interpreter, no venv, no DLL hell, ~instant startup. |
 
 ## What happens when you click Scan
@@ -398,8 +398,10 @@ than a FFI project.
 LanCartographer deliberately does **not** use cgo (the `ctypes` path) for
 these calls. cgo would drag a C toolchain into every build and complicate
 cross-compilation; the `x/sys/windows` approach compiles with plain `go build`.
-That's why the build needs gcc *only* for Fyne (the GUI library), not for
-Windows APIs.
+The build needs a C compiler for Fyne (the GUI library), not for Windows APIs.
+The one OS-API exception is macOS Wi-Fi diagnostics:
+`internal/gui/wifi_quality_darwin.go` reads link metrics from CoreWLAN through
+cgo; other platforms get the `wifi_quality_other.go` stub.
 
 On macOS the same seam exists, filled by different tools. Local subnets come
 from the stdlib `net.Interfaces()` instead of `GetAdaptersAddresses`; peer
