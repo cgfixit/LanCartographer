@@ -87,4 +87,6 @@ jobs:
           persist-credentials: false
 
       - name: zizmor (offline)
-        run: pipx run zizmor==1.31.1 --offline --format=github .github/workflows
+        # Low severity and above fail the job; informational findings (e.g.
+        # superfluous-actions) are filtered out.
+        run: pipx run zizmor==1.31.1 --offline --min-severity=low --format=github .github/workflows
