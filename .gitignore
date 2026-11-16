@@ -1,140 +1,68 @@
 # LanCartographer .gitignore
 #
-# Two classes of generated/binary files are INTENTIONALLY CHECKED IN — do not
-# "clean" them:
-#
-#   1. `*.syso` (currently cmd/lancartographer/resource.syso) — the Windows
-#      version-resource object built by goversioninfo from versioninfo.json +
-#      app.manifest + app.ico. It is embedded into every release build, so a
-#      fresh clone must build without running `go generate` first.
-#   2. internal/oui/oui_data.go — the embedded MAC-vendor (OUI) database,
-#      generated from internal/oui/data.csv via `go generate ./internal/oui`.
-#      Without it the vendor column compiles empty and the binary would need
-#      a network fetch (which this project forbids: no phone-home).
-#
-# Both are regenerated only on demand; they are source for reproducible
-# builds, not build output. The `!*.syso` negation below keeps the broad
-# `*.exe`-style hygiene rules from swallowing them.
-#
-# go.sum is COMMITTED (module-proxy reproducibility) — never ignore it.
+# Tracked on purpose (generated, but source for reproducible builds):
+#   - cmd/lancartographer/resource.syso: Windows version resource from
+#     goversioninfo (versioninfo.json + app.manifest + app.ico). A fresh clone
+#     must build without running `go generate`.
+#   - internal/oui/oui_data.go: embedded OUI database generated from
+#     internal/oui/data.csv. Without it, vendor lookup would need a network
+#     fetch, which this project forbids.
+#   - go.sum: module checksums. Never ignore it.
+# The re-includes at the bottom keep these tracked even if a broader rule is
+# added later. Patterns are deliberately narrow: a broad word glob here (for
+# example *credentials*) would silently hide a future Go file. Secret
+# detection is gitleaks' job, not this file's.
 
-# ---------------------------------------------------------------------------
-# Go
-# ---------------------------------------------------------------------------
-
-# Rust build artifacts
-/target/
-**/*.rs.bk
-*.pdb
-
-# Environment and secret files
-.env
-.env.*
-!.env.example
-
-# Compiled binaries / build output
-*.exe
-!*.syso
+# --- Go build and test output ----------------------------------------------
 dist/
-
-# Test binaries and coverage
-*.test
-*.out
-coverage*
-
-# Environment files
-.env
-.env.*
-!.env.example
-*.env
-*.envrc
-
-# Binaries for programs and plugins
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
-
-# Code coverage profiles and other test artifacts
 *.out
-coverage.*
 *.coverprofile
+coverage.out
+coverage.html
 profile.cov
-
-# Dependency directories (uncomment if you vendor dependencies)
-# vendor/
-
-# Go workspace file
-go.work
-go.work.sum
-
-# Environment files
-.env
-*.env
-*.envrc
-
-# Editor / IDE
-.idea/
-.vscode/
-
-# Vendored deps — this project does not vendor (module proxy + go.sum only)
-/vendor/
-
-# Go workspace files (this repo builds as a single module)
-go.work
-go.work.sum
-
-# Profiling / trace artifacts (`go test -cpuprofile`, `-trace`, pprof output)
 *.prof
 *.pprof
 *.trace
+go.work
+go.work.sum
+/vendor/
+# Do NOT ignore testdata/fuzz/: `go test -fuzz` writes failing inputs there,
+# and they are committed as regression cases. The fuzz cache lives in GOCACHE.
 
-# ---------------------------------------------------------------------------
-# Python (modern GitHub template subset — reserved for future tooling)
-# ---------------------------------------------------------------------------
+# --- Local runtime data: may contain real LAN inventory, never commit ------
+# Default saved-session name from internal/gui/sessions.go.
+session-*.json
+# Use these for disposable APPDATA dirs and local CLI --json/CSV output.
+/.scratch/
+/.smoke/
+.tmp-*
+*.log
 
+# --- Agent and tool local state ---------------------------------------------
+CLAUDE.local.md
+.claude/settings.local.json
+.superpowers/
+
+# --- Python (tests/macos-smoke.py is stdlib-only) ---------------------------
 __pycache__/
 *.py[cod]
-*$py.class
-.Python
-build/
-develop-eggs/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+.venv/
+venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-.venv/
-venv/
-ENV/
-env/
-pip-log.txt
-pip-delete-this-directory.txt
-.ipynb_checkpoints/
-site/
 
-# ---------------------------------------------------------------------------
-# Secrets / keys / PII — never commit credentials or key material
-# ---------------------------------------------------------------------------
-
+# --- Secrets and key material -----------------------------------------------
 .env
 .env.*
+*.env
+.envrc
 !.env.example
 !.env.template
 *.pem
@@ -143,41 +71,23 @@ site/
 *.pfx
 *.keystore
 *.jks
-id_rsa
-id_rsa.*
+id_rsa*
 id_dsa*
 id_ecdsa*
 id_ed25519*
-*.gpg.asc
 .aws/
 .gnupg/
 .ssh/
-*secrets*
-*credentials*
-*.token
-*.secret
 
-# ---------------------------------------------------------------------------
-# Editors / OS / scratch
-# ---------------------------------------------------------------------------
-
-# Editors / IDEs
+# --- Editors and OS -----------------------------------------------------------
 .idea/
 .vscode/
 *.swp
-
-# OS junk
+.DS_Store
 Thumbs.db
 Desktop.ini
-.DS_Store
 
-# Local scratch
-.smoke/
-.tmp-*
-*.log
-
-# Session scratch (superpowers SDD plans)
-.superpowers/
-
-# Fuzz corpora (regenerated by `go test -fuzz`)
-testdata/fuzz/
+# --- Re-includes: keep last ---------------------------------------------------
+!cmd/lancartographer/resource.syso
+!internal/oui/oui_data.go
+!go.sum
