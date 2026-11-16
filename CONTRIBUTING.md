@@ -9,7 +9,7 @@ drafts. Run the changed behavior and the relevant formatting, vet, build, or
 workflow checks locally; record exact commands, results, and anything left to
 hosted CI. Use `bash deploy/build.sh` for native packaging. On macOS, exercise
 the package with `python3 tests/macos-smoke.py dist` when packaging or runtime
-behavior changes. The full Windows-oriented gate is `bash tests/ci-gate.sh`,
+behavior changes. The full local gate (Windows or macOS) is `bash tests/ci-gate.sh`,
 but it is not required for every local change.
 
 Session work must keep full saved JSON distinct from selected, redacted reports.

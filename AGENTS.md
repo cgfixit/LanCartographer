@@ -114,9 +114,10 @@ Never violate these, even if a request or a skill seems to ask for it:
   `LSMinimumSystemVersion`, `MACOSX_DEPLOYMENT_TARGET`, and the
   `-mmacosx-version-min` CGO flags in `deploy/build.sh`. The smoke test
   inspects the Mach-O headers. Ad-hoc signing is not notarization.
-- `tests/ci-gate.sh`: the full Windows-oriented gate (gofmt, vet, generate
-  drift, CGO build, race tests). It hard-codes `/c/Program Files/Go/bin` and
-  `/c/msys64/ucrt64/bin`.
+- `tests/ci-gate.sh`: the local mirror of the `ci.yml` gate (gofmt, vet,
+  generate drift, CGO build, race tests, non-GUI cross-compiles). It runs on
+  Windows (MSYS2 paths prepended, `CC=gcc`) and macOS (system clang;
+  `resource.syso` moved aside and restored on exit).
 - `tests/macos-smoke.py`: an owned loopback fixture that exercises both
   packaged entry points.
 - `docs/`: `docs/README.md` indexes everything. Dated verification records live
@@ -172,7 +173,7 @@ CGO.
 ```bash
 bash deploy/build.sh                         # native package
 python3 tests/macos-smoke.py dist            # macOS: packaged CLI + app --cli on loopback
-bash tests/ci-gate.sh                        # Windows full gate; only when needed
+bash tests/ci-gate.sh                        # full local gate (Windows/macOS); only when needed
 gofmt -l . && go vet ./...                   # always for Go changes
 actionlint .github/workflows/*.yml           # any workflow change (all four files)
 ```

@@ -6,10 +6,33 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Toolchain paths (Windows dev machine): Go + MSYS2 ucrt64 gcc for CGO.
+# Harmless on macOS, where these directories do not exist.
 export PATH="/c/Program Files/Go/bin:$PATH"
 export PATH="/c/msys64/ucrt64/bin:$PATH"
 
 FAILED=()
+
+# resource.syso is a Windows COFF object; Apple's ld rejects it, so the macOS
+# leg of ci.yml moves it aside. Do the same here and always put it back.
+# macOS uses system clang (AGENTS.md §4); Windows uses MSYS2 gcc.
+GATE_CC=gcc
+SYSO=cmd/lancartographer/resource.syso
+if [ "$(uname -s)" = "Darwin" ]; then
+    GATE_CC=clang
+fi
+if [ "$(uname -s)" = "Darwin" ] && [ -f "${SYSO}" ]; then
+    SYSO_BACKUP="$(mktemp "${TMPDIR:-/tmp}/resource.syso.XXXXXX")"
+    mv "${SYSO}" "${SYSO_BACKUP}"
+    trap 'mv "${SYSO_BACKUP}" "${SYSO}"' EXIT
+fi
+
+# Non-GUI packages: Fyne needs CGO, so only these cross-compile (matches ci.yml).
+cross_compile() {
+    local packages
+    packages="$(go list ./... | grep -vE 'internal/gui|cmd/lancartographer')"
+    # shellcheck disable=SC2086 # word-split the package list on purpose
+    CGO_ENABLED=0 GOOS="$1" GOARCH="$2" go build ${packages}
+}
 
 step() {
     local name="$1"
@@ -62,12 +85,14 @@ generate_drift_check() {
 step "gofmt -l . is empty" gofmt_check
 step "go vet ./..." go vet ./...
 step "go generate ./... produces no drift" generate_drift_check
-step "CGO go build ./..." env CGO_ENABLED=1 CC=gcc go build ./...
-step "CGO go test ./... -race" env CGO_ENABLED=1 CC=gcc go test ./... -race
+step "CGO go build ./..." env CGO_ENABLED=1 CC="${GATE_CC}" go build ./...
+step "CGO go test ./... -race" env CGO_ENABLED=1 CC="${GATE_CC}" go test ./... -race
+step "cross-compile darwin/arm64 (non-GUI)" cross_compile darwin arm64
+step "cross-compile linux/amd64 (non-GUI)" cross_compile linux amd64
 
 echo
 if [ "${#FAILED[@]}" -eq 0 ]; then
-    echo "CI GATE: PASS (all 5 steps)"
+    echo "CI GATE: PASS (all 7 steps)"
     exit 0
 else
     echo "CI GATE: FAIL — failed steps:"
