@@ -12,6 +12,28 @@ branch `main`. MIT licensed. The **Go module path is
 URL. Use the module path. Repository visibility and billing are the owner's
 decisions alone. Agents never change either.
 
+## 0. Owner working rules
+
+- **Verify by running it.** Exercise the changed behavior directly (CLI
+  against an owned loopback fixture, the native app, browser or computer use
+  for UI) before relying on tests. Add focused tests for behavior changes;
+  do not build or run whole suites to prove a change.
+- **Keep tests and CI current.** When a change makes anything in `tests/` or
+  `.github/workflows/` stale, update or remove it in the same PR, then run
+  the changed script and `actionlint`.
+- **Prefer lint to tests for mechanical mistakes.** Baseline lint is `gofmt`
+  and `go vet`; there is no golangci config yet. Propose a new lint check in
+  its own PR and add its command to §4. Never bundle a lint rollout with
+  feature work.
+- **Docs freshness.** Before opening a PR that changes user-visible behavior,
+  CLI flags, build steps or workflows, or when `README.md` and `docs/` have
+  not changed in 7+ days, review `README.md`, `docs/USER-GUIDE.md` and
+  `docs/README.md` for stale or duplicate content and fix it in that PR.
+  When an edit adds 50+ words to a file, cut 5–15% of stale or repeated
+  content elsewhere in that file. Exempt: dated records in
+  `docs/verification/`, the CFAA sentence, and `INVARIANTS.md`. Check that
+  relative links still resolve after moving or renaming a doc.
+
 ## 1. Product and hard invariants
 
 LanCartographer is an **original** Windows 10/11 and macOS 13+ LAN and port
@@ -21,9 +43,16 @@ has zero telemetry. It is inspired by Advanced IP Scanner (Famatech), Angry IP
 Scanner and Nmap, and must credit them without implying any affiliation.
 
 The CFAA sentence governs anything touching scan or probe behavior. Keep it
-verbatim wherever it appears (LICENSE, README, authorization flow):
+verbatim wherever it appears: `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`,
+`docs/USER-GUIDE.md`, `docs/network-workbench-roadmap.md`, and `authz.Notice`
+in `internal/authz/authz.go` (a two-part Go string concatenation; the joined
+text must match exactly), which `authz_test.go` also checks:
 
 > Scan only networks you own or have explicit authorization to inventory. Unauthorized access or scanning may violate the Computer Fraud and Abuse Act, 18 U.S.C. § 1030, and similar laws.
+
+`INVARIANTS.md` holds the full security invariants (gate thresholds, external
+actions, egress). Read it before touching scan, probe, `authz`, `servicecheck`
+or launch code.
 
 Never violate these, even if a request or a skill seems to ask for it:
 
@@ -77,17 +106,14 @@ Never violate these, even if a request or a skill seems to ask for it:
     `internet_quality.go`, `wifi_quality*.go` and `sessions.go`, and
     `run_nocgo.go` is the non-CGO stub.
 - `tools/icongen/`: icon generator.
-- `deploy/build.sh`: native build. On Windows it produces
-  `dist/LanCartographer.exe` and `dist/lancartographer-cli.exe`. On macOS it
-  produces `LanCartographer.app` (ad-hoc signed), `lancartographer-cli`,
-  `SHA256SUMS.txt` and `LanCartographer-macos-<arch>.zip`. It moves the Windows
-  COFF `resource.syso` aside during the macOS build and restores it on exit.
+- `deploy/build.sh`: native build into `dist/` (Windows `.exe` pair; macOS
+  ad-hoc-signed `.app`, CLI, checksums and per-arch ZIP). On macOS it moves the
+  COFF `resource.syso` aside and restores it on exit.
 - `packaging/macos/Info.plist`: bundle identity and local-network usage text.
   The macOS minimum (13.0) lives in three places that must stay aligned:
   `LSMinimumSystemVersion`, `MACOSX_DEPLOYMENT_TARGET`, and the
   `-mmacosx-version-min` CGO flags in `deploy/build.sh`. The smoke test
-  inspects the Mach-O headers. Ad-hoc signing is not Developer ID signing or
-  notarization.
+  inspects the Mach-O headers. Ad-hoc signing is not notarization.
 - `tests/ci-gate.sh`: the full Windows-oriented gate (gofmt, vet, generate
   drift, CGO build, race tests). It hard-codes `/c/Program Files/Go/bin` and
   `/c/msys64/ucrt64/bin`.
@@ -96,13 +122,15 @@ Never violate these, even if a request or a skill seems to ask for it:
 - `docs/`: `docs/README.md` indexes everything. Dated verification records live
   in `docs/verification/<topic>-YYYY-MM-DD.md`, with images in
   `docs/verification/<topic>/`. `screenshots/` holds older README images.
-- User docs: `README.md`, `USER-GUIDE.md` (workflows plus a code tour),
-  `update-guide.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`.
+- `INVARIANTS.md`: security invariants (see §1).
+- User docs: `README.md`, `docs/USER-GUIDE.md` (workflows plus a code tour),
+  `docs/update-guide.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`.
+  Links into `docs/` from the root use `docs/…`; links from inside `docs/` are
+  relative to it.
 - `.agents/skills/`: shared skills (`optimize`, `lan-optimizer`). There is no
   `.claude/skills/` directory, so do not reference one.
-- `todo.txt`: links to current issues (#22 roadmap, #24 platform acceptance,
-  #25 dependency review, #26 legacy cleanup). Refresh issue/PR state before
-  acting on it.
+- Open work lives in GitHub issues (#22 roadmap, #24 platform acceptance,
+  #25 dependency review, #26 legacy cleanup); refresh their state first.
 - `packaging/note` and `cmd/-` are owner scratch files, not build inputs. Do
   not act on or delete them unless asked.
 
@@ -149,11 +177,9 @@ gofmt -l . && go vet ./...                   # always for Go changes
 actionlint .github/workflows/*.yml           # any workflow change (all four files)
 ```
 
-- The primary local check is to **run the changed behavior** (owner
-  preference). Then run gofmt, the relevant vet and build steps, and a focused
-  test for the touched package. Do not run the full local suite by default,
-  because hosted CI covers the broad and platform-specific regressions. Record
-  any user waiver separately from passing evidence.
+- Verify per §0, then gofmt, relevant vet/build and a focused package test.
+  Hosted CI covers broad and platform regressions. Record any user waiver
+  separately from passing evidence.
 - On macOS, a manual `go build ./...` or a test that links
   `cmd/lancartographer` requires moving `resource.syso` aside and restoring it.
   Prefer `deploy/build.sh`.
@@ -179,8 +205,7 @@ actionlint .github/workflows/*.yml           # any workflow change (all four fil
 - PR bodies follow `.github/PULL_REQUEST_TEMPLATE.md`, which requires test
   evidence with the exact commands, platform limits, security-impact answers,
   and screenshots for UI changes.
-- If two chunks edit the same file, put them in one PR or stack them (later
-  branch based on the earlier one). Trial-merge before opening.
+- Chunks touching the same file share a PR or are stacked; trial-merge first.
 - **Do not post PR or issue comments that summon bot reviewers** (for example
   "@codex review") without the owner's approval.
 - Do not add workflow secrets, a new license, or a CodeQL workflow file. See §7.
@@ -209,27 +234,15 @@ CodeQL is expected to come from GitHub **default setup**, not a workflow file.
 Do not add a CodeQL workflow unless the owner first turns off default setup. A
 missing Analyze check means the scan is off; it is not a pass.
 
-### Live status (snapshot 2026-11-16, recheck before acting)
+### Diagnosing red CI
 
-These are infrastructure facts, not code defects. Do not "fix" them in code,
-and do not weaken gates to get around them. Report them to the owner.
+Infrastructure failures are not code defects. Do not "fix" them in code, and
+do not weaken gates to get around them; report them to the owner.
 
-- The repository is **private**.
-- Every CI and gitleaks job on `main` since 2026-11-16 ~17:32 UTC was **not
-  started**. The annotation says account payments failed or the spending limit
-  needs raising. Red checks with no failed step are billing failures. Read the
-  annotations before debugging:
-  `gh api repos/cgfixit/LanCartographer/check-runs/<id>/annotations`.
-  The last green `main` runs (CI, gitleaks and CodeQL) were on `8278b55`
-  (2026-11-15).
-- The code-scanning API now returns "Code scanning is not enabled for this
-  repository". It was on through 2026-11-15, so it was most likely turned off
-  when the repo went private (private repos need GitHub Code Security). With no
-  CodeQL runs, the `release-main-macos.yml` gate cannot
-  pass even after billing is fixed, until the owner either re-enables code
-  scanning or changes the gate in a reviewed PR.
-- Recheck commands:
-  `gh api repos/cgfixit/LanCartographer --jq .visibility`,
-  `gh api 'repos/cgfixit/LanCartographer/actions/runs?branch=main&per_page=10'`,
-  `gh api repos/cgfixit/LanCartographer/code-scanning/default-setup`.
-  Update or delete this subsection when the facts change.
+- A failed job with no failed step usually never started (often billing).
+  Read `gh api repos/cgfixit/LanCartographer/check-runs/<id>/annotations`
+  before debugging.
+- If the repository becomes private, default-setup CodeQL can stop (private
+  repos need GitHub Code Security), and without a "Push on main" CodeQL run
+  `release-main-macos.yml` cannot publish. Check `gh api
+  repos/cgfixit/LanCartographer --jq .visibility`.
