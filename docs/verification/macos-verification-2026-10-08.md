@@ -59,11 +59,11 @@ Finder label from the intermediate Mac candidate.
 
 | Before: collapsed values and dark headings | After: readable values and headings |
 |---|---|
-| ![Before](../screenshots/macos-dark-before.png) | ![After](../screenshots/macos-dark-after.png) |
+| ![Before](../../screenshots/macos-dark-before.png) | ![After](../../screenshots/macos-dark-after.png) |
 
-![Native light theme](../screenshots/macos-light-after.png)
+![Native light theme](../../screenshots/macos-light-after.png)
 
-![Final native HTTP title](../screenshots/macos-http-title.png)
+![Final native HTTP title](../../screenshots/macos-http-title.png)
 
 ## Packaged runtime and focused checks
 

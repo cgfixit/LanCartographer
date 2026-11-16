@@ -10,7 +10,9 @@ The second half of this guide is a code tour for Python and PowerShell users.
 
 > Scan only networks you own or have explicit authorization to inventory. Unauthorized access or scanning may violate the Computer Fraud and Abuse Act, 18 U.S.C. § 1030, and similar laws.
 
-1. Open the Windows executable or macOS app, read the first-run notice, and
+1. Open the Windows executable or macOS app, read the first-run notice (if the
+   app cannot save that you saw it, an error says so and it returns next
+   launch), and
    select or enter an authorized IPv4 range. Set **TCP ports** to the services
    you want to inventory, then click **Scan** and confirm if the
    range requires it. **Stop** cancels an active scan; partial results are not
@@ -492,7 +494,10 @@ Do not assume the whole suite is hermetic:
   starts an HTTP server on `127.0.0.1:18080` (e.g.
   `internal/cli/cli_test.go`). Loopback is in-process, deterministic, and
   uses your own host. Full CLI scans may also invoke name resolution; a
-  loopback target alone does not isolate every side effect.
+  loopback target alone does not isolate every side effect. Environments
+  that forbid binding loopback sockets, such as some agent sandboxes, fail
+  these tests with `bind: operation not permitted`; that is the environment,
+  not a code defect.
 - **Negative network cases.** Some probe tests call real dial, MAC or name
   lookup functions with `192.0.2.1`. A documentation address is not a fake
   transport and does not guarantee that no packets or DNS queries are sent.

@@ -13,7 +13,10 @@ landed in [#23](https://github.com/cgfixit/LanCartographer/pull/23). The project
 had GitHub Actions preview packages and no tagged GitHub Release at review time.
 The macOS arm64 preview passed the owned loopback smoke through both packaged
 CLI entry points on macOS 27.2. The session workflow has separate native
-verification at the revision recorded there.
+verification at the revision recorded there. Since this assessment, the phase 2
+**Check service…** workflow has shipped
+([verification, 2026-11-15](verification/check-service-2026-11-15.md)); the
+Connections window and the other phases have not started.
 [Preview build](https://github.com/cgfixit/LanCartographer/actions/runs/42187544799),
 [build instructions](../README.md#build-from-source),
 [session verification](verification/sessions-2026-11-01.md).
@@ -116,7 +119,8 @@ and that a close or pause during collection leaves no polling or child process.
   reuse the existing Ping action where suitable. Evaluate `dig` as an explicit
   query shortcut and `dns-sd` as a time-boxed discovery diagnostic later.
   A `dig` result does not necessarily reflect the system resolver's selection.
-- Add one **Check service…** workflow, starting with a single authorized
+- *(Shipped: Tools → Check Service…, `internal/servicecheck`.)* Add one
+  **Check service…** workflow, starting with a single authorized
   endpoint and structured TCP, TLS and HTTP outcomes. Preview the target before
   any active check. For a hostname, authorize the explicit lookup, show the
   results, authorize the concrete destination and connect to that approved

@@ -22,7 +22,7 @@ dependency set, native platform or downloaded release.
 | [Wi-Fi diagnostics, 2026-11-14](verification/wifi-diagnostics-2026-11-14.md) | Native before/after screenshots, live gateway replies, cancellation and packaged loopback smoke |
 | [Indirect Go dependency refresh, 2026-11-14](verification/indirect-dependencies-2026-11-14.md) | Patched module selection, signed arm64 bundle, packaged CLI, and native theme, inventory and file-picker checks |
 | [Saved sessions, 2026-11-01](verification/sessions-2026-11-01.md) | Owned service change, save/reload, coverage comparison, selected redaction/export, light/dark native interaction and explicit platform limits |
-| [macOS packaging and native workflow](macos-verification.md) | Packaged CLI and native GUI results at the recorded revisions |
+| [macOS packaging and native workflow, 2026-10-08](verification/macos-verification-2026-10-08.md) | Packaged CLI and native GUI results at the recorded revisions |
 | [CSV export, 2026-10-13](verification/csv-verification-2026-10-13.md) | Historical CSV escaping/formula-prefix verification |
 | [Discovery, 2026-10-13](verification/discovery-verification-2026-10-13.md) | Historical host-discovery verification |
 | [HTTP probes, 2026-10-13](verification/http-verification-2026-10-13.md) | Historical bounded HTTP/TLS probe verification |
@@ -30,10 +30,8 @@ dependency set, native platform or downloaded release.
 ## Pending work
 
 - [#22: roadmap](https://github.com/cgfixit/LanCartographer/issues/22), including first-slice progress and later proposals.
-- [Network workbench plan](network-workbench-roadmap.md): proposed macOS-first Connections window and later phases; no implementation yet.
+- [Network workbench plan](network-workbench-roadmap.md): proposed macOS-first Connections window and later phases. Only the phase 2 Check Service workflow has shipped; the Connections window has not started.
 - [#24: native platform and size-limit acceptance](https://github.com/cgfixit/LanCartographer/issues/24).
-- [#25: indirect dependency and action-major review](https://github.com/cgfixit/LanCartographer/issues/25).
-- [#26: legacy cleanup decisions](https://github.com/cgfixit/LanCartographer/issues/26).
 
 Check the linked issue/PR head before continuing work. Keep synthetic fixtures
 and redacted reports separate from raw session files containing inventory and
