@@ -376,12 +376,16 @@ func (u *ui) maybeFirstRun() {
 	how.TextStyle = fyne.TextStyle{Italic: true}
 	var d dialog.Dialog
 	understand := widget.NewButton("I understand", func() {
-		if pathErr == nil {
-			if err := os.MkdirAll(filepath.Dir(p), 0o700); err == nil {
-				_ = os.WriteFile(p, []byte(time.Now().Format(time.RFC3339)), 0o600)
+		d.Hide()
+		err := pathErr
+		if err == nil {
+			if err = os.MkdirAll(filepath.Dir(p), 0o700); err == nil {
+				err = os.WriteFile(p, []byte(time.Now().Format(time.RFC3339)), 0o600)
 			}
 		}
-		d.Hide()
+		if err != nil {
+			dialog.ShowError(fmt.Errorf("could not record that you saw this notice, so it will show again next launch: %w", err), u.win)
+		}
 	})
 	understand.Importance = widget.HighImportance
 	// Only the button records the marker; dismissing any other way shows
