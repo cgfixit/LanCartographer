@@ -1,7 +1,10 @@
 name: macOS main prerelease
 
 on:
-  workflow_run:
+  # workflow_run is safe here: top-level permissions are empty, and the gate job
+  # only accepts same-repo push/dynamic runs that succeeded, for a validated SHA
+  # that a merged PR put on main. It never checks out or runs PR code.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
     workflows: [CI, gitleaks, CodeQL]
     branches: [main]
     types: [completed]
