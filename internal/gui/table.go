@@ -4,7 +4,7 @@ package gui
 
 import (
 	"image/color"
-	"sort"
+	"slices"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -301,13 +301,11 @@ func cellText(h model.Host, col int) string {
 	return ""
 }
 
-// sortHosts returns a copy of hosts ordered per the sort column: status
+// sortHosts orders hosts in place by the sort column: status
 // (alive first), name, IP, MAC, vendor, open-port count, then share count.
 // Ties always fall back to IP so the order stays deterministic.
-func sortHosts(hosts []model.Host, col int, asc bool) []model.Host {
-	out := append([]model.Host(nil), hosts...)
-	sort.SliceStable(out, func(i, j int) bool {
-		a, b := out[i], out[j]
+func sortHosts(hosts []model.Host, col int, asc bool) {
+	slices.SortFunc(hosts, func(a, b model.Host) int {
 		c := 0
 		switch col {
 		case 0:
@@ -331,11 +329,10 @@ func sortHosts(hosts []model.Host, col int, asc bool) []model.Host {
 			c = a.IP.Compare(b.IP)
 		}
 		if !asc {
-			return c > 0
+			return -c
 		}
-		return c < 0
+		return c
 	})
-	return out
 }
 
 // boolCmp orders false before true.

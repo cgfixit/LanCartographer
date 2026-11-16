@@ -4,6 +4,7 @@ package gui
 
 import (
 	"net/netip"
+	"slices"
 	"testing"
 
 	"fyne.io/fyne/v2"
@@ -11,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/local/lancartographer/internal/discover"
+	"github.com/local/lancartographer/internal/favorites"
 	"github.com/local/lancartographer/internal/model"
 )
 
@@ -184,6 +186,42 @@ func TestTableTapSelectsRowAndUpdatesPanel(t *testing.T) {
 	}
 	if title.Text != "alpha" {
 		t.Fatalf("panel title = %q, want alpha", title.Text)
+	}
+}
+
+func TestTableNameSortKeepsFavoritesInIPOrder(t *testing.T) {
+	u := newTestUI(t)
+	low := netip.MustParseAddr("192.168.1.2")
+	middle := netip.MustParseAddr("192.168.1.10")
+	high := netip.MustParseAddr("192.168.1.20")
+	u.store.set([]model.Host{
+		{IP: middle, Name: "bravo"},
+		{IP: high, Name: "Alpha"},
+		{IP: low, Name: "alpha"},
+	})
+	order := func(hosts []model.Host) []netip.Addr {
+		ips := make([]netip.Addr, 0, len(hosts))
+		for _, h := range hosts {
+			ips = append(ips, h.IP)
+		}
+		return ips
+	}
+
+	u.headerBtns[1].OnTapped()
+	if got := order(u.sorted); !slices.Equal(got, []netip.Addr{low, high, middle}) {
+		t.Fatalf("ascending Name order = %v", got)
+	}
+	u.headerBtns[1].OnTapped()
+	if got := order(u.sorted); !slices.Equal(got, []netip.Addr{middle, high, low}) {
+		t.Fatalf("descending Name order = %v", got)
+	}
+	u.onSaveFavorites()
+	saved, err := favorites.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := order(saved); !slices.Equal(got, []netip.Addr{low, middle, high}) {
+		t.Fatalf("saved favorites are out of IP order: %v", got)
 	}
 }
 
