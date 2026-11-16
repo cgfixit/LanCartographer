@@ -12,7 +12,9 @@ Per-user data is not inside the binary. Leave this directory in place when you u
 That directory holds `settings.json`, `favorites.json`, `names.json`,
 `firstrun_seen`, and the default `sessions/` folder for explicitly saved sessions
 and evidence reports. An absolute `APPDATA` value overrides the location. The
-app does not write this data into its working directory.
+app does not write this data into its working directory. If it cannot write
+`firstrun_seen` there, it says so after you acknowledge the authorization
+notice, and the notice appears again on the next launch.
 
 Back up saved sessions you want to retain, including files saved to custom
 paths. Session JSON is unredacted; store it privately. There is no automatic
@@ -34,7 +36,7 @@ contain the same bundle layout as the versioned releases.
 
 ## Rebuild from this tree
 
-The Go version is the `go` line in [go.mod](go.mod). Windows also needs MSYS2 ucrt64 gcc and the pinned `goversioninfo` version in the [build instructions](README.md#build-from-source). macOS needs the Xcode Command Line Tools. Both builds enable CGO because the GUI uses Fyne. Build the checked-in module versions; maintainers updating them should follow [dependency maintenance](CONTRIBUTING.md#dependency-maintenance).
+The Go version is the `go` line in [go.mod](../go.mod). Windows also needs MSYS2 ucrt64 gcc and the pinned `goversioninfo` version in the [build instructions](../README.md#build-from-source). macOS needs the Xcode Command Line Tools. Both builds enable CGO because the GUI uses Fyne. Build the checked-in module versions; maintainers updating them should follow [dependency maintenance](../CONTRIBUTING.md#dependency-maintenance).
 
 From the repository root:
 

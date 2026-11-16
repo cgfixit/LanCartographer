@@ -1,11 +1,8 @@
 # LanCartographer
 
 LanCartographer is a local network inventory and change-verification tool for
-macOS and Windows. Use it to find a printer or NAS, inspect the TCP services a
-lab host exposes, find out where a single service connection fails, or check
-what changed after maintenance. Scan an authorized IPv4 range, save a baseline
-in the GUI, and compare it with a later scan that used the same scope and port
-profile. Select the changes you need and export a redacted report.
+macOS and Windows: scan an authorized IPv4 range, save a baseline, and compare
+it with a later scan of the same scope and ports.
 
 The desktop app streams results as it scans. The CLI shares the scan engine
 and can write JSON to a file or a pipe. Both run on demand, with no
@@ -229,7 +226,7 @@ re-resolves the name, uses no proxy, and never skips TLS verification (the
 entered name is the SNI and `Host`). Unlike the scan engine, it accepts IPv6,
 including scoped link-local addresses. One check runs at a time; **Stop** or
 closing the window cancels it. Results stay in the window and are copied only
-with **Copy results**. See the [Check Service guide](USER-GUIDE.md#check-a-service).
+with **Copy results**. See the [Check Service guide](docs/USER-GUIDE.md#check-a-service).
 
 ## Internet Quality on macOS
 
@@ -249,11 +246,31 @@ the Wi-Fi interface.
 
 Measurements and captures run one at a time and not during a scan; starting an
 authorized scan ends the current measurement first. Results stay in the
-window. See the [Internet Quality guide](USER-GUIDE.md#measure-internet-quality-on-macos).
+window. See the [Internet Quality guide](docs/USER-GUIDE.md#measure-internet-quality-on-macos).
+
+## Build from source
+
+Use the Go version in [go.mod](go.mod) and a CGO C compiler; both entry points
+include Fyne.
+
+- **macOS:** install the Xcode Command Line Tools, then run
+  `bash deploy/build.sh`. It builds the native architecture with system clang
+  (macOS 13 target), moves the checked-in Windows `resource.syso` aside and
+  restores it, and writes an ad-hoc-signed `dist/LanCartographer.app`,
+  `dist/lancartographer-cli` and `dist/LanCartographer-macos-<arch>.zip`.
+- **Windows (Git Bash):** run `pacman -S mingw-w64-ucrt-x86_64-gcc` and
+  `go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0`,
+  then `bash deploy/build.sh` for `dist/LanCartographer.exe` and
+  `dist/lancartographer-cli.exe` (`asInvoker` manifest).
+
+`bash tests/ci-gate.sh` runs the hosted CI gate locally on either platform.
+To replace an existing build, see the [update guide](docs/update-guide.md).
 
 ## Security model
 
-Review Project Security Rules in [INVARIANTS.md](INVARIANTS.md).
+Review Project Security Rules in [INVARIANTS.md](INVARIANTS.md). Every push
+and PR to `main` also runs gitleaks, govulncheck, actionlint and zizmor
+(`.github/workflows/`).
 Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 
 ## License

@@ -19,7 +19,7 @@ For session/comparison defects, include the completion states and the displayed
 compatibility reason. Prefer a small synthetic reproduction over attaching full
 session JSON: it contains unredacted inventory and local source addresses. A
 selected evidence report defaults to redaction, but notes and screenshots need
-manual review. See the [session troubleshooting table](USER-GUIDE.md#when-comparison-or-export-is-unavailable).
+manual review. See the [session troubleshooting table](docs/USER-GUIDE.md#when-comparison-or-export-is-unavailable).
 
 Report suspected vulnerabilities privately through GitHub Security Advisories,
 following [SECURITY.md](SECURITY.md). Do not disclose them in a public issue.

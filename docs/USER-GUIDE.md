@@ -2,15 +2,17 @@
 
 Use the native GUI for an authorized inventory, saved before/after sessions,
 and selected evidence reports. The CLI shares the scan engine; its flags and
-examples are in the [README](README.md#cli-reference). Build and update steps
-are in [README](README.md#build-from-source) and [update-guide.md](update-guide.md).
+examples are in the [README](../README.md#cli-reference). Build and update steps
+are in [README](../README.md#build-from-source) and [update-guide.md](update-guide.md).
 The second half of this guide is a code tour for Python and PowerShell users.
 
 ## Scan and inspect
 
 > Scan only networks you own or have explicit authorization to inventory. Unauthorized access or scanning may violate the Computer Fraud and Abuse Act, 18 U.S.C. § 1030, and similar laws.
 
-1. Open the Windows executable or macOS app, read the first-run notice, and
+1. Open the Windows executable or macOS app, read the first-run notice (if the
+   app cannot save that you saw it, an error says so and it returns next
+   launch), and
    select or enter an authorized IPv4 range. Set **TCP ports** to the services
    you want to inventory, then click **Scan** and confirm if the
    range requires it. **Stop** cancels an active scan; partial results are not
@@ -55,7 +57,7 @@ enable Browser, and this is not a TLS or application-health check.
 For a service on this computer, scan `127.0.0.1/32` with its listening port.
 A successful loopback result does not establish LAN reachability: repeat from
 an authorized LAN client against the server's LAN address to check that path.
-See the [native verification record](docs/verification/developer-ports-2026-11-13.md)
+See the [native verification record](verification/developer-ports-2026-11-13.md)
 for the exercised workflow and platform limits.
 
 ## Save a baseline and compare a change
@@ -82,7 +84,7 @@ for the exercised workflow and platform limits.
    plus coverage context. **Clear selection** disables export. Reopening a
    session or changing its context resets the selection.
 
-![Selected comparison evidence in the native macOS app](docs/verification/sessions-2026-11-01/after.jpg)
+![Selected comparison evidence in the native macOS app](verification/sessions-2026-11-01/after.jpg)
 
 The comparison is by IP address. A newly absent address is **not observed**,
 not proven offline; an empty field is **not recorded**, not proof of removal.
@@ -110,7 +112,7 @@ anonymization. The comparison list and saved JSON remain unredacted. Turning
 redaction off includes selected discovered values and source/site metadata.
 Notes are included as entered (with control characters sanitized); inspect
 notes and screenshots before sharing. Reports are plain text with no remote
-assets or active HTML. See [SECURITY.md](SECURITY.md#saved-sessions-and-evidence).
+assets or active HTML. See [SECURITY.md](../SECURITY.md#saved-sessions-and-evidence).
 
 Default storage is `%AppData%\LanCartographer\sessions\` on Windows and
 `~/Library/Application Support/LanCartographer/sessions/` on macOS. An absolute
@@ -154,7 +156,7 @@ sends nothing.
    subnets or public, and repeats the authorization notice. **No** sends
    nothing.
 
-![Check Service with a resolved name, a connection and an HTTP answer](docs/verification/check-service/resolve-http-light.jpg)
+![Check Service with a resolved name, a connection and an HTTP answer](verification/check-service/resolve-http-light.jpg)
 
 | Stage | Passed means | Common failures and what to try |
 | --- | --- | --- |
@@ -230,7 +232,7 @@ read-only diagnostic. Results stay in the window until you close it.
 
 Repeat a surprising result before drawing a conclusion. Scroll below the
 samples to see the deltas if the bottom of the comparison is out of view.
-[View the captured comparison](docs/verification/wifi-diagnostics/after.jpg).
+[View the captured comparison](verification/wifi-diagnostics/after.jpg).
 
 ## Code tour for Python and PowerShell users
 
@@ -249,7 +251,7 @@ ideas, then follows the actual scan and session boundaries.
 | `interface` | Python duck typing, but declared and checked at compile time. A function that takes `io.Writer` accepts anything with a `Write` method — like a protocol/ABC, enforced before runtime. |
 | struct embedding | Mixin / inheritance-lite. Embedding `sync.Mutex` in a struct promotes its methods — the Go idiom for "this struct has a lock," comparable to `$this.Lock()` conventions you'd hand-roll. |
 | pointer (`*Host`) | Passing a list by reference instead of a copy. Go is pass-by-value everywhere; a pointer is how a function mutates the caller's struct. Most of this codebase passes structs by value unless mutation is the point. |
-| `cgo` | `ctypes` / `CDLL` — calling C from Go. This project deliberately avoids cgo for OS APIs; see "Talking to the OS without .NET" below. |
+| `cgo` | `ctypes` / `CDLL` — calling C from Go. This project avoids cgo for OS APIs except the macOS Wi-Fi diagnostics (CoreWLAN); see "Talking to the OS without .NET" below. |
 | single compiled exe | PyInstaller output, but first-class: one static-ish binary, no interpreter, no venv, no DLL hell, ~instant startup. |
 
 ## What happens when you click Scan
@@ -396,8 +398,10 @@ than a FFI project.
 LanCartographer deliberately does **not** use cgo (the `ctypes` path) for
 these calls. cgo would drag a C toolchain into every build and complicate
 cross-compilation; the `x/sys/windows` approach compiles with plain `go build`.
-That's why the build needs gcc *only* for Fyne (the GUI library), not for
-Windows APIs.
+The build needs a C compiler for Fyne (the GUI library), not for Windows APIs.
+The one OS-API exception is macOS Wi-Fi diagnostics:
+`internal/gui/wifi_quality_darwin.go` reads link metrics from CoreWLAN through
+cgo; other platforms get the `wifi_quality_other.go` stub.
 
 On macOS the same seam exists, filled by different tools. Local subnets come
 from the stdlib `net.Interfaces()` instead of `GetAdaptersAddresses`; peer
@@ -452,7 +456,7 @@ review it hard.
   text before display.
 - **Local evidence has privacy limits.** Full session JSON is unredacted;
   selected reports default to redaction. Notes and screenshots need separate
-  review. See the session workflow above and [SECURITY.md](SECURITY.md).
+  review. See the session workflow above and [SECURITY.md](../SECURITY.md).
 
 ## Session ownership in the code
 
@@ -492,7 +496,10 @@ Do not assume the whole suite is hermetic:
   starts an HTTP server on `127.0.0.1:18080` (e.g.
   `internal/cli/cli_test.go`). Loopback is in-process, deterministic, and
   uses your own host. Full CLI scans may also invoke name resolution; a
-  loopback target alone does not isolate every side effect.
+  loopback target alone does not isolate every side effect. Environments
+  that forbid binding loopback sockets, such as some agent sandboxes, fail
+  these tests with `bind: operation not permitted`; that is the environment,
+  not a code defect.
 - **Negative network cases.** Some probe tests call real dial, MAC or name
   lookup functions with `192.0.2.1`. A documentation address is not a fake
   transport and does not guarantee that no packets or DNS queries are sent.
@@ -529,16 +536,18 @@ go test -race ./internal/session -run '^TestSession' -count=1
 ```
 
 This checks library behavior, not native dialogs. GUI changes also need actual
-native interaction; see the [session verification record](docs/verification/sessions-2026-11-01.md)
+native interaction; see the [session verification record](verification/sessions-2026-11-01.md)
 for the exercised workflow and limits, and
 [issue #24](https://github.com/cgfixit/LanCartographer/issues/24) for pending
 platform and size-limit acceptance. Fyne builds need CGO and the platform
 C toolchain. Use `bash deploy/build.sh` for packaging, especially on macOS where
 the checked-in Windows resource must be moved aside and restored.
 
-Hosted [CI](.github/workflows/ci.yml) runs the broad Windows and native
+Hosted [CI](../.github/workflows/ci.yml) runs the broad Windows and native
 arm64/Intel macOS build, vet and race checks, plus packaged CLI smoke checks on
-macOS. A cross-compile or packaged CLI pass does not verify native GUI behavior.
+macOS; `bash tests/ci-gate.sh` runs the same gate locally on Windows or macOS.
+[Static checks](../.github/workflows/static-checks.yml) add govulncheck,
+actionlint and zizmor on every PR and weekly. A cross-compile or packaged CLI pass does not verify native GUI behavior.
 For dependency/toolchain updates, follow
-[dependency maintenance](CONTRIBUTING.md#dependency-maintenance) and record
+[dependency maintenance](../CONTRIBUTING.md#dependency-maintenance) and record
 new results against the actual rebuilt artifact.

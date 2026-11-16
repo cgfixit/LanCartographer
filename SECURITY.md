@@ -97,7 +97,7 @@ Report redaction is on by default. It withholds identifiers and discovered
 text but retains timing, counts and numeric probe settings; aliases are not
 anonymization. It does not redact the GUI comparison list, full session JSON,
 operator notes or screenshots. Inspect what you share, especially notes and
-reports exported with redaction disabled. See the [User Guide](USER-GUIDE.md#what-is-saved-and-what-is-shared).
+reports exported with redaction disabled. See the [User Guide](docs/USER-GUIDE.md#what-is-saved-and-what-is-shared).
 
 ## Check Service
 
