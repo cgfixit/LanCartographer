@@ -1,19 +1,96 @@
+# Dependabot for LanCartographer.
+#
+# Ecosystems in this repo: Go modules (go.mod/go.sum at the root) and
+# SHA-pinned GitHub Actions in .github/workflows. tests/macos-smoke.py is
+# stdlib-only, so there is no pip manifest to watch. Nothing here tracks the
+# `goversioninfo` version that the workflows `go install`; bump that by hand
+# (see CONTRIBUTING.md "Dependency maintenance").
+#
+# Design goals:
+# - Few, reviewable PRs. Every PR runs one Windows job and two macOS jobs on
+#   a private repo, and macOS runner minutes are the expensive ones.
+# - Keep Fyne and its rendering/toolkit modules in one PR, as CONTRIBUTING
+#   requires.
+# - Leave majors as separate PRs; issue #25 reviews them one at a time.
+# - Never filter with `allow`. It also restricts security updates and would
+#   hide fixes for indirect modules.
+# - No custom `labels`. Dependabot's defaults (`dependencies` plus the
+#   ecosystem label) are created automatically. The old custom labels did not
+#   exist in this repo.
+
 version: 2
+
 updates:
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - go
+      day: monday
+      time: "06:00"
+      timezone: America/New_York
+    # Version updates only. Security updates are never delayed.
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: deps
+      include: scope
+    groups:
+      # Version-update groups are matched in order; the first match wins.
+      fyne-stack:
+        patterns:
+          - fyne.io/*
+          - github.com/fyne-io/*
+          - github.com/FyshOS/*
+          - github.com/go-gl/*
+          - github.com/go-text/*
+          - github.com/srwiley/*
+          - github.com/rymdport/*
+        update-types: [minor, patch]
+      golang-x:
+        patterns:
+          - golang.org/x/*
+        update-types: [minor, patch]
+      go-other:
+        patterns:
+          - "*"
+        update-types: [minor, patch]
+      # Security fixes inside the Fyne tree still arrive as one coherent PR.
+      fyne-stack-security:
+        applies-to: security-updates
+        patterns:
+          - fyne.io/*
+          - github.com/fyne-io/*
+          - github.com/FyshOS/*
+          - github.com/go-gl/*
+          - github.com/go-text/*
+          - github.com/srwiley/*
+          - github.com/rymdport/*
+
   - package-ecosystem: github-actions
     directory: /
+    # Monthly: actions are SHA-pinned (Dependabot rewrites the SHA and the
+    # `# vX.Y.Z` comment) and each bump needs actionlint plus a check of
+    # runtime, permissions and inputs.
     schedule:
-      interval: weekly
+      interval: monthly
+      time: "06:00"
+      timezone: America/New_York
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: ci
     groups:
-      minor-patch-actions:
-        update-types:
-          - minor
-          - patch
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types: [minor, patch]
+      actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
