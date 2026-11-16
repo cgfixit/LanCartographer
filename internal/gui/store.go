@@ -1,7 +1,7 @@
 package gui
 
 import (
-	"sort"
+	"slices"
 	"sync"
 
 	"github.com/local/lancartographer/internal/model"
@@ -11,9 +11,8 @@ import (
 // hostStore merges engine events into one record per IP (R10/R11): port
 // and share events append to the existing record (creating a stub when
 // the host is unknown), while the canonical EventHostFound REPLACES the
-// record with the fully enriched one. Widget code reads the store through
-// snapshot(), which is also what sorting operates on, so the GUI never
-// holds model.Host pointers that events mutate.
+// record with the fully enriched one. Readers copy records so the GUI
+// never holds model.Host pointers that events mutate.
 type hostStore struct {
 	mu    sync.Mutex
 	hosts map[string]*model.Host
@@ -71,16 +70,21 @@ func (s *hostStore) set(hosts []model.Host) {
 	}
 }
 
-// snapshot returns a copy of every host, sorted by IP. Callers own the
-// returned slice and its records.
+// snapshot returns a copy of every host in IP order for persistence.
 func (s *hostStore) snapshot() []model.Host {
+	out := s.copyHosts()
+	slices.SortFunc(out, func(a, b model.Host) int { return a.IP.Compare(b.IP) })
+	return out
+}
+
+// copyHosts returns a slice of host records in unspecified order.
+func (s *hostStore) copyHosts() []model.Host {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := make([]model.Host, 0, len(s.hosts))
 	for _, h := range s.hosts {
 		out = append(out, *h)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].IP.Compare(out[j].IP) < 0 })
 	return out
 }
 

@@ -305,9 +305,10 @@ func (u *ui) refreshStatus() {
 	u.statusShare.SetText(plural(shares, "share"))
 }
 
-// refreshTable re-sorts the store snapshot behind the table and repaints.
+// refreshTable copies the store into table order and repaints.
 func (u *ui) refreshTable() {
-	u.sorted = sortHosts(u.store.snapshot(), u.sortCol, u.sortAsc)
+	u.sorted = u.store.copyHosts()
+	sortHosts(u.sorted, u.sortCol, u.sortAsc)
 	u.table.Refresh()
 	u.refreshStatus()
 	u.updateEmptyHint()
