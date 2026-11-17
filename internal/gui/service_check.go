@@ -125,7 +125,7 @@ func (u *ui) showServiceCheck(prefill *servicePrefill) {
 	v.stop = widget.NewButtonWithIcon("Stop", theme.MediaStopIcon(), func() { u.cancelServiceJob(v) })
 	v.copyBtn = widget.NewButtonWithIcon("Copy results", theme.ContentCopyIcon(), func() {
 		if text := v.copyText(); text != "" {
-			v.win.Clipboard().SetContent(text)
+			fyne.CurrentApp().Clipboard().SetContent(text)
 			v.status.SetText("Copied the host, address and results to the clipboard.")
 		}
 	})

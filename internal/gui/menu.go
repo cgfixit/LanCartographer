@@ -141,7 +141,7 @@ func (u *ui) copyItem(label, text string) *fyne.MenuItem {
 		if text == "" {
 			return
 		}
-		u.win.Clipboard().SetContent(text)
+		u.app.Clipboard().SetContent(text)
 	})
 }
 

@@ -9,6 +9,7 @@ package gui
 import (
 	"context"
 	"fmt"
+	"image/color"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -126,11 +127,7 @@ type ui struct {
 func Run() error {
 	a := app.NewWithID("com.cgfixit.lancartographer")
 	settings, _ := LoadSettings()
-	if settings.Theme == "dark" {
-		a.Settings().SetTheme(theme.DarkTheme())
-	} else {
-		a.Settings().SetTheme(theme.LightTheme())
-	}
+	a.Settings().SetTheme(themeFor(settings.Theme))
 	w := a.NewWindow("LanCartographer")
 	w.Resize(fyne.NewSize(1280, 760))
 
@@ -397,15 +394,30 @@ func (u *ui) maybeFirstRun() {
 	d.Show()
 }
 
+// fixedVariant is Fyne's default theme pinned to one variant, which is what
+// the deprecated theme.DarkTheme/LightTheme returned.
+type fixedVariant struct {
+	fyne.Theme
+	variant fyne.ThemeVariant
+}
+
+func (t fixedVariant) Color(n fyne.ThemeColorName, _ fyne.ThemeVariant) color.Color {
+	return t.Theme.Color(n, t.variant)
+}
+
+// themeFor returns the app theme for a saved mode; anything but "dark" is light.
+func themeFor(mode string) fyne.Theme {
+	if mode == "dark" {
+		return fixedVariant{theme.DefaultTheme(), theme.VariantDark}
+	}
+	return fixedVariant{theme.DefaultTheme(), theme.VariantLight}
+}
+
 // applyTheme switches the app-wide theme; anything but "dark" means light.
 // Status-bar separators captured their color at build time, so re-resolve
 // them here after the switch.
 func (u *ui) applyTheme(mode string) {
-	if mode == "dark" {
-		fyne.CurrentApp().Settings().SetTheme(theme.DarkTheme())
-	} else {
-		fyne.CurrentApp().Settings().SetTheme(theme.LightTheme())
-	}
+	fyne.CurrentApp().Settings().SetTheme(themeFor(mode))
 	for _, rule := range u.statusSeparators {
 		rule.FillColor = theme.Color(theme.ColorNameSeparator)
 		rule.Refresh()
