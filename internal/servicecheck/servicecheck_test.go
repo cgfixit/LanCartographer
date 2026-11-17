@@ -236,7 +236,7 @@ func TestParseHost(t *testing.T) {
 		{"ff02::1", "", false},
 		{"255.255.255.255", "", false},
 		{"-nas.lan", "", false},
-		{"nas‮.lan", "", false},
+		{"nas\u202e.lan", "", false},
 		{strings.Repeat("a", 64) + ".lan", "", false},
 		{"", "", false},
 	} {
@@ -282,8 +282,8 @@ func TestResolveFiltersAndBounds(t *testing.T) {
 }
 
 func TestCleanNeutralizesUntrustedText(t *testing.T) {
-	got := clean("a\x1b[2J‮bc\r\n\td\xff"+strings.Repeat("x", 300), 20)
-	if strings.ContainsAny(got, "\x1b‮\r\n\t") || len([]rune(got)) != 20 || !strings.HasSuffix(got, "…") {
+	got := clean("a\x1b[2J\u202ebc\r\n\td\xff"+strings.Repeat("x", 300), 20)
+	if strings.ContainsAny(got, "\x1b\u202e\r\n\t") || len([]rune(got)) != 20 || !strings.HasSuffix(got, "…") {
 		t.Fatalf("clean = %q", got)
 	}
 }
