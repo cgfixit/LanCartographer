@@ -35,6 +35,7 @@ dependency set, native platform or downloaded release.
 - [#22: roadmap](https://github.com/cgfixit/LanCartographer/issues/22), including first-slice progress and later proposals.
 - [Network workbench plan](network-workbench-roadmap.md): proposed macOS-first Connections window and later phases. Only the phase 2 Check Service workflow has shipped; the Connections window has not started.
 - [#24: native platform and size-limit acceptance](https://github.com/cgfixit/LanCartographer/issues/24).
+- [#33](https://github.com/cgfixit/LanCartographer/issues/33) and [#40](https://github.com/cgfixit/LanCartographer/issues/40): macOS diagnostics workbench and its second wave.
 
 Check the linked issue/PR head before continuing work. Keep synthetic fixtures
 and redacted reports separate from raw session files containing inventory and
