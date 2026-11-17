@@ -131,9 +131,10 @@ Never violate these, even if a request or a skill seems to ask for it:
 - `.agents/skills/`: shared skills (`optimize`, `lan-optimizer`). There is no
   `.claude/skills/` directory, so do not reference one.
 - Open work lives in GitHub issues (#22 roadmap, #24 platform acceptance,
-  #25 dependency review, #26 legacy cleanup); refresh their state first.
-- `packaging/note` and `cmd/-` are owner scratch files, not build inputs. Do
-  not act on or delete them unless asked.
+  #33/#40 macOS diagnostics, #65 Fyne transitive modules); refresh their
+  state first.
+- `packaging/note`, `cmd/README.md` and `tools/README.md` are owner scratch
+  files, not build inputs. Do not act on or delete them unless asked.
 
 ## 3. Execution and ownership
 

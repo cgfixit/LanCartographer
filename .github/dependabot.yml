@@ -7,11 +7,11 @@
 # (see CONTRIBUTING.md "Dependency maintenance").
 #
 # Design goals:
-# - Few, reviewable PRs. Every PR runs one Windows job and two macOS jobs on
-#   a private repo, and macOS runner minutes are the expensive ones.
+# - Few, reviewable PRs. Every PR runs one Windows job and two macOS jobs,
+#   and each one still needs a native check before merge.
 # - Keep Fyne and its rendering/toolkit modules in one PR, as CONTRIBUTING
 #   requires.
-# - Leave majors as separate PRs; issue #25 reviews them one at a time.
+# - Leave majors as separate PRs and review them one at a time.
 # - Never filter with `allow`. It also restricts security updates and would
 #   hide fixes for indirect modules.
 # - No custom `labels`. Dependabot's defaults (`dependencies` plus the
