@@ -9,7 +9,7 @@
   GUI, `--i-am-authorized` in the CLI. Refusal means nothing is scanned. The
   engine also refuses IPv6 and anything broader than a `/12` outright.
 - **Bounded probes.** The HTTP, dial-budget and worker limits in
-  [How it works](#how-it-works) are fixed invariants, and TLS verification is
+  [How it works](README.md#how-it-works) are fixed invariants, and TLS verification is
   never disabled.
 - **Single-endpoint service checks.** Check Service connects only after a
   confirmation that names the address, port and traffic, to that one pinned
