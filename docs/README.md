@@ -15,6 +15,7 @@ dependency set, native platform or downloaded release.
 
 | Record | Coverage |
 | --- | --- |
+| [golang.org/x update, 2026-11-16](verification/golang-x-2026-11-16.md) | x/sys, x/image, x/net, x/text to current; govulncheck clean, packaged smoke, full gate, native Check Service and loopback scan in light/dark |
 | [Dependency refresh, 2026-11-01](verification/dependencies-2026-11-01.md) | Go 1.27.3/Fyne 2.8.2 package, owned CLI smoke, focused checks and native session dialogs/themes |
 | [Main window flow, 2026-11-15](verification/ui-flow-2026-11-15.md) | Before/after inventory with the same sample data, first-run notice, stop/finish states, favorites/export regressions and the unchanged CLI table |
 | [First-run marker write failure, 2026-11-16](verification/firstrun-marker-2026-11-16.md) | Native light/dark error dialog after a real click (redacted), focused test (fails on `main`, passes here) and Fyne-rendered `main` comparison |
@@ -34,6 +35,7 @@ dependency set, native platform or downloaded release.
 - [#22: roadmap](https://github.com/cgfixit/LanCartographer/issues/22), including first-slice progress and later proposals.
 - [Network workbench plan](network-workbench-roadmap.md): proposed macOS-first Connections window and later phases. Only the phase 2 Check Service workflow has shipped; the Connections window has not started.
 - [#24: native platform and size-limit acceptance](https://github.com/cgfixit/LanCartographer/issues/24).
+- [#33](https://github.com/cgfixit/LanCartographer/issues/33) and [#40](https://github.com/cgfixit/LanCartographer/issues/40): macOS diagnostics workbench and its second wave.
 
 Check the linked issue/PR head before continuing work. Keep synthetic fixtures
 and redacted reports separate from raw session files containing inventory and

@@ -64,12 +64,11 @@ native dialogs/themes after a Fyne update. Record source, module versions and
 the executable hash in [docs](docs/README.md); prior screenshots and CI results
 do not verify the updated artifact. Workflow changes need actionlint and
 review of action runtime, permissions, inputs and artifact compatibility.
-Remaining indirect/action major upgrades are tracked in
-[issue #25](https://github.com/cgfixit/LanCartographer/issues/25).
+Fyne's newer transitive modules are tracked in
+[issue #65](https://github.com/cgfixit/LanCartographer/issues/65).
 
-Keep deferred cleanup proposals in
-[issue #26](https://github.com/cgfixit/LanCartographer/issues/26), with a concrete
-benefit and preserved behavior before implementing them. Retain historical
+Open a cleanup proposal as its own issue, with a concrete benefit and
+preserved behavior, before implementing it. Retain historical
 verification records rather than deleting them because they are old.
 
 ## Safety and reporting

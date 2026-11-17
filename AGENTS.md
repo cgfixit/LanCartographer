@@ -131,9 +131,10 @@ Never violate these, even if a request or a skill seems to ask for it:
 - `.agents/skills/`: shared skills (`optimize`, `lan-optimizer`). There is no
   `.claude/skills/` directory, so do not reference one.
 - Open work lives in GitHub issues (#22 roadmap, #24 platform acceptance,
-  #25 dependency review, #26 legacy cleanup); refresh their state first.
-- `packaging/note` and `cmd/-` are owner scratch files, not build inputs. Do
-  not act on or delete them unless asked.
+  #33/#40 macOS diagnostics, #65 Fyne transitive modules); refresh their
+  state first.
+- `packaging/note`, `cmd/README.md` and `tools/README.md` are owner scratch
+  files, not build inputs. Do not act on or delete them unless asked.
 
 ## 3. Execution and ownership
 
@@ -229,7 +230,7 @@ actionlint .github/workflows/*.yml           # any workflow change (all five fil
 | --- | --- | --- |
 | `ci.yml` | push/PR → `main` | `gate` on windows-latest: gofmt, vet, generate drift, CGO build, `-race` tests, non-GUI cross-compile (darwin/arm64, linux/amd64). `macos` matrix on macos-15 (arm64) and macos-15-intel (amd64): `deploy/build.sh`, smoke, vet, `-race`, artifact upload. **`ci.yml` defines done.** |
 | `gitleaks.yml` | push/PR → `main`, dispatch | Secret scan. Permissions: `contents: read`, `pull-requests: read`. |
-| `static-checks.yml` | push/PR → `main`, weekly `41 7 * * 1` UTC, dispatch | Free, tokenless: `govulncheck` v1.9.0 (windows-latest + MSYS2 so CGO GUI packages are analyzed), `staticcheck` v0.8.2 (macos-latest, CGO), `actionlint` v1.7.12, `zizmor` 1.31.1 `--offline --min-severity=low`. Permissions: `contents: read`. Separate from `ci.yml`, so new advisories do not block PRs or the macOS prerelease. |
+| `static-checks.yml` | push/PR → `main`, weekly `41 7 * * 1` UTC, dispatch | Free, tokenless: `govulncheck` v1.9.0 (windows-latest + MSYS2 so CGO GUI packages are analyzed), `staticcheck` v0.8.2 (macos-latest, CGO), `actionlint` v1.7.12, `zizmor` 1.32.0 `--offline --min-severity=low`. Permissions: `contents: read`. Separate from `ci.yml`, so new advisories do not block PRs or the macOS prerelease. |
 | `release.yml` | `v*` tag, schedule `17 8,20 * * *` UTC, dispatch | Builds and verifies all platforms. Only a `v*` tag publishes (a dispatch also needs `publish: true`). The schedule rebuilds only if `main` moved. |
 | `release-main-macos.yml` | `workflow_run` of CI / gitleaks / CodeQL on `main` | For a merged PR commit, it requires a successful CI push run, gitleaks push run, and default-setup CodeQL run (`dynamic/github-code-scanning/codeql`, run name "Push on main"). It waits 5 min, then publishes the CI macOS ZIPs as prerelease `main-<sha>`. |
 

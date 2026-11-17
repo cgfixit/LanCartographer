@@ -110,4 +110,4 @@ jobs:
       - name: zizmor (offline)
         # Low severity and above fail the job; informational findings (e.g.
         # superfluous-actions) are filtered out.
-        run: pipx run zizmor==1.31.1 --offline --min-severity=low --format=github .github/workflows
+        run: pipx run zizmor==1.32.0 --offline --min-severity=low --format=github .github/workflows
