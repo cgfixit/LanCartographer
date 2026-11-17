@@ -2,6 +2,7 @@ name: static checks
 
 # Free, tokenless checks that complement ci.yml and gitleaks.yml:
 # - govulncheck: Go vulnerabilities this code actually reaches.
+# - staticcheck: Go bugs, deprecated APIs and simplifications (staticcheck.conf).
 # - actionlint: workflow syntax, expressions and embedded shell (shellcheck).
 # - zizmor: GitHub Actions security audit, offline (no API token).
 # Kept out of ci.yml so a newly published advisory does not block unrelated
@@ -57,6 +58,26 @@ jobs:
       - name: govulncheck
         shell: bash
         run: CGO_ENABLED=1 CC=gcc go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+  staticcheck:
+    # internal/gui needs CGO; macOS has clang and also covers the _darwin files.
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: staticcheck
+        run: CGO_ENABLED=1 CC=clang go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
 
   actionlint:
     runs-on: ubuntu-latest

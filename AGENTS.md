@@ -21,10 +21,10 @@ decisions alone. Agents never change either.
 - **Keep tests and CI current.** When a change makes anything in `tests/` or
   `.github/workflows/` stale, update or remove it in the same PR, then run
   the changed script and `actionlint`.
-- **Prefer lint to tests for mechanical mistakes.** Baseline lint is `gofmt`
-  and `go vet`; there is no golangci config yet. Propose a new lint check in
-  its own PR and add its command to §4. Never bundle a lint rollout with
-  feature work.
+- **Prefer lint to tests for mechanical mistakes.** Baseline lint is `gofmt`,
+  `go vet` and staticcheck (`staticcheck.conf`); there is no golangci
+  config. Propose a new lint check in its own PR and add its command to
+  §4. Never bundle a lint rollout with feature work.
 - **Docs freshness.** Before opening a PR that changes user-visible behavior,
   CLI flags, build steps or workflows, or when `README.md` and `docs/` have
   not changed in 7+ days, review `README.md`, `docs/USER-GUIDE.md` and
@@ -175,6 +175,7 @@ bash deploy/build.sh                         # native package
 python3 tests/macos-smoke.py dist            # macOS: packaged CLI + app --cli on loopback
 bash tests/ci-gate.sh                        # full local gate (Windows/macOS); only when needed
 gofmt -l . && go vet ./...                   # always for Go changes
+CGO_ENABLED=1 go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
 actionlint .github/workflows/*.yml           # any workflow change (all five files)
 ```
 
@@ -228,7 +229,7 @@ actionlint .github/workflows/*.yml           # any workflow change (all five fil
 | --- | --- | --- |
 | `ci.yml` | push/PR → `main` | `gate` on windows-latest: gofmt, vet, generate drift, CGO build, `-race` tests, non-GUI cross-compile (darwin/arm64, linux/amd64). `macos` matrix on macos-15 (arm64) and macos-15-intel (amd64): `deploy/build.sh`, smoke, vet, `-race`, artifact upload. **`ci.yml` defines done.** |
 | `gitleaks.yml` | push/PR → `main`, dispatch | Secret scan. Permissions: `contents: read`, `pull-requests: read`. |
-| `static-checks.yml` | push/PR → `main`, weekly `41 7 * * 1` UTC, dispatch | Free, tokenless: `govulncheck` v1.9.0 (windows-latest + MSYS2 so CGO GUI packages are analyzed), `actionlint` v1.7.12, `zizmor` 1.31.1 `--offline --min-severity=low`. Permissions: `contents: read`. Separate from `ci.yml`, so new advisories do not block PRs or the macOS prerelease. |
+| `static-checks.yml` | push/PR → `main`, weekly `41 7 * * 1` UTC, dispatch | Free, tokenless: `govulncheck` v1.9.0 (windows-latest + MSYS2 so CGO GUI packages are analyzed), `staticcheck` v0.8.2 (macos-latest, CGO), `actionlint` v1.7.12, `zizmor` 1.31.1 `--offline --min-severity=low`. Permissions: `contents: read`. Separate from `ci.yml`, so new advisories do not block PRs or the macOS prerelease. |
 | `release.yml` | `v*` tag, schedule `17 8,20 * * *` UTC, dispatch | Builds and verifies all platforms. Only a `v*` tag publishes (a dispatch also needs `publish: true`). The schedule rebuilds only if `main` moved. |
 | `release-main-macos.yml` | `workflow_run` of CI / gitleaks / CodeQL on `main` | For a merged PR commit, it requires a successful CI push run, gitleaks push run, and default-setup CodeQL run (`dynamic/github-code-scanning/codeql`, run name "Push on main"). It waits 5 min, then publishes the CI macOS ZIPs as prerelease `main-<sha>`. |
 
