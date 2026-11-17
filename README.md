@@ -56,18 +56,22 @@ network data.
 
 | Area | What you get |
 |---|---|
-| Live scan | Scan a selected or entered IPv4 range with an editable TCP port list. Hosts and open ports stream into the table with a progress bar and elapsed-time status |
+| Live scan | Scan a selected or entered IPv4 range with an editable TCP port list (**Default ports** restores it; ranges and invalid values are rejected before scanning). Hosts and open ports stream into the table; the status bar counts hosts, open ports and shares next to the progress bar and elapsed time |
+| Authorization gate | Ranges outside your local subnets, outside RFC 1918 space or broader than a `/22` need explicit confirmation (GUI dialog, CLI `--i-am-authorized`); Check Service and Wake-on-LAN confirm each target. No account, telemetry or update check |
+| Host discovery | TCP connect, then ARP, then (macOS) one ICMP echo, so a host with every probed port closed still appears; see [How it works](#how-it-works) |
 | Inventory table | Sort by status, name, IP, MAC, vendor, ports or shares. The selected row stays highlighted, ports read compactly (`22 SSH, 443 Web`), and values the scan did not learn show a dim `—` |
 | Host details | Open ports first, each with **Check…**; closed and unanswered ports collapse into one line each; action buttons for the selected host |
 | Port states | Every probed port reports `open`, `closed` or `timeout`. Open ports carry a service label (smb, http, rdp, …); web and unrecognized ports get a bounded HTTP/HTTPS title probe that can identify additional web services |
 | Share enumeration | Windows `NetShareEnum` or macOS `smbutil`; a host that denies enumeration shows an explicit "access denied" marker instead of an empty list |
+| MAC and vendor | MAC from ARP (Windows `SendARP`, macOS ARP cache); vendor from an OUI database compiled into the binary, with no runtime download |
 | Name resolution | NetBIOS, mDNS and reverse DNS run concurrently; the highest-priority answer wins and cancels the rest. Names persist in a MAC-keyed cache, so silent devices keep them across scans |
-| Quick actions | Copy, Finder/Explorer for hosts and shares, Browser on the detected web port (including custom ports identified as Web), Remote Desktop (Windows), Ping, and Wake-on-LAN after confirmation |
-| Export and favorites | CSV or JSON from **Export** (the CLI has `--json`). CSV prefixes formula-like cells with an apostrophe; JSON keeps raw values. Favorites keep a host list for later viewing |
+| Quick actions | Right-click a host for Copy IP/MAC/name, Finder/Explorer, Browser on the detected web port (including custom ports identified as Web), Remote Desktop (Windows), Ping, Wake-on-LAN and Check service…; right-click a share to copy its UNC path or name or open it |
+| Export and favorites | CSV or JSON from **Export**, which confirms before replacing a file and keeps the old one if the write fails. CSV prefixes formula-like cells with an apostrophe; JSON keeps raw values. **File → Save/Load Favorites** keeps a host list for later viewing |
 | Sessions and evidence | Explicitly save a scan with scope, port profile, source interfaces, timestamps and completion state; reopen it without probing; compare compatible completed sessions; export selected differences, redacted by default |
-| Check Service | **Tools → Check Service…** (Windows and macOS): one confirmed host and port, checked in separate resolve, connect, verified-TLS and HTTP stages |
-| Internet Quality (macOS) | Apple's `networkQuality` capacity and responsiveness test, plus a Wi-Fi before/after comparison of signal, noise, channel, link rate and gateway latency |
-| Themes and first run | A toolbar toggle switches light/dark and persists; the authorization notice appears on first launch |
+| Check Service | From the Tools menu, the toolbar, a host's right-click menu or a port's **Check…** (prefilling sends nothing): one confirmed IPv4 or IPv6 address and port, checked in separate resolve, connect, verified-TLS and HTTP stages. See [Check a service](#check-a-service) |
+| Internet Quality (macOS) | Apple's `networkQuality` capacity and responsiveness test, a Cloudflare speed test handed to your browser, and a Wi-Fi before/after comparison of signal, noise, channel, link rate and gateway latency |
+| Themes and first run | A toolbar toggle switches light/dark and persists. The authorization notice appears on first launch; if the app cannot record that you saw it, it says so and shows the notice again next time. **Help → About** shows the version, license and build target |
+| CLI | The same engine without a window: a table on stdout, `--json PATH` or `--json -` for pipes, and exit codes for scripts. See [CLI reference](#cli-reference) |
 | Elevation (Windows) | An unelevated process offers an **Elevate** button and marks MAC lookups that need elevation; macOS reads the ARP cache without it |
 
 ## How it works
@@ -86,9 +90,6 @@ network data.
 - **Port probes:** a TCP connect per port with an exact result. HTTP/HTTPS
   probes are capped at one second and 32 KiB, follow no redirects, and verify
   TLS certificates.
-- **Enrichment:** MAC from ARP, vendor from the embedded OUI database, SMB
-  shares, and a name from NetBIOS, then mDNS, then DNS PTR, stored in the
-  MAC-keyed cache.
 - **Live events:** the engine streams per-host events over a channel, so the
   Fyne table fills in while the scan is still running.
 
@@ -180,20 +181,12 @@ interfaces/platform; otherwise the view explains the mismatch and disables
 export. An upgrade can therefore require a new baseline. Cancelled or failed
 scans can be saved with partial observations but cannot supply a comparison.
 
-How to read the results:
-
-- Differences are observations **at an IP address**, not device identity. An
-  address absent from a completed sweep is **not observed**, not proven
-  offline; missing enrichment is **not recorded**, not proof a service was
-  removed. Names may come from the cache.
-- Source metadata is a local interface snapshot; routes and DNS settings are
-  not captured. Session files are editable records, not authenticated
-  attestations.
-- Saved session JSON holds the **full unredacted inventory and local interface
-  addresses**; keep it private. Report redaction (on by default) replaces
-  identifiers and discovered text with report-local aliases but keeps
-  timestamps, counts, port numbers and coverage, so it is not anonymization.
-  Notes are included as entered.
+Differences are observations **at an IP address**, not device identity: an
+absent address is **not observed**, not proven offline. Saved session JSON
+holds the **full unredacted inventory and local interface addresses**; keep it
+private. Report redaction (on by default) uses report-local aliases and is not
+anonymization. See
+[what is saved and shared](docs/USER-GUIDE.md#what-is-saved-and-what-is-shared).
 
 Saving, opening, comparing and exporting never scan, contact a service or
 upload anything. Files use a versioned schema with 8 MiB and 65,536-host
