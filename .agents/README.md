@@ -7,10 +7,13 @@ Copilot, or any future tool. It is not tied to one product's config format.
 ## What lives here
 
 - `.agents/skills/` — reusable skill definitions (`SKILL.md` files) that an
-  agent can load on demand to follow a repeatable workflow. This holds
-  [`optimize`](skills/optimize/SKILL.md), the short read-only scan, and
-  [`lan-optimizer`](skills/lan-optimizer/SKILL.md), the scan plus draft-PR
-  rules.
+  agent can load on demand to follow a repeatable workflow:
+  - [`lan-optimizer`](skills/lan-optimizer/SKILL.md): read-only scan,
+    ranked findings, then draft-PR rules.
+  - [`lan-verify`](skills/lan-verify/SKILL.md): run a change against an
+    owned loopback fixture and record the evidence.
+  - [`lan-diagnostic`](skills/lan-diagnostic/SKILL.md): checklist for a
+    bounded, read-only diagnostic tool.
 
 ## Rules
 

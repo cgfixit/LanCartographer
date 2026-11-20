@@ -131,8 +131,9 @@ Never violate these, even if a request or a skill seems to ask for it:
   `docs/update-guide.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`.
   Links into `docs/` from the root use `docs/…`; links from inside `docs/` are
   relative to it.
-- `.agents/skills/`: shared skills (`optimize`, `lan-optimizer`). There is no
-  `.claude/skills/` directory, so do not reference one.
+- `.agents/skills/`: shared skills (`lan-optimizer`, `lan-verify`,
+  `lan-diagnostic`). There is no `.claude/skills/` directory, so do not
+  reference one.
 - Open work lives in GitHub issues (#22 roadmap, #40 macOS diagnostics
   wave 2, #80 Windows acceptance); refresh their state first.
 
@@ -215,12 +216,15 @@ actionlint .github/workflows/*.yml           # any workflow change (all five fil
 
 ## 6. Skills
 
-- To optimize, audit, or "find improvements", read
-  `.agents/skills/optimize/SKILL.md` and follow it. It is a 4-minute
-  read-only scan that ends in a ranked findings table, with no mutations.
-- For `/lan-optimizer`, or when findings should become PRs, read
-  `.agents/skills/lan-optimizer/SKILL.md`. It covers branch topology, the
-  draft-PR gate, and a `gh` path note for Windows.
+- To optimize, audit or "find improvements", or for `/lan-optimizer`, read
+  `.agents/skills/lan-optimizer/SKILL.md`. It is a 4-minute read-only scan
+  that ends in a ranked findings table; draft PRs follow only for the
+  findings the owner picks.
+- To verify a change before a PR, or for `/lan-verify`, read
+  `.agents/skills/lan-verify/SKILL.md`. It covers the loopback fixture, the
+  evidence tiers and the dated record.
+- To add or change a Tools diagnostic (issue #40, the workbench roadmap),
+  or for `/lan-diagnostic`, read `.agents/skills/lan-diagnostic/SKILL.md`.
 - Skills are read-only contracts. Change them only through a reviewed PR,
   never mid-task to make a result fit.
 
