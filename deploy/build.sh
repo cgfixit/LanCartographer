@@ -20,12 +20,12 @@ cd "$(dirname "$0")/.."
 if [ "$(uname -s)" = "Darwin" ]; then
     export CGO_ENABLED=1
     # Match Info.plist instead of inheriting the build host's newer minimum.
-    export MACOSX_DEPLOYMENT_TARGET=13.0
+    export MACOSX_DEPLOYMENT_TARGET=14.0
     # Explicit flags also invalidate Go's cached CGO objects built on a
     # newer host; MACOSX_DEPLOYMENT_TARGET alone is not in that cache key.
-    export CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -mmacosx-version-min=13.0"
-    export CGO_CXXFLAGS="${CGO_CXXFLAGS:--O2 -g} -mmacosx-version-min=13.0"
-    export CGO_LDFLAGS="${CGO_LDFLAGS:--O2 -g} -mmacosx-version-min=13.0"
+    export CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
+    export CGO_CXXFLAGS="${CGO_CXXFLAGS:--O2 -g} -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
+    export CGO_LDFLAGS="${CGO_LDFLAGS:--O2 -g} -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET"
 
     echo "==> go generate ./... (icon only; version resources are Windows-only)"
     go generate ./...

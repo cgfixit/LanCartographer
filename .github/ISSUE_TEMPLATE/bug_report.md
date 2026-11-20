@@ -18,7 +18,7 @@ labels: ["bug"]
 ## Environment
 
 - LanCartographer version or commit:
-- Operating system and version (Windows 10/11 or macOS 13+):
+- Operating system and version (Windows 10/11 or macOS 14+):
 - Architecture (amd64 / arm64):
 - Entry point (Windows GUI/CLI, macOS app/CLI, or built from source):
 - Windows only: elevated (run as administrator)? yes / no / not applicable

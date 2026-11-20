@@ -1,8 +1,8 @@
 # LanCartographer
 
 LanCartographer is a local network inventory and change-verification tool for
-macOS and Windows: scan an authorized IPv4 range, save a baseline, and compare
-it with a later scan of the same scope and ports.
+macOS 14 or later and Windows 10/11. Scan an authorized IPv4 range, save a
+baseline, and compare it with a later scan of the same scope and ports.
 
 The desktop app streams results as it scans. The CLI shares the scan engine
 and can write JSON to a file or a pipe. Both run on demand, with no
@@ -248,7 +248,7 @@ include Fyne.
 
 - **macOS:** install the Xcode Command Line Tools, then run
   `bash deploy/build.sh`. It builds the native architecture with system clang
-  (macOS 13 target), moves the checked-in Windows `resource.syso` aside and
+  (macOS 14 target), moves the checked-in Windows `resource.syso` aside and
   restores it, and writes an ad-hoc-signed `dist/LanCartographer.app`,
   `dist/lancartographer-cli` and `dist/LanCartographer-macos-<arch>.zip`.
 - **Windows (Git Bash):** run `pacman -S mingw-w64-ucrt-x86_64-gcc` and

@@ -36,7 +36,7 @@ decisions alone. Agents never change either.
 
 ## 1. Product and hard invariants
 
-LanCartographer is an **original** Windows 10/11 and macOS 13+ LAN and port
+LanCartographer is an **original** Windows 10/11 and macOS 14+ LAN and port
 inventory tool. It is built with Go and Fyne (versions in `go.mod`), and a
 stdlib-`flag` CLI shares the same scan engine. It is authorization-gated and
 has zero telemetry. It is inspired by Advanced IP Scanner (Famatech), Angry IP
@@ -110,10 +110,9 @@ Never violate these, even if a request or a skill seems to ask for it:
   ad-hoc-signed `.app`, CLI, checksums and per-arch ZIP). On macOS it moves the
   COFF `resource.syso` aside and restores it on exit.
 - `packaging/macos/Info.plist`: bundle identity and local-network usage text.
-  The macOS minimum (13.0) lives in three places that must stay aligned:
-  `LSMinimumSystemVersion`, `MACOSX_DEPLOYMENT_TARGET`, and the
-  `-mmacosx-version-min` CGO flags in `deploy/build.sh`. The smoke test
-  inspects the Mach-O headers. Ad-hoc signing is not notarization.
+  Keep `LSMinimumSystemVersion` aligned with `MACOSX_DEPLOYMENT_TARGET` (14.0).
+  The `-mmacosx-version-min` CGO flags in `deploy/build.sh` use that target.
+  The smoke test inspects the Mach-O headers. Ad-hoc signing is not notarization.
 - `tests/ci-gate.sh`: the local mirror of the `ci.yml` gate (gofmt, vet,
   generate drift, CGO build, race tests, non-GUI cross-compiles). It runs on
   Windows (MSYS2 paths prepended, `CC=gcc`) and macOS (system clang;
