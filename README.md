@@ -61,7 +61,7 @@ network data.
 | Host discovery | TCP connect, then ARP, then (macOS) one ICMP echo, so a host with every probed port closed still appears; see [How it works](#how-it-works) |
 | Inventory table | Sort by status, name, IP, MAC, vendor, ports or shares. The selected row stays highlighted, ports read compactly (`22 SSH, 443 Web`), and values the scan did not learn show a dim `—` |
 | Host details | Open ports first, each with **Check…**; closed and unanswered ports collapse into one line each; action buttons for the selected host |
-| Port states | Every probed port reports `open`, `closed` or `timeout`. Open ports carry a service label (smb, http, rdp, …); web and unrecognized ports get a bounded HTTP/HTTPS title probe that can identify additional web services |
+| Port states | Every probed port reports `open`, `closed` or `timeout`. Open ports carry a service label (smb, http, rdp, …); web and unrecognized ports get a bounded HTTP/HTTPS title probe that can identify additional web services. Ports 443 and 8443 also show when the presented certificate expires, marked **not trusted** if this computer could not verify it |
 | Share enumeration | Windows `NetShareEnum` or macOS `smbutil`; a host that denies enumeration shows an explicit "access denied" marker instead of an empty list |
 | MAC and vendor | MAC from ARP (Windows `SendARP`, macOS ARP cache); vendor from an OUI database compiled into the binary, with no runtime download |
 | Name resolution | NetBIOS, mDNS and reverse DNS run concurrently; the highest-priority answer wins and cancels the rest. Names persist in a MAC-keyed cache, so silent devices keep them across scans |
@@ -180,7 +180,8 @@ status (`set -o pipefail` helps in pipelines). See the
 Comparison requires two completed sessions with matching context, requested
 range, port profile, application version and recorded source
 interfaces/platform; otherwise the view explains the mismatch and disables
-export. An upgrade can therefore require a new baseline. Cancelled or failed
+export. An upgrade, or a build with a different probe profile, can therefore
+require a new baseline. Cancelled or failed
 scans can be saved with partial observations but cannot supply a comparison.
 
 Differences are observations **at an IP address**, not device identity: an

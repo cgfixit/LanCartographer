@@ -83,7 +83,11 @@ func scanPort(ctx context.Context, ip netip.Addr, port int, opts Options) model.
 	if p.Service == "Web" {
 		// Known web ports need the same bounded title enrichment as an
 		// unknown port promoted to Web. Keep certificate checks enabled.
-		_, p.Title, _ = HTTPTitle(ctx, ip, port, port == 443 || port == 8443)
+		var cert *leafCert
+		_, p.Title, cert, _ = httpGet(ctx, ip, port, port == 443 || port == 8443)
+		if cert != nil {
+			p.CertExpires, p.CertTrusted = cert.NotAfter.UTC().Format(time.RFC3339), cert.Trusted
+		}
 	}
 	if p.Service == "unknown" {
 		// R7 seam: promote open unknown ports that answer an HTTP probe.

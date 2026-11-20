@@ -2,6 +2,8 @@ package probe
 
 import (
 	"context"
+	"crypto/x509"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -199,5 +201,59 @@ func TestHTTPTitle_DoesNotFollowRedirects(t *testing.T) {
 	}
 	if got := hitsB.Load(); got != 0 {
 		t.Errorf("redirect target received %d requests, want 0 (no unintended egress)", got)
+	}
+}
+
+// tlsFixture starts an owned loopback HTTPS server with httptest's
+// self-issued certificate, which the system trust store does not accept.
+func tlsFixture(t *testing.T) (*httptest.Server, netip.Addr, int, *int32) {
+	t.Helper()
+	var requests int32
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requests, 1)
+		io.WriteString(w, "<title>tls fixture</title>")
+	}))
+	t.Cleanup(srv.Close)
+	ap := netip.MustParseAddrPort(srv.Listener.Addr().String())
+	return srv, ap.Addr(), int(ap.Port()), &requests
+}
+
+func TestHTTPGetReportsPresentedCertificate(t *testing.T) {
+	srv, ip, port, requests := tlsFixture(t)
+	want := srv.Certificate().NotAfter
+
+	// Untrusted: the handshake fails, no request is sent and no title is
+	// read, but the presented expiry is still reported and marked as such.
+	status, title, cert, err := httpGet(context.Background(), ip, port, true)
+	if err == nil || status != 0 || title != "" || atomic.LoadInt32(requests) != 0 {
+		t.Fatalf("untrusted certificate was accepted: status=%d title=%q err=%v", status, title, err)
+	}
+	if cert == nil || cert.Trusted || !cert.NotAfter.Equal(want) {
+		t.Fatalf("untrusted certificate not reported: %+v, want expiry %v", cert, want)
+	}
+
+	// Trusted: same single request, with the expiry marked as verified.
+	pool := x509.NewCertPool()
+	pool.AddCert(srv.Certificate())
+	httpRootCAs = pool
+	t.Cleanup(func() { httpRootCAs = nil })
+	status, title, cert, err = httpGet(context.Background(), ip, port, true)
+	if err != nil || status != http.StatusOK || title != "tls fixture" || atomic.LoadInt32(requests) != 1 {
+		t.Fatalf("trusted probe: status=%d title=%q requests=%d err=%v", status, title, atomic.LoadInt32(requests), err)
+	}
+	if cert == nil || !cert.Trusted || !cert.NotAfter.Equal(want) {
+		t.Fatalf("trusted certificate not reported: %+v", cert)
+	}
+
+	// Plain HTTP and a non-TLS answer on an HTTPS port report no certificate.
+	pip, pport := httpTitleFixture(t, "<title>plain</title>")
+	if _, _, cert, err := httpGet(context.Background(), pip, pport, false); err != nil || cert != nil {
+		t.Fatalf("plain HTTP reported a certificate: %+v err=%v", cert, err)
+	}
+	if _, _, cert, err := httpGet(context.Background(), pip, pport, true); err == nil || cert != nil {
+		t.Fatalf("non-TLS port reported a certificate: %+v err=%v", cert, err)
+	}
+	if leaf(nil, true) != nil {
+		t.Fatal("an empty chain produced a certificate")
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func testHost() Host {
@@ -171,5 +172,31 @@ func TestWriteCSV_FormulaLikeText(t *testing.T) {
 				t.Fatalf("JSON changed raw values: %s, %v", buf.String(), err)
 			}
 		})
+	}
+}
+
+func TestPortCertSummaryAndJSON(t *testing.T) {
+	now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		expires string
+		trusted bool
+		want    string
+	}{
+		{"", true, ""},
+		{"not a time", true, ""},
+		{"2027-12-25T18:34:12Z", true, "certificate expires 2027-12-25"},
+		{"2027-12-25T18:34:12Z", false, "certificate expires 2027-12-25, not trusted"},
+		{"2026-11-30T12:00:00Z", true, "certificate expires 2026-11-30 (10 days)"},
+		{"2026-11-20T18:00:00Z", false, "certificate expires 2026-11-20 (0 days), not trusted"},
+		{"2025-01-01T00:00:00Z", false, "certificate expired 2025-01-01, not trusted"},
+	} {
+		if got := (Port{CertExpires: tc.expires, CertTrusted: tc.trusted}).CertSummary(now); got != tc.want {
+			t.Errorf("CertSummary(%q, %v) = %q, want %q", tc.expires, tc.trusted, got, tc.want)
+		}
+	}
+	// A port with no certificate keeps its earlier JSON shape exactly.
+	plain, err := json.Marshal(Port{Number: 80, State: PortOpen, Service: "Web", Title: "t"})
+	if err != nil || string(plain) != `{"Number":80,"State":"open","Service":"Web","Title":"t"}` {
+		t.Fatalf("port JSON changed for a port without a certificate: %s %v", plain, err)
 	}
 }

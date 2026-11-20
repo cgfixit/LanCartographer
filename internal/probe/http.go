@@ -3,6 +3,8 @@ package probe
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"html"
 	"io"
 	"net/http"
@@ -30,11 +32,31 @@ const (
 // original response is returned as-is. TLS certificate verification is
 // never disabled.
 func HTTPTitle(ctx context.Context, ip netip.Addr, port int, https bool) (status int, title string, err error) {
+	status, title, _, err = httpGet(ctx, ip, port, https)
+	return status, title, err
+}
+
+// httpRootCAs is nil outside tests, which selects the system trust store.
+var httpRootCAs *x509.CertPool
+
+// leafCert is the certificate a server presented during the one handshake
+// the title probe already makes. Trusted is false when verification failed:
+// the dates are then a claim by an unauthenticated peer.
+type leafCert struct {
+	NotAfter time.Time
+	Trusted  bool
+}
+
+// httpGet is HTTPTitle plus the presented leaf certificate. It makes the
+// same single request under the same limits. When verification fails the
+// certificate is read from the handshake error, never by retrying without
+// verification.
+func httpGet(ctx context.Context, ip netip.Addr, port int, https bool) (status int, title string, cert *leafCert, err error) {
 	scheme := "http"
 	transport := &http.Transport{}
 	if https {
 		scheme = "https"
-		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false}
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: false, RootCAs: httpRootCAs}
 	}
 	client := &http.Client{
 		Timeout:   httpProbeTimeout,
@@ -48,21 +70,35 @@ func HTTPTitle(ctx context.Context, ip netip.Addr, port int, https bool) (status
 	addr := netip.AddrPortFrom(ip, uint16(port))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, scheme+"://"+addr.String()+"/", nil)
 	if err != nil {
-		return 0, "", err
+		return 0, "", nil, err
 	}
 	req.Host = ip.String()
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, "", err
+		var unverified *tls.CertificateVerificationError
+		if errors.As(err, &unverified) {
+			cert = leaf(unverified.UnverifiedCertificates, false)
+		}
+		return 0, "", cert, err
 	}
 	defer resp.Body.Close()
+	if resp.TLS != nil {
+		cert = leaf(resp.TLS.PeerCertificates, true)
+	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, httpBodyCap))
 	if err != nil {
-		return resp.StatusCode, "", err
+		return resp.StatusCode, "", cert, err
 	}
-	return resp.StatusCode, extractTitle(string(body)), nil
+	return resp.StatusCode, extractTitle(string(body)), cert, nil
+}
+
+func leaf(chain []*x509.Certificate, trusted bool) *leafCert {
+	if len(chain) == 0 {
+		return nil
+	}
+	return &leafCert{NotAfter: chain[0].NotAfter, Trusted: trusted}
 }
 
 // ExtractTitle returns the first <title> element's text from body, with

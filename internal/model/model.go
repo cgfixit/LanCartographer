@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -34,6 +35,35 @@ type Port struct {
 	State   string
 	Service string
 	Title   string
+	// CertExpires is the RFC 3339 expiry of the certificate an HTTPS port
+	// presented, empty when none was seen. CertTrusted is false when this
+	// computer could not verify that certificate; its dates are then a
+	// claim by an unauthenticated peer.
+	CertExpires string `json:",omitempty"`
+	CertTrusted bool   `json:",omitempty"`
+}
+
+// certSoon is how close an expiry must be before the days are spelled out.
+const certSoon = 30 * 24 * time.Hour
+
+// CertSummary describes the presented certificate for display, or returns
+// "" when none was recorded.
+func (p Port) CertSummary(now time.Time) string {
+	expires, err := time.Parse(time.RFC3339, p.CertExpires)
+	if err != nil {
+		return ""
+	}
+	text := "certificate expires " + expires.Format(time.DateOnly)
+	switch left := expires.Sub(now); {
+	case left <= 0:
+		text = "certificate expired " + expires.Format(time.DateOnly)
+	case left <= certSoon:
+		text += fmt.Sprintf(" (%d days)", int(left.Hours()/24))
+	}
+	if !p.CertTrusted {
+		text += ", not trusted"
+	}
+	return text
 }
 
 // Share is one SMB share advertised by a host. UNC carries the full
