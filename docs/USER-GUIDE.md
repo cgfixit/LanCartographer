@@ -154,6 +154,21 @@ The view reads socket metadata, without connecting to peers. The snapshot
 stays in memory. **Copy selected row** puts its process and endpoint details
 on the clipboard. Review these details before sharing them.
 
+## Inspect routes and resolver configuration on macOS
+
+Open **Tools → Route & DNS…**. In **Route**, enter a numeric IPv4 or IPv6
+address and select **Inspect route**. A scoped IPv6 address uses a current
+interface name, for example `fe80::1%en0` when `en0` exists. The displayed
+route describes the selected interface and gateway when present. It gives
+no measurement of reachability.
+
+In **Resolver configuration**, select **Read resolver configuration** and
+expand **Configured resolver scopes**. These settings describe configured
+resolvers, including per-interface scopes. For observed answers from the
+system resolver, enter a name in **Check Service** and select **Resolve**.
+Both Route & DNS actions are local reads. Results are cleared when you
+close the window.
+
 ## Check a service
 
 Use **Tools → Check Service…** on Windows or macOS to answer "can this

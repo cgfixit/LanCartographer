@@ -4,6 +4,8 @@ LanCartographer helps people inventory a network and verify what changed after
 maintenance. The next step is to connect that workflow to what the operator's
 own computer is doing. Start on macOS, then qualify the same workflow on Windows.
 **Connections…** is the macOS window for inspecting a local socket snapshot.
+Connections, Route & DNS, Check Service and Internet Quality each have a
+direct entry in the **Tools** menu.
 
 ## What exists today
 
@@ -20,7 +22,7 @@ an exact IPv4 peer match to the current completed inventory.
 | Inventory a LAN | GUI scans a selected IPv4 CIDR. The CLI accepts a CIDR or finds local physical subnets. Both use TCP discovery and port probes, ARP fallback and, on macOS, a bounded ICMP fallback. | Discovery can miss silent devices. The scan engine accepts IPv4 only. It does not continuously monitor the network. |
 | Inspect a host | View per-port states, service labels and bounded web titles, SMB shares, names, MAC and vendor where available. Use Browser, Finder/Explorer, Ping and Wake-on-LAN actions. Remote Desktop launches the Windows client. | Names can come from cache. MAC and shares depend on platform and visibility. Reverse mDNS naming does not browse Bonjour service instances. |
 | Keep and compare results | Export CSV/JSON in the GUI or JSON in the CLI. The GUI can reload favorites, explicitly save a finished scan, compare compatible complete sessions and export selected, redacted evidence. | Favorites and raw inventory lack coverage metadata. Differences describe observations at an IP. Full session JSON is unredacted. |
-| Inspect this computer | Connections shows visible process and socket metadata. GUI scan sessions record a local interface snapshot. | Socket snapshots can miss short-lived or inaccessible processes. Route and resolver inspection, service watch and traffic attribution are follow-ups. |
+| Inspect this computer | Connections shows visible process and socket metadata. Route & DNS reads routing and resolver configuration. | Socket snapshots can miss short-lived or inaccessible processes. A route describes local selection and gives no reachability measurement. |
 
 The boundaries are visible in the [scan engine](../internal/scan/engine.go),
 [GUI actions](../internal/gui/menu.go), [CLI](../internal/cli/cli.go),
@@ -92,19 +94,13 @@ and that a close or pause during collection leaves no polling or child process.
 
 ### 2. Link Connections to inventory and add focused tools
 
-- From a connection, offer **Show in inventory** when the numeric peer has an
-  exact IP match in the current authorized IPv4 scan, with the inventory's
-  context and observation time visible. From a host, offer **Filter
-  connections to this address**. Both are local view operations. Show ambiguity
-  when the active site or network changes. No MAC/name inference or implicit
-  scan, even when a public peer appears in Connections.
-- Add a small **Tools** panel. Start with **Route to address** (`/sbin/route
-  -n get` with a validated literal) and **Resolver configuration**
-  (`/usr/sbin/scutil --dns`) as local reads. Show command, exit state and
-  bounded output. Add a deliberate DNS check with resolver provenance and
-  reuse the existing Ping action where suitable. Evaluate `dig` as an explicit
-  query shortcut and `dns-sd` as a time-boxed discovery diagnostic later.
-  A `dig` result does not necessarily reflect the system resolver's selection.
+- **Show in inventory** selects an exact numeric IPv4 peer in the current
+  completed scan and shows its scope and finish time. **Filter connections
+  to this address** prefills the snapshot filter from a host row.
+- **Tools → Route & DNS…** reads local routes for numeric destinations and
+  macOS resolver configuration separately. **Resolve** in **Check Service**
+  shows observed system lookup answers.
+  [Native verification](verification/route-dns-2026-11-20.md)
 - *(Shipped: Tools → Check Service…, `internal/servicecheck`.)* Add one
   **Check service…** workflow, starting with a single authorized
   endpoint and structured TCP, TLS and HTTP outcomes. Preview the target before

@@ -102,6 +102,7 @@ type ui struct {
 	qualityJob  *qualityJob
 	serviceView *serviceView
 	connections connectionsUI
+	route       routeUI
 
 	// table repaint coalescing: engine events fold into the store per event,
 	// but the sort+repaint is throttled so a fast scan costs O(events) store
@@ -151,6 +152,7 @@ func Run() error {
 		<-job.done
 	}
 	u.connections.stopAndWait()
+	u.route.stopAndWait()
 	return nil
 }
 
@@ -346,6 +348,7 @@ func (u *ui) mainMenu() *fyne.MainMenu {
 		tools.Items = append(tools.Items, fyne.NewMenuItem("Internet Quality…", u.showInternetQuality))
 	}
 	tools.Items = append(tools.Items, u.connectionsMenu()...)
+	tools.Items = append(tools.Items, u.routeMenu()...)
 	return fyne.NewMainMenu(file, tools, help)
 }
 
