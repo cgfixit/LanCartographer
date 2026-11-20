@@ -44,9 +44,9 @@ The Go version is the `go` line in [go.mod](../go.mod). Windows also needs MSYS2
 From the repository root:
 
 ```bash
-bash deploy/build.sh
+bash build/build.sh
 ```
 
-Windows output is `dist/LanCartographer.exe` and `dist/lancartographer-cli.exe`. macOS output is `dist/LanCartographer`, `dist/lancartographer-cli`, `dist/LanCartographer.app`, and a zip named for the architecture. `deploy/build.sh` moves the checked-in Windows `resource.syso` aside on macOS and restores it on exit. `dist/` is build output and is not committed.
+Windows output is `dist/LanCartographer.exe` and `dist/lancartographer-cli.exe`. macOS output is `dist/LanCartographer`, `dist/lancartographer-cli`, `dist/LanCartographer.app`, and a zip named for the architecture. `build/build.sh` moves the checked-in Windows `resource.syso` aside on macOS and restores it on exit. `dist/` is build output and is not committed.
 
 For usage, session comparison and the code tour, read [USER-GUIDE.md](USER-GUIDE.md).

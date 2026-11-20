@@ -1,7 +1,7 @@
 # Dependabot for LanCartographer.
 #
 # Ecosystems in this repo: Go modules (go.mod/go.sum at the root) and
-# SHA-pinned GitHub Actions in .github/workflows. tests/macos-smoke.py is
+# SHA-pinned GitHub Actions in .github/workflows. build/macos-smoke.py is
 # stdlib-only, so there is no pip manifest to watch. Nothing here tracks the
 # `goversioninfo` version that the workflows `go install`; bump that by hand
 # (see CONTRIBUTING.md "Dependency maintenance").

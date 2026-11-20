@@ -4,7 +4,7 @@
 //
 // It is invoked by //go:generate in cmd/lancartographer (cwd = that package
 // dir), so the default outputs land next to the binary sources. From the
-// repo root run: go run ./tools/icongen -ico cmd/lancartographer/app.ico \
+// repo root run: go run ./build/icongen -ico cmd/lancartographer/app.ico \
 //
 //	-png cmd/lancartographer/app_preview.png
 package main

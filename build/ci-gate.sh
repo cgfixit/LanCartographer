@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ci-gate.sh — local emulation of the CI gate for LanCartographer.
-# Run from the repository root: bash tests/ci-gate.sh
+# Run from the repository root: bash build/ci-gate.sh
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

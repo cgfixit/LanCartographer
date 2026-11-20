@@ -516,7 +516,7 @@ made while a save dialog is open do not change the file being approved.
 | Discovery ports (liveness) | `DiscoveryPorts` in `internal/discover/liveness.go` |
 | Column widths / minimums | `colFractions` / `colMins` in `internal/gui/table.go` — fractions must sum to 1.0 |
 | OUI vendor data | update `internal/oui/data.csv`, then run `go generate ./internal/oui` (rewrites `oui_data.go`) |
-| Icon / manifest / version resources | `tools/icongen`, `cmd/lancartographer/app.manifest`, `versioninfo.json`; `go generate ./...` rebuilds `resource.syso` on Windows |
+| Icon / manifest / version resources | `build/icongen`, `cmd/lancartographer/app.manifest`, `versioninfo.json`; `go generate ./...` rebuilds `resource.syso` on Windows |
 | Session schema, comparison and redaction | `internal/session`; GUI ownership and dialogs in `internal/gui/sessions.go` |
 | Authorization policy | `NeedsConfirmation` in `internal/authz/authz.go` |
 | Dial concurrency cap | `DefaultConcurrency` / `MaxConcurrency` in `internal/probe/limiter.go` |
@@ -571,15 +571,16 @@ go test -race ./internal/session -run '^TestSession' -count=1
 
 This checks library behavior, not native dialogs. GUI changes also need actual
 native interaction; see the [session verification record](verification/sessions-2026-11-01.md)
-for the exercised workflow and limits, and
-[issue #24](https://github.com/cgfixit/LanCartographer/issues/24) for pending
-platform and size-limit acceptance. Fyne builds need CGO and the platform
-C toolchain. Use `bash deploy/build.sh` for packaging, especially on macOS where
+for the exercised workflow and limits, and the
+[size-limit record](verification/session-size-limits-2026-11-20.md) for the
+8 MiB and 65,536-host acceptance. Native Windows desktop acceptance is still
+pending. Fyne builds need CGO and the platform
+C toolchain. Use `bash build/build.sh` for packaging, especially on macOS where
 the checked-in Windows resource must be moved aside and restored.
 
 Hosted [CI](../.github/workflows/ci.yml) runs the broad Windows and native
 arm64/Intel macOS build, vet and race checks, plus packaged CLI smoke checks on
-macOS; `bash tests/ci-gate.sh` runs the same gate locally on Windows or macOS.
+macOS; `bash build/ci-gate.sh` runs the same gate locally on Windows or macOS.
 [Static checks](../.github/workflows/static-checks.yml) add govulncheck,
 actionlint and zizmor on every PR and weekly. A cross-compile or packaged CLI pass does not verify native GUI behavior.
 For dependency/toolchain updates, follow

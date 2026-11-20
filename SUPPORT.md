@@ -7,8 +7,7 @@ system and architecture, entry point, reproduction steps, and relevant output.
 
 Check the existing [open issues](https://github.com/cgfixit/LanCartographer/issues)
 first. [Issue #22](https://github.com/cgfixit/LanCartographer/issues/22) owns the
-roadmap, while [#24](https://github.com/cgfixit/LanCartographer/issues/24) records
-remaining native/platform acceptance. A pending check is not a confirmed defect;
+roadmap and the remaining native platform acceptance. A pending check is not a confirmed defect;
 add a concrete reproduction when behavior fails.
 
 Redact IP and MAC addresses, host and share names, usernames, credentials,

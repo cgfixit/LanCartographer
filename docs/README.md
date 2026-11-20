@@ -11,7 +11,10 @@ describe what to include and what to keep private.
 
 Each record describes the source, artifact, platform and checks actually used.
 Historical passes remain evidence of that run; they do not accept a newer
-dependency set, native platform or downloaded release.
+dependency set, native platform or downloaded release. Records dated before
+2026-11-20 name `deploy/`, `packaging/`, `tests/` and `tools/`; those files
+now live in [`build/`](../build), and the README images in
+[`screenshots/`](screenshots).
 
 | Record | Coverage |
 | --- | --- |
@@ -38,8 +41,8 @@ dependency set, native platform or downloaded release.
 
 - [#22: roadmap](https://github.com/cgfixit/LanCartographer/issues/22), including first-slice progress and later proposals.
 - [Network workbench plan](network-workbench-roadmap.md): macOS Connections, Route & DNS, Check Service and subsequent diagnostics.
-- [#24: native platform and size-limit acceptance](https://github.com/cgfixit/LanCartographer/issues/24).
-- [#33](https://github.com/cgfixit/LanCartographer/issues/33) and [#40](https://github.com/cgfixit/LanCartographer/issues/40): macOS diagnostics workbench and its second wave.
+- [#40](https://github.com/cgfixit/LanCartographer/issues/40): the second wave of macOS diagnostics.
+- Native Windows 10/11 desktop acceptance is deferred and has no issue yet; #22 records the decision.
 
 Check the linked issue/PR head before continuing work. Keep synthetic fixtures
 and redacted reports separate from raw session files containing inventory and

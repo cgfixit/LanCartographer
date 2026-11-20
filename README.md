@@ -8,13 +8,13 @@ The desktop app streams results as it scans. The CLI shares the scan engine
 and can write JSON to a file or a pipe. Both run on demand, with no
 LanCartographer account, background service, or telemetry.
 
-[Quick start](#quick-start) · [Screenshots](screenshots/) ·
+[Quick start](#quick-start) · [Screenshots](docs/screenshots/) ·
 [CLI reference](#cli-reference) · [Features](#features) ·
 [User Guide](docs/USER-GUIDE.md) · [Roadmap](docs/network-workbench-roadmap.md)
 
-![LanCartographer inventory table — light theme (sample data)](screenshots/inventory-light.png)
+![LanCartographer inventory table — light theme (sample data)](docs/screenshots/inventory-light.png)
 
-![LanCartographer inventory table — dark theme (sample data)](screenshots/inventory-dark.png)
+![LanCartographer inventory table — dark theme (sample data)](docs/screenshots/inventory-dark.png)
 
 The screenshots show a fabricated sample inventory (192.168.1.0/24), not real
 network data.
@@ -249,16 +249,16 @@ Use the Go version in [go.mod](go.mod) and a CGO C compiler; both entry points
 include Fyne.
 
 - **macOS:** install the Xcode Command Line Tools, then run
-  `bash deploy/build.sh`. It builds the native architecture with system clang
+  `bash build/build.sh`. It builds the native architecture with system clang
   (macOS 14 target), moves the checked-in Windows `resource.syso` aside and
   restores it, and writes an ad-hoc-signed `dist/LanCartographer.app`,
   `dist/lancartographer-cli` and `dist/LanCartographer-macos-<arch>.zip`.
 - **Windows (Git Bash):** run `pacman -S mingw-w64-ucrt-x86_64-gcc` and
   `go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0`,
-  then `bash deploy/build.sh` for `dist/LanCartographer.exe` and
+  then `bash build/build.sh` for `dist/LanCartographer.exe` and
   `dist/lancartographer-cli.exe` (`asInvoker` manifest).
 
-`bash tests/ci-gate.sh` runs the hosted CI gate locally on either platform.
+`bash build/ci-gate.sh` runs the hosted CI gate locally on either platform.
 To replace an existing build, see the [update guide](docs/update-guide.md).
 
 ## Security model
