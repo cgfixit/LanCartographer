@@ -15,6 +15,7 @@ dependency set, native platform or downloaded release.
 
 | Record | Coverage |
 | --- | --- |
+| [Saved-session size limits, 2026-11-20](verification/session-size-limits-2026-11-20.md) | Native Apple Silicon save/reload, both size ceilings, rejection, selected export, themes and Safari handoff |
 | [golang.org/x update, 2026-11-16](verification/golang-x-2026-11-16.md) | x/sys, x/image, x/net, x/text to current; govulncheck clean, packaged smoke, full gate, native Check Service and loopback scan in light/dark |
 | [Dependency refresh, 2026-11-01](verification/dependencies-2026-11-01.md) | Go 1.27.3/Fyne 2.8.2 package, owned CLI smoke, focused checks and native session dialogs/themes |
 | [Main window flow, 2026-11-15](verification/ui-flow-2026-11-15.md) | Before/after inventory with the same sample data, first-run notice, stop/finish states, favorites/export regressions and the unchanged CLI table |

@@ -133,6 +133,7 @@ background monitoring, automatic upload or session migration.
 | After predates Before | Reopen the files on the correct sides. |
 | Zero differences or none selected | Export requires at least one selected difference. A compatible pair with no differences has nothing to select. |
 | Unsupported/invalid file | Use a saved session from a compatible build, within the file limits. Raw inventory JSON is not a session. |
+| Session over 8 MiB or 65,536 hosts | The file is rejected and the current comparison and selection stay available. Use a session within both limits. |
 | Notes too long | Keep report notes within 2,000 UTF-8 bytes. |
 
 ## Check a service
