@@ -134,7 +134,7 @@ Never violate these, even if a request or a skill seems to ask for it:
 - `.agents/skills/`: shared skills (`optimize`, `lan-optimizer`). There is no
   `.claude/skills/` directory, so do not reference one.
 - Open work lives in GitHub issues (#22 roadmap, #40 macOS diagnostics
-  wave 2); refresh their state first.
+  wave 2, #80 Windows acceptance); refresh their state first.
 
 ## 3. Execution and ownership
 

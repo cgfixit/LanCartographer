@@ -573,8 +573,8 @@ This checks library behavior, not native dialogs. GUI changes also need actual
 native interaction; see the [session verification record](verification/sessions-2026-11-01.md)
 for the exercised workflow and limits, and the
 [size-limit record](verification/session-size-limits-2026-11-20.md) for the
-8 MiB and 65,536-host acceptance. Native Windows desktop acceptance is still
-pending. Fyne builds need CGO and the platform
+8 MiB and 65,536-host acceptance. Native Windows desktop acceptance is pending in
+[issue #80](https://github.com/cgfixit/LanCartographer/issues/80). Fyne builds need CGO and the platform
 C toolchain. Use `bash build/build.sh` for packaging, especially on macOS where
 the checked-in Windows resource must be moved aside and restored.
 

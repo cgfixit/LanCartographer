@@ -42,7 +42,7 @@ now live in [`build/`](../build), and the README images in
 - [#22: roadmap](https://github.com/cgfixit/LanCartographer/issues/22), including first-slice progress and later proposals.
 - [Network workbench plan](network-workbench-roadmap.md): macOS Connections, Route & DNS, Check Service and subsequent diagnostics.
 - [#40](https://github.com/cgfixit/LanCartographer/issues/40): the second wave of macOS diagnostics.
-- Native Windows 10/11 desktop acceptance is deferred and has no issue yet; #22 records the decision.
+- [#80](https://github.com/cgfixit/LanCartographer/issues/80): native Windows 10/11 desktop acceptance, due before the first `v*` tag.
 
 Check the linked issue/PR head before continuing work. Keep synthetic fixtures
 and redacted reports separate from raw session files containing inventory and
