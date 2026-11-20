@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -229,6 +230,28 @@ func TestSessionCompareAddressMove(t *testing.T) {
 	}
 	if strings.Contains(full, "192.0.2.10 ") || strings.Contains(full, "it is not proof") {
 		t.Fatalf("unselected move leaked into the report:\n%s", full)
+	}
+}
+
+func TestSessionCompareCertificate(t *testing.T) {
+	b := fixture()
+	b.Hosts[0].Ports[1] = model.Port{Number: 443, State: model.PortOpen, CertExpires: "2026-12-01T00:00:00Z"}
+	a := b.Clone()
+	if c := Compare(b, a); len(c.Reasons)+len(c.Changes) != 0 {
+		t.Fatalf("identical certificates differed: %+v", c)
+	}
+	a.Hosts[0].Ports[1].CertExpires, a.Hosts[0].Ports[1].CertTrusted = "2027-12-01T00:00:00Z", true
+	c := Compare(b, a)
+	want := []Change{
+		{IP: b.Hosts[0].IP, Field: "TCP 443 certificate expiry", Before: "2026-12-01T00:00:00Z", After: "2027-12-01T00:00:00Z"},
+		{IP: b.Hosts[0].IP, Field: "TCP 443 certificate trust", Before: "not trusted", After: "trusted"},
+	}
+	if !slices.Equal(c.Changes, want) {
+		t.Fatalf("renewal not reported as two differences: %+v", c.Changes)
+	}
+	a.Hosts[0].Ports[1].CertExpires, a.Hosts[0].Ports[1].CertTrusted = "", false
+	if c := Compare(b, a); len(c.Changes) != 2 || c.Changes[1].After != "" {
+		t.Fatalf("a certificate that is no longer presented was not reported: %+v", c.Changes)
 	}
 }
 

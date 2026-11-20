@@ -342,7 +342,10 @@ The walk below is the actual call chain in the code, starting at
    the label is `Web`, known web ports receive HTTP/HTTPS title enrichment
    (HTTPS on 443/8443). An `unknown` port receives an HTTP `GET /` and can
    be promoted to `Web`. Requests have a one-second/32-KiB cap, no redirects
-   and verified TLS; titles are capped at 80 runes. Failure to obtain a title
+   and verified TLS; titles are capped at 80 runes. On 443/8443 the same
+   handshake also yields the certificate's expiry. Most LAN devices fail
+   verification, so that date is then read from the failed handshake and
+   shown as **not trusted**: a claim by the device, not a checked fact. Failure to obtain a title
    does not change an open port to closed.
 
 7. **Share enumeration — only if 445 answered.** `probe.ListShares` calls

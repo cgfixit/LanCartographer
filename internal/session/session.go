@@ -99,7 +99,7 @@ func New(target netip.Prefix, opts probe.Options, version string) Session {
 		n = probe.DefaultConcurrency
 	}
 	n = min(n, probe.MaxConcurrency)
-	methods := "inventory-v1:tcp+arp;names+cache;smb;http-1s-32KiB-verified-no-redirects"
+	methods := "inventory-v2:tcp+arp;names+cache;smb;http-1s-32KiB-verified-no-redirects+tls-expiry"
 	if runtime.GOOS == "darwin" {
 		methods += ";icmp"
 	}

@@ -141,6 +141,8 @@ func Compare(before, after Session) Comparison {
 			add(fmt.Sprintf("TCP %d state", n), b.State, a.State, false)
 			add(fmt.Sprintf("TCP %d service", n), b.Service, a.Service, true)
 			add(fmt.Sprintf("TCP %d title", n), b.Title, a.Title, true)
+			add(fmt.Sprintf("TCP %d certificate expiry", n), b.CertExpires, a.CertExpires, false)
+			add(fmt.Sprintf("TCP %d certificate trust", n), certTrust(b), certTrust(a), false)
 		}
 		add("SMB shares", shares(b.Shares), shares(a.Shares), true)
 	}
@@ -168,6 +170,16 @@ func stableMACs(hosts []model.Host) map[string]netip.Addr {
 		}
 	}
 	return out
+}
+
+func certTrust(p model.Port) string {
+	switch {
+	case p.CertExpires == "":
+		return ""
+	case p.CertTrusted:
+		return "trusted"
+	}
+	return "not trusted"
 }
 
 func shares(shares []model.Share) string {

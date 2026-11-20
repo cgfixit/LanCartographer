@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -202,6 +203,9 @@ func (u *ui) portRow(h model.Host, p model.Port) fyne.CanvasObject {
 	}
 	if p.Title != "" {
 		text += "  —  " + p.Title
+	}
+	if cert := p.CertSummary(time.Now()); cert != "" {
+		text += "  ·  " + cert
 	}
 	label := widget.NewLabel(text)
 	label.Truncation = fyne.TextTruncateEllipsis
