@@ -25,6 +25,9 @@ check. See the [session workflow](USER-GUIDE.md#save-a-baseline-and-compare-a-ch
 
 ## Replace a downloaded build
 
+Current macOS builds require macOS 14 or later. If you use macOS 13, check
+the release notes and keep a compatible build until you can upgrade macOS.
+
 1. Download the asset for this computer from [GitHub Releases](https://github.com/cgfixit/LanCartographer/releases).
 2. On Windows, replace `LanCartographer.exe` and `lancartographer-cli.exe`.
 3. On macOS, use `LanCartographer-macos-arm64.zip` on Apple Silicon or `LanCartographer-macos-amd64.zip` on Intel. Replace `LanCartographer.app` and `lancartographer-cli` from that archive.
