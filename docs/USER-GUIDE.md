@@ -89,6 +89,9 @@ for the exercised workflow and platform limits.
 The comparison is by IP address. A newly absent address is **not observed**,
 not proven offline; an empty field is **not recorded**, not proof of removal.
 A host missing from one scan does not imply its individual ports closed.
+One exception: when a single hardware address moved to an address unseen in
+the other scan, the pair is one **Address (matched by MAC)** difference and
+its ports are compared. Private (randomized) and repeated MACs never pair.
 Names can come from the MAC-keyed cache. The source snapshot records local
 interfaces, including other active interfaces; sockets still follow OS routes.
 Routes and DNS configuration are not captured, and addresses are not permanent

@@ -18,6 +18,7 @@ now live in [`build/`](../build), and the README images in
 
 | Record | Coverage |
 | --- | --- |
+| [Session address move, 2026-11-20](verification/session-address-move-2026-11-20.md) | Synthetic sessions saved, reloaded, compared and reported on Linux; MAC pairing rules and redaction; native GUI not run |
 | [macOS Connections, 2026-11-20](verification/connections-2026-11-20.md) | Owned IPv4/IPv6 sockets, manual refresh, exact inventory bridge and packaged smoke |
 | [macOS Route & DNS, 2026-11-20](verification/route-dns-2026-11-20.md) | Native IPv4/IPv6 route reads, resolver configuration, observed localhost answers and Check Service |
 | [macOS diagnostics closeout, 2026-11-20](verification/diagnostics-closeout-2026-11-20.md) | Combined package, approved live Apple measurement, inventory export and Sessions |

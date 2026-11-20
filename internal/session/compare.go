@@ -2,6 +2,7 @@ package session
 
 import (
 	"fmt"
+	"net"
 	"net/netip"
 	"reflect"
 	"slices"
@@ -17,7 +18,11 @@ type Change struct {
 	Before    string
 	After     string
 	Sensitive bool // discovered text is withheld in the default report
+	Address   bool // Before and After are addresses, aliased like IP in a redacted report
 }
+
+// MovedField labels the one change that pairs two addresses by MAC.
+const MovedField = "Address (matched by MAC)"
 
 type Comparison struct {
 	Reasons []string
@@ -74,18 +79,41 @@ func Compare(before, after Session) Comparison {
 	for _, h := range after.Hosts {
 		aHosts[h.IP], all[h.IP] = h, true
 	}
+	// A device whose address changed is paired by MAC so it reads as one
+	// change and its ports are still compared. Only a clean move pairs: the
+	// MAC is universally administered, appears once in each session, and
+	// neither address was observed in the other session.
+	bMACs, aMACs := stableMACs(before.Hosts), stableMACs(after.Hosts)
+	movedTo, movedFrom := map[netip.Addr]netip.Addr{}, map[netip.Addr]netip.Addr{}
+	for mac, from := range bMACs {
+		to, ok := aMACs[mac]
+		if _, reused := aHosts[from]; !ok || reused {
+			continue
+		}
+		if _, known := bHosts[to]; !known {
+			movedTo[from], movedFrom[to] = to, from
+		}
+	}
 	ips := make([]netip.Addr, 0, len(all))
 	for ip := range all {
 		ips = append(ips, ip)
 	}
 	slices.SortFunc(ips, func(a, b netip.Addr) int { return a.Compare(b) })
 	for _, ip := range ips {
+		if _, moved := movedTo[ip]; moved {
+			continue // reported once, at the address observed in After
+		}
 		b, bok := bHosts[ip]
 		a, aok := aHosts[ip]
 		add := func(field, old, new string, sensitive bool) {
 			if old != new {
-				c.Changes = append(c.Changes, Change{ip, field, old, new, sensitive})
+				c.Changes = append(c.Changes, Change{IP: ip, Field: field, Before: old, After: new, Sensitive: sensitive})
 			}
+		}
+		if from, moved := movedFrom[ip]; moved {
+			b, bok = bHosts[from], true
+			b.MAC = a.MAC // the pair matched on it; a spelling difference is not a change
+			c.Changes = append(c.Changes, Change{IP: ip, Field: MovedField, Before: from.String(), After: ip.String(), Address: true})
 		}
 		if !bok || !aok {
 			observed := func(ok bool) string {
@@ -117,6 +145,29 @@ func Compare(before, after Session) Comparison {
 		add("SMB shares", shares(b.Shares), shares(a.Shares), true)
 	}
 	return c
+}
+
+// stableMACs maps each MAC that can identify a device within one session to
+// its address. Locally administered addresses are left out because privacy
+// features rotate them, group addresses because they name no single device,
+// and a MAC seen on several addresses because it is usually a router.
+func stableMACs(hosts []model.Host) map[string]netip.Addr {
+	out, seen := map[string]netip.Addr{}, map[string]int{}
+	for _, h := range hosts {
+		hw, err := net.ParseMAC(h.MAC)
+		if err != nil || len(hw) != 6 || hw[0]&3 != 0 || hw.String() == "00:00:00:00:00:00" {
+			continue
+		}
+		key := hw.String()
+		seen[key]++
+		out[key] = h.IP
+	}
+	for key, n := range seen {
+		if n > 1 {
+			delete(out, key)
+		}
+	}
+	return out
 }
 
 func shares(shares []model.Share) string {

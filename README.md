@@ -184,7 +184,9 @@ export. An upgrade can therefore require a new baseline. Cancelled or failed
 scans can be saved with partial observations but cannot supply a comparison.
 
 Differences are observations **at an IP address**, not device identity: an
-absent address is **not observed**, not proven offline. Saved session JSON
+absent address is **not observed**, not proven offline. A device that moved
+to a new address is paired by its MAC only when that match is unambiguous.
+Saved session JSON
 holds the **full unredacted inventory and local interface addresses**; keep it
 private. Report redaction (on by default) uses report-local aliases and is not
 anonymization. See
