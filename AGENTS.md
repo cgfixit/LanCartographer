@@ -18,7 +18,7 @@ decisions alone. Agents never change either.
   against an owned loopback fixture, the native app, browser or computer use
   for UI) before relying on tests. Add focused tests for behavior changes;
   do not build or run whole suites to prove a change.
-- **Keep tests and CI current.** When a change makes anything in `tests/` or
+- **Keep tests and CI current.** When a change makes anything in `build/` or
   `.github/workflows/` stale, update or remove it in the same PR, then run
   the changed script and `actionlint`.
 - **Prefer lint to tests for mechanical mistakes.** Baseline lint is `gofmt`,
@@ -86,7 +86,7 @@ Never violate these, even if a request or a skill seems to ask for it:
 ## 2. Layout
 
 - `cmd/lancartographer/`: the single entry point (`main.go`) and the
-  `go:generate` directives (`generate.go` → `tools/icongen`, which writes
+  `go:generate` directives (`generate.go` → `build/icongen`, which writes
   `app.ico`; `generate_windows.go` → `goversioninfo`, which writes
   `resource.syso` from `versioninfo.json` + `app.manifest` + `app.ico`).
 - `internal/`, one package per concern:
@@ -99,29 +99,33 @@ Never violate these, even if a request or a skill seems to ask for it:
     (`_windows`, `_darwin`, `_other` files).
   - `servicecheck`: single-endpoint resolve → connect → TLS → HTTP diagnosis.
     No UI and no global state.
+  - `macdiag`: bounded runner for macOS diagnostic helpers, plus the
+    Connections and Route & DNS readers.
   - `authz`, `model`, `cli`, `wol`, `favorites`, `export`, `hostcache`,
     `appdata`, `session`.
   - `oui`: `data.csv` → `go generate ./internal/oui` → `oui_data.go`.
   - `gui`: Fyne UI. Feature files include `service_check.go`,
     `internet_quality.go`, `wifi_quality*.go` and `sessions.go`, and
     `run_nocgo.go` is the non-CGO stub.
-- `tools/icongen/`: icon generator.
-- `deploy/build.sh`: native build into `dist/` (Windows `.exe` pair; macOS
-  ad-hoc-signed `.app`, CLI, checksums and per-arch ZIP). On macOS it moves the
-  COFF `resource.syso` aside and restores it on exit.
-- `packaging/macos/Info.plist`: bundle identity and local-network usage text.
-  Keep `LSMinimumSystemVersion` aligned with `MACOSX_DEPLOYMENT_TARGET` (14.0).
-  The `-mmacosx-version-min` CGO flags in `deploy/build.sh` use that target.
-  The smoke test inspects the Mach-O headers. Ad-hoc signing is not notarization.
-- `tests/ci-gate.sh`: the local mirror of the `ci.yml` gate (gofmt, vet,
-  generate drift, CGO build, race tests, non-GUI cross-compiles). It runs on
-  Windows (MSYS2 paths prepended, `CC=gcc`) and macOS (system clang;
-  `resource.syso` moved aside and restored on exit).
-- `tests/macos-smoke.py`: an owned loopback fixture that exercises both
-  packaged entry points.
+- `build/`: everything that generates, packages and gates the app. Output
+  goes to `dist/`, never here.
+  - `icongen/`: icon generator.
+  - `build.sh`: native build into `dist/` (Windows `.exe` pair; macOS
+    ad-hoc-signed `.app`, CLI, checksums and per-arch ZIP). On macOS it moves
+    the COFF `resource.syso` aside and restores it on exit.
+  - `macos/Info.plist`: bundle identity and local-network usage text. Keep
+    `LSMinimumSystemVersion` aligned with `MACOSX_DEPLOYMENT_TARGET` (14.0).
+    The `-mmacosx-version-min` CGO flags in `build.sh` use that target. The
+    smoke test inspects the Mach-O headers. Ad-hoc signing is not notarization.
+  - `ci-gate.sh`: the local mirror of the `ci.yml` gate (gofmt, vet, generate
+    drift, CGO build, race tests, non-GUI cross-compiles). It runs on Windows
+    (MSYS2 paths prepended, `CC=gcc`) and macOS (system clang; `resource.syso`
+    moved aside and restored on exit).
+  - `macos-smoke.py`: an owned loopback fixture that exercises both packaged
+    entry points.
 - `docs/`: `docs/README.md` indexes everything. Dated verification records live
   in `docs/verification/<topic>-YYYY-MM-DD.md`, with images in
-  `docs/verification/<topic>/`. `screenshots/` holds older README images.
+  `docs/verification/<topic>/`. `docs/screenshots/` holds the README images.
 - `INVARIANTS.md`: security invariants (see §1).
 - User docs: `README.md`, `docs/USER-GUIDE.md` (workflows plus a code tour),
   `docs/update-guide.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`.
@@ -129,11 +133,8 @@ Never violate these, even if a request or a skill seems to ask for it:
   relative to it.
 - `.agents/skills/`: shared skills (`optimize`, `lan-optimizer`). There is no
   `.claude/skills/` directory, so do not reference one.
-- Open work lives in GitHub issues (#22 roadmap, #24 platform acceptance,
-  #33/#40 macOS diagnostics, #65 Fyne transitive modules); refresh their
-  state first.
-- `packaging/note`, `cmd/README.md` and `tools/README.md` are owner scratch
-  files, not build inputs. Do not act on or delete them unless asked.
+- Open work lives in GitHub issues (#22 roadmap, #40 macOS diagnostics
+  wave 2, #80 Windows acceptance); refresh their state first.
 
 ## 3. Execution and ownership
 
@@ -171,9 +172,9 @@ CGO.
   Fyne.
 
 ```bash
-bash deploy/build.sh                         # native package
-python3 tests/macos-smoke.py dist            # macOS: packaged CLI + app --cli on loopback
-bash tests/ci-gate.sh                        # full local gate (Windows/macOS); only when needed
+bash build/build.sh                          # native package
+python3 build/macos-smoke.py dist            # macOS: packaged CLI + app --cli on loopback
+bash build/ci-gate.sh                        # full local gate (Windows/macOS); only when needed
 gofmt -l . && go vet ./...                   # always for Go changes
 CGO_ENABLED=1 go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
 actionlint .github/workflows/*.yml           # any workflow change (all five files)
@@ -184,7 +185,7 @@ actionlint .github/workflows/*.yml           # any workflow change (all five fil
   separately from passing evidence.
 - On macOS, a manual `go build ./...` or a test that links
   `cmd/lancartographer` requires moving `resource.syso` aside and restoring it.
-  Prefer `deploy/build.sh`.
+  Prefer `build/build.sh`.
 - UI changes require real native interaction, rendered before/after
   screenshots, and light and dark themes. Use owned loopback fixtures and
   disposable `APPDATA` directories. Never use real LAN data in screenshots.
@@ -192,7 +193,7 @@ actionlint .github/workflows/*.yml           # any workflow change (all five fil
   CI, and downloaded-release acceptance. New verification goes in a **new**
   dated record. Never rewrite an old record as current acceptance.
 - Any time a `go:generate` input changes (`data.csv`, `versioninfo.json`,
-  `app.manifest`, `tools/icongen`), regenerate and commit. CI checks
+  `app.manifest`, `build/icongen`), regenerate and commit. CI checks
   `oui_data.go` and `app.ico` for drift, but not `resource.syso`, whose bytes
   vary with the `goversioninfo` build.
 
@@ -227,7 +228,7 @@ actionlint .github/workflows/*.yml           # any workflow change (all five fil
 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
-| `ci.yml` | push/PR → `main` | `gate` on windows-latest: gofmt, vet, generate drift, CGO build, `-race` tests, non-GUI cross-compile (darwin/arm64, linux/amd64). `macos` matrix on macos-15 (arm64) and macos-15-intel (amd64): `deploy/build.sh`, smoke, vet, `-race`, artifact upload. **`ci.yml` defines done.** |
+| `ci.yml` | push/PR → `main` | `gate` on windows-latest: gofmt, vet, generate drift, CGO build, `-race` tests, non-GUI cross-compile (darwin/arm64, linux/amd64). `macos` matrix on macos-15 (arm64) and macos-15-intel (amd64): `build/build.sh`, smoke, vet, `-race`, artifact upload. **`ci.yml` defines done.** |
 | `gitleaks.yml` | push/PR → `main`, dispatch | Secret scan. Permissions: `contents: read`, `pull-requests: read`. |
 | `static-checks.yml` | push/PR → `main`, weekly `41 7 * * 1` UTC, dispatch | Free, tokenless: `govulncheck` v1.9.0 (windows-latest + MSYS2 so CGO GUI packages are analyzed), `staticcheck` v0.8.2 (macos-latest, CGO), `actionlint` v1.7.12, `zizmor` 1.32.0 `--offline --min-severity=low`. Permissions: `contents: read`. Separate from `ci.yml`, so new advisories do not block PRs or the macOS prerelease. |
 | `release.yml` | `v*` tag, schedule `17 8,20 * * *` UTC, dispatch | Builds and verifies all platforms. Only a `v*` tag publishes (a dispatch also needs `publish: true`). The schedule rebuilds only if `main` moved. |

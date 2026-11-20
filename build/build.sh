@@ -12,7 +12,7 @@
 #   go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0
 set -euo pipefail
 
-# Run from the repository root (this script lives in deploy/).
+# Run from the repository root (this script lives in build/).
 cd "$(dirname "$0")/.."
 
 # macOS branch: icongen is the only generator that runs (the goversioninfo
@@ -48,7 +48,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
     CONTENTS=dist/LanCartographer.app/Contents
     mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources" dist/AppIcon.iconset
     cp dist/LanCartographer "$CONTENTS/MacOS/LanCartographer"
-    cp packaging/macos/Info.plist "$CONTENTS/Info.plist"
+    cp build/macos/Info.plist "$CONTENTS/Info.plist"
     cp LICENSE "$CONTENTS/Resources/LICENSE"
     for size in 16 32 128 256 512; do
         sips -z "$size" "$size" cmd/lancartographer/app_preview.png \

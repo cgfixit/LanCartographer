@@ -49,7 +49,7 @@ CLAUDE.local.md
 .claude/settings.local.json
 .superpowers/
 
-# --- Python (tests/macos-smoke.py is stdlib-only) ---------------------------
+# --- Python (build/macos-smoke.py is stdlib-only) ---------------------------
 __pycache__/
 *.py[cod]
 .venv/

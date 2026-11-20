@@ -105,7 +105,7 @@ jobs:
 
       - name: Build Windows release binaries
         shell: bash
-        run: bash deploy/build.sh
+        run: bash build/build.sh
 
       - name: Generate SHA256 checksums
         shell: bash
@@ -152,10 +152,10 @@ jobs:
           cache: false
 
       - name: Build and validate macOS release bundle
-        run: bash deploy/build.sh
+        run: bash build/build.sh
 
       - name: Exercise packaged CLI on loopback
-        run: python3 tests/macos-smoke.py dist
+        run: python3 build/macos-smoke.py dist
 
       - name: Upload build artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

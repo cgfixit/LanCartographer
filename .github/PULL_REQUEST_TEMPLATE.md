@@ -27,8 +27,8 @@ Paste the exact commands and results for the affected behavior and relevant
 formatting, vet, build, or workflow checks. Broad local suites are not required
 when hosted CI provides that coverage. Examples:
 
-    bash deploy/build.sh                        # native package build
-    python3 tests/macos-smoke.py dist            # packaged macOS paths
+    bash build/build.sh                         # native package build
+    python3 build/macos-smoke.py dist            # packaged macOS paths
     actionlint .github/workflows/*.yml           # changed workflows
 -->
 

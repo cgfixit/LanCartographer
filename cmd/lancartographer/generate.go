@@ -1,3 +1,3 @@
-//go:generate go run ../../tools/icongen
+//go:generate go run ../../build/icongen
 
 package main

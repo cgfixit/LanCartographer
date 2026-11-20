@@ -37,7 +37,7 @@ Check each of these during the scan:
 - Exception/error handling (swallowed errors, missing context, panic risk)
 - Security best practices and secure-by-design posture (remember: manifest
   stays `asInvoker`, no `requireAdministrator`)
-- Tests and CI workflow health (coverage gaps, `bash tests/ci-gate.sh` gaps)
+- Tests and CI workflow health (coverage gaps, `bash build/ci-gate.sh` gaps)
 - UI/UX (Fyne GUI usability, CLI parity and ergonomics)
 - Logging quality (signal vs. noise, structured output, no secrets logged)
 - Network-scan accuracy (false positives/negatives, OUI data freshness)
@@ -70,7 +70,7 @@ When the user approves findings to implement:
 - PR bodies must follow `.github/PULL_REQUEST_TEMPLATE.md`.
 - When findings span files that overlap between branches, use a
   stacked-branch order and document that order in each PR body.
-- Run the local gate (`bash tests/ci-gate.sh`) before opening each PR.
+- Run the local gate (`bash build/ci-gate.sh`) before opening each PR.
 - Reference prior findings by their table number across PRs so the trail is
   auditable.
 

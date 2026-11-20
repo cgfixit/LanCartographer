@@ -120,10 +120,10 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Build and validate macOS release bundle
-        run: bash deploy/build.sh
+        run: bash build/build.sh
 
       - name: Exercise packaged CLI on loopback
-        run: python3 tests/macos-smoke.py dist
+        run: python3 build/macos-smoke.py dist
 
       - name: Move Windows-only resource.syso aside (COFF breaks the darwin link)
         # cmd/lancartographer/resource.syso is a checked-in amd64 COFF .rsrc

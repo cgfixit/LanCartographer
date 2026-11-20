@@ -19,7 +19,7 @@ Stay read-only until the user picks chunks. About four minutes.
 1. Read `AGENTS.md` and the `README.md` headings.
 2. `git fetch origin` and `git log --oneline -20 origin/main`.
 3. List open PRs with `"C:\Program Files\GitHub CLI\gh.exe" pr list --repo cgfixit/LanCartographer --state open --limit 20`. Drop anything an open PR already covers. On Windows, `gh` on PATH may be the wrong binary.
-4. Sweep `internal/scan`, `internal/probe`, `internal/discover`, `internal/gui`, `internal/cli`, `internal/authz`, `.github/workflows`, and `tests/`.
+4. Sweep `internal/scan`, `internal/probe`, `internal/discover`, `internal/gui`, `internal/cli`, `internal/authz`, `.github/workflows`, and `build/`.
 
 Return only findings you can point at in the tree. Each one names the file, the evidence, the lens, and small or medium effort. Zero findings is a valid result.
 
@@ -39,7 +39,7 @@ Open a draft only after the user asks for that chunk. Never push `main`. Never f
 
 Title and body follow `.github/PULL_REQUEST_TEMPLATE.md`. Fill Test evidence with commands you actually ran.
 
-Before that PR, run the focused test for the packages you touched. Run `bash tests/ci-gate.sh` when the change is on the Windows gate path and the user asked for the PR. A docs-only chunk does not need the race suite. Say what you did not run.
+Before that PR, run the focused test for the packages you touched. Run `bash build/ci-gate.sh` when the change is on the Windows gate path and the user asked for the PR. A docs-only chunk does not need the race suite. Say what you did not run.
 
 Use `"C:\Program Files\GitHub CLI\gh.exe" pr create --draft`. On PowerShell, do not pass an unquoted `#`.
 
