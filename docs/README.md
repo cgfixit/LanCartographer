@@ -16,6 +16,7 @@ dependency set, native platform or downloaded release.
 | Record | Coverage |
 | --- | --- |
 | [macOS Connections, 2026-11-20](verification/connections-2026-11-20.md) | Owned IPv4/IPv6 sockets, manual refresh, exact inventory bridge and packaged smoke |
+| [macOS Route & DNS, 2026-11-20](verification/route-dns-2026-11-20.md) | Native IPv4/IPv6 route reads, resolver configuration, observed localhost answers and Check Service |
 | [Saved-session size limits, 2026-11-20](verification/session-size-limits-2026-11-20.md) | Native Apple Silicon save/reload, both size ceilings, rejection, selected export, themes and Safari handoff |
 | [golang.org/x update, 2026-11-16](verification/golang-x-2026-11-16.md) | x/sys, x/image, x/net, x/text to current; govulncheck clean, packaged smoke, full gate, native Check Service and loopback scan in light/dark |
 | [Dependency refresh, 2026-11-01](verification/dependencies-2026-11-01.md) | Go 1.27.3/Fyne 2.8.2 package, owned CLI smoke, focused checks and native session dialogs/themes |
@@ -35,7 +36,7 @@ dependency set, native platform or downloaded release.
 ## Pending work
 
 - [#22: roadmap](https://github.com/cgfixit/LanCartographer/issues/22), including first-slice progress and later proposals.
-- [Network workbench plan](network-workbench-roadmap.md): macOS Connections, Check Service and subsequent diagnostics.
+- [Network workbench plan](network-workbench-roadmap.md): macOS Connections, Route & DNS, Check Service and subsequent diagnostics.
 - [#24: native platform and size-limit acceptance](https://github.com/cgfixit/LanCartographer/issues/24).
 - [#33](https://github.com/cgfixit/LanCartographer/issues/33) and [#40](https://github.com/cgfixit/LanCartographer/issues/40): macOS diagnostics workbench and its second wave.
 

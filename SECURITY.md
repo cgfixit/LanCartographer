@@ -114,6 +114,14 @@ to printable single-line text before display. Results stay in memory and are
 excluded from saved sessions, exports and logs; **Copy results** writes them
 to the clipboard only on request.
 
+## Local macOS diagnostics
+
+Connections reads visible process and socket metadata through the system
+`lsof`. Route & DNS reads the routing table for a numeric destination and
+configured DNS resolver scopes. These reads send no probes. The snapshots
+stay in memory. Review process, endpoint and resolver details before
+copying or sharing them.
+
 ## Internet Quality
 
 On macOS, the optional Internet Quality test sends active measurement

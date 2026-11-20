@@ -24,10 +24,10 @@ import (
 
 type connectionsUI struct {
 	view *connectionsView
-	job  *connectionJob
+	job  *diagnosticJob
 }
 
-type connectionJob struct {
+type diagnosticJob struct {
 	cancel context.CancelFunc
 	done   chan struct{}
 }
@@ -326,7 +326,7 @@ func (v *connectionsView) takeSnapshot() {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	job := &connectionJob{cancel: cancel, done: make(chan struct{})}
+	job := &diagnosticJob{cancel: cancel, done: make(chan struct{})}
 	c.job = job
 	v.refresh.Disable()
 	v.stop.Enable()
