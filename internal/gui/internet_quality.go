@@ -3,7 +3,6 @@
 package gui
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,6 +17,8 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/local/lancartographer/internal/macdiag"
 )
 
 const qualityTimeout = 45 * time.Second
@@ -54,19 +55,6 @@ func parseQualityResult(output []byte) (qualityResult, error) {
 	return r, nil
 }
 
-type qualityOutput struct {
-	data   bytes.Buffer
-	cancel context.CancelFunc
-}
-
-func (b *qualityOutput) Write(p []byte) (int, error) {
-	if len(p) > qualityOutputLimit-b.data.Len() {
-		b.cancel()
-		return 0, errQualityOutputLimit
-	}
-	return b.data.Write(p)
-}
-
 func runInternetQuality(ctx context.Context) (qualityResult, error) {
 	if runtime.GOOS != "darwin" {
 		return qualityResult{}, errors.New("Apple Network Quality is available on macOS")
@@ -91,24 +79,11 @@ func runQualityCommand(parent context.Context, path string, args ...string) (qua
 }
 
 func runDiagnosticCommand(parent context.Context, path string, args ...string) ([]byte, error) {
-	ctx, cancel := context.WithCancel(parent)
-	defer cancel()
-	stdout := &qualityOutput{cancel: cancel}
-	stderr := &qualityOutput{cancel: cancel}
-	cmd := exec.CommandContext(ctx, path, args...)
-	cmd.Env = []string{"PATH=/usr/bin:/bin:/usr/sbin:/sbin", "LC_ALL=C"}
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	cmd.WaitDelay = 500 * time.Millisecond
-	err := cmd.Run()
-	switch {
-	case parent.Err() != nil:
-		return nil, parent.Err()
-	case ctx.Err() != nil:
+	stdout, _, err := macdiag.Run(parent, qualityOutputLimit, path, args...)
+	if errors.Is(err, macdiag.ErrOutputLimit) {
 		return nil, errQualityOutputLimit
-	default:
-		return stdout.data.Bytes(), err
 	}
+	return stdout, err
 }
 
 type qualityView struct {

@@ -3,30 +3,24 @@
 LanCartographer helps people inventory a network and verify what changed after
 maintenance. The next step is to connect that workflow to what the operator's
 own computer is doing. Start on macOS, then qualify the same workflow on Windows.
-**NetClawViewer** is the working name for a small **Connections…** window inside
-LanCartographer. All phases below are proposals.
+**Connections…** is the macOS window for inspecting a local socket snapshot.
 
 ## What exists today
 
-This assessment covers `main` at `3c64e48` (November 7, 2026). Saved sessions
-landed in [#23](https://github.com/cgfixit/LanCartographer/pull/23). The project
-had GitHub Actions preview packages and no tagged GitHub Release at review time.
-The macOS arm64 preview passed the owned loopback smoke through both packaged
-CLI entry points on macOS 27.2. The session workflow has separate native
-verification at the revision recorded there. Since this assessment, the phase 2
-**Check service…** workflow has shipped
-([verification, 2026-11-15](verification/check-service-2026-11-15.md)); the
-Connections window and the other phases have not started.
-[Preview build](https://github.com/cgfixit/LanCartographer/actions/runs/42187544799),
-[build instructions](../README.md#build-from-source),
-[session verification](verification/sessions-2026-11-01.md).
+Saved sessions support coverage-aware comparison and selected evidence.
+Check Service verifies an explicitly approved endpoint. The macOS
+Connections window shows a manual snapshot of visible local sockets and links
+an exact IPv4 peer match to the current completed inventory.
+[Session verification](verification/session-size-limits-2026-11-20.md),
+[Check Service verification](verification/check-service-2026-11-15.md),
+[Connections verification](verification/connections-2026-11-20.md).
 
 | Workflow | What the current source supports | Where the observation stops |
 |---|---|---|
 | Inventory a LAN | GUI scans a selected IPv4 CIDR. The CLI accepts a CIDR or finds local physical subnets. Both use TCP discovery and port probes, ARP fallback and, on macOS, a bounded ICMP fallback. | Discovery can miss silent devices. The scan engine accepts IPv4 only. It does not continuously monitor the network. |
 | Inspect a host | View per-port states, service labels and bounded web titles, SMB shares, names, MAC and vendor where available. Use Browser, Finder/Explorer, Ping and Wake-on-LAN actions. Remote Desktop launches the Windows client. | Names can come from cache. MAC and shares depend on platform and visibility. Reverse mDNS naming does not browse Bonjour service instances. |
 | Keep and compare results | Export CSV/JSON in the GUI or JSON in the CLI. The GUI can reload favorites, explicitly save a finished scan, compare compatible complete sessions and export selected, redacted evidence. | Favorites and raw inventory lack coverage metadata. Differences describe observations at an IP. Full session JSON is unredacted. |
-| Inspect this computer | The scan records a local interface snapshot in GUI sessions and provides host shortcuts. | There is no process/socket view, structured route/DNS diagnosis, service watch, or capture of which application used a remote endpoint. |
+| Inspect this computer | Connections shows visible process and socket metadata. GUI scan sessions record a local interface snapshot. | Socket snapshots can miss short-lived or inaccessible processes. Route and resolver inspection, service watch and traffic attribution are follow-ups. |
 
 The boundaries are visible in the [scan engine](../internal/scan/engine.go),
 [GUI actions](../internal/gui/menu.go), [CLI](../internal/cli/cli.go),
@@ -53,9 +47,9 @@ the service. The comparison above uses product documentation.
 
 ### 0. Qualify the baseline and socket source
 
-- Carry forward the open native and size-limit acceptance in
-  [#24](https://github.com/cgfixit/LanCartographer/issues/24). Record the actual
-  package, platform, visibility limits, fixture and results. Keep baseline
+- Keep the [saved-session acceptance record](verification/session-size-limits-2026-11-20.md)
+  distinct from socket qualification. Record the actual package, platform,
+  visibility limits, fixture and results. Keep baseline
   maintenance separate from the viewer. Failed inventory replacement
   ([#28](https://github.com/cgfixit/LanCartographer/issues/28)) and
   cancellation of in-flight SMB enumeration
@@ -82,23 +76,14 @@ in the UI.
 
 ### 1. Ship the macOS Connections window
 
-- Add one toolbar or Tools menu entry that opens a single modeless window
-  alongside the scan. Show process name/PID when available, protocol, numeric
-  local and remote endpoint, TCP state and sample age. Include **Listening**,
-  **Connected**, **UDP** and text filters, plus **Refresh** and **Pause**.
-  Preserve selection across refreshes when the same row remains present.
-  Show wildcard binds and UDP rows without a peer explicitly.
-- Take one snapshot on open. Start with manual refresh, then enable opt-in
-  periodic sampling at a measured interval (try three seconds first). Allow one
-  collection at a time. Use a deadline, byte/row limits and cancellable
-  subprocess execution. Stop on pause/close, discard results from cancelled
-  generations and update Fyne on its UI thread. Keep samples in memory and
-  distinguish a successful empty result from stale, partial or failed data.
-- Highlight newly observed, changed and no-longer-observed rows between
-  successful samples. Suppress removal cues across incomplete samples.
-  Short-lived sockets can be missed between samples, and reused PID/socket
-  tuples are not durable identities. Keep address resolution off by default.
-  The window adds no packet capture, connection termination or elevation path.
+**Tools → Connections…** opens a modeless window. **Refresh** reads one
+bounded snapshot, and **Stop** cancels the helper. The table shows process,
+PID, protocol, numeric endpoints and TCP state. **Listening**, **Connected**,
+**UDP**, and the text filter work on the sample already in memory.
+
+Periodic sampling and change highlighting remain follow-ups. Short-lived
+sockets can disappear between samples. A reused PID or socket tuple can
+describe a different observation.
 
 **Exit criterion.** With owned TCP/UDP loopback fixtures, show the expected
 IPv4/IPv6 rows, a connection change and an honest empty/failure state. Verify
