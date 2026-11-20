@@ -136,6 +136,24 @@ background monitoring, automatic upload or session migration.
 | Session over 8 MiB or 65,536 hosts | The file is rejected and the current comparison and selection stay available. Use a session within both limits. |
 | Notes too long | Keep report notes within 2,000 UTF-8 bytes. |
 
+## Inspect local connections on macOS
+
+Open **Tools → Connections…** and select **Refresh** for a local socket
+snapshot. Choose **Connected**, **Listening**, or **UDP** to narrow the table.
+Filter by process, PID, address or port. A numeric IP matches either endpoint
+exactly. Select a column heading to sort, and select a row for its details.
+
+- A wildcard bind appears as `*`. A UDP bind with no recorded peer shows a dash.
+- **Show in inventory** selects an exact IPv4 peer match from the current
+  completed scan. The details show the scan scope and finish time. From an
+  inventory row, **Filter connections to this address…** fills the filter.
+- A partial or failed refresh keeps the previous sample time when there is
+  a prior display. macOS and account permissions limit what is visible.
+
+The view reads socket metadata, without connecting to peers. The snapshot
+stays in memory. **Copy selected row** puts its process and endpoint details
+on the clipboard. Review these details before sharing them.
+
 ## Check a service
 
 Use **Tools → Check Service…** on Windows or macOS to answer "can this

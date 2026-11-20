@@ -101,6 +101,7 @@ type ui struct {
 	qualityView *qualityView
 	qualityJob  *qualityJob
 	serviceView *serviceView
+	connections connectionsUI
 
 	// table repaint coalescing: engine events fold into the store per event,
 	// but the sort+repaint is throttled so a fast scan costs O(events) store
@@ -149,6 +150,7 @@ func Run() error {
 		job.cancel()
 		<-job.done
 	}
+	u.connections.stopAndWait()
 	return nil
 }
 
@@ -309,6 +311,7 @@ func (u *ui) refreshTable() {
 	u.table.Refresh()
 	u.refreshStatus()
 	u.updateEmptyHint()
+	u.refreshConnectionInventory()
 	u.lastRefresh = time.Now()
 	u.repaints++
 }
@@ -342,6 +345,7 @@ func (u *ui) mainMenu() *fyne.MainMenu {
 	if runtime.GOOS == "darwin" {
 		tools.Items = append(tools.Items, fyne.NewMenuItem("Internet Quality…", u.showInternetQuality))
 	}
+	tools.Items = append(tools.Items, u.connectionsMenu()...)
 	return fyne.NewMainMenu(file, tools, help)
 }
 
