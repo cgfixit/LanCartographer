@@ -30,7 +30,7 @@ func TestToolsMenuOffersCheckServiceOnEveryPlatform(t *testing.T) {
 	}
 	want := []string{"Check Service…"}
 	if runtime.GOOS == "darwin" {
-		want = append(want, "Internet Quality…")
+		want = append(want, "Internet Quality…", "Connections…")
 	}
 	if strings.Join(tools, "|") != strings.Join(want, "|") {
 		t.Fatalf("Tools menu = %v, want %v", tools, want)
