@@ -64,8 +64,10 @@ native dialogs/themes after a Fyne update. Record source, module versions and
 the executable hash in [docs](docs/README.md); prior screenshots and CI results
 do not verify the updated artifact. Workflow changes need actionlint and
 review of action runtime, permissions, inputs and artifact compatibility.
-Fyne's newer transitive modules are tracked in
-[issue #65](https://github.com/cgfixit/LanCartographer/issues/65).
+Review Fyne's transitive modules when evaluating a Fyne release or an
+applicable advisory or bug fix. The November 2026 review kept Fyne's pins
+after checking the selected versions and Go advisories.
+[Dependency review #65](https://github.com/cgfixit/LanCartographer/issues/65)
 
 Open a cleanup proposal as its own issue, with a concrete benefit and
 preserved behavior, before implementing it. Retain historical
