@@ -4,6 +4,8 @@ LanCartographer helps people inventory a network and verify what changed after
 maintenance. The next step is to connect that workflow to what the operator's
 own computer is doing. Start on macOS, then qualify the same workflow on Windows.
 **Connections…** is the macOS window for inspecting a local socket snapshot.
+Connections, Route & DNS, Check Service and Internet Quality each have a
+direct entry in the **Tools** menu.
 
 ## What exists today
 

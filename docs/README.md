@@ -17,6 +17,7 @@ dependency set, native platform or downloaded release.
 | --- | --- |
 | [macOS Connections, 2026-11-20](verification/connections-2026-11-20.md) | Owned IPv4/IPv6 sockets, manual refresh, exact inventory bridge and packaged smoke |
 | [macOS Route & DNS, 2026-11-20](verification/route-dns-2026-11-20.md) | Native IPv4/IPv6 route reads, resolver configuration, observed localhost answers and Check Service |
+| [macOS diagnostics closeout, 2026-11-20](verification/diagnostics-closeout-2026-11-20.md) | Combined package, approved live Apple measurement, inventory export and Sessions |
 | [Saved-session size limits, 2026-11-20](verification/session-size-limits-2026-11-20.md) | Native Apple Silicon save/reload, both size ceilings, rejection, selected export, themes and Safari handoff |
 | [golang.org/x update, 2026-11-16](verification/golang-x-2026-11-16.md) | x/sys, x/image, x/net, x/text to current; govulncheck clean, packaged smoke, full gate, native Check Service and loopback scan in light/dark |
 | [Dependency refresh, 2026-11-01](verification/dependencies-2026-11-01.md) | Go 1.27.3/Fyne 2.8.2 package, owned CLI smoke, focused checks and native session dialogs/themes |
