@@ -165,6 +165,73 @@ func TestSessionCompareCoverageAndObservations(t *testing.T) {
 	}
 }
 
+func TestSessionCompareAddressMove(t *testing.T) {
+	moved := netip.MustParseAddr("192.0.2.41")
+	move := func(mutate func(b, a *Session)) Comparison {
+		b := fixture()
+		a := b.Clone()
+		a.Hosts[0].IP = moved
+		if mutate != nil {
+			mutate(&b, &a)
+		}
+		return Compare(b, a)
+	}
+	other := model.Host{IP: netip.MustParseAddr("192.0.2.77"), Alive: true, MAC: "00:11:22:33:44:66"}
+
+	c := move(func(_, a *Session) { a.Hosts[0].Ports[1].State = model.PortOpen; a.Hosts[0].MAC = "00-11-22-33-44-55" })
+	if len(c.Changes) != 2 || c.Changes[0] != (Change{IP: moved, Field: MovedField, Before: "192.0.2.10", After: "192.0.2.41", Address: true}) ||
+		c.Changes[1].IP != moved || c.Changes[1].Field != "TCP 443 state" || c.Changes[1].After != model.PortOpen {
+		t.Fatalf("move was not one paired change with its port difference: %+v", c.Changes)
+	}
+	for name, mutate := range map[string]func(b, a *Session){
+		"locally administered":    func(b, a *Session) { b.Hosts[0].MAC, a.Hosts[0].MAC = "02:11:22:33:44:55", "02:11:22:33:44:55" },
+		"group address":           func(b, a *Session) { b.Hosts[0].MAC, a.Hosts[0].MAC = "01:00:5e:00:00:fb", "01:00:5e:00:00:fb" },
+		"empty":                   func(b, a *Session) { b.Hosts[0].MAC, a.Hosts[0].MAC = "", "" },
+		"sentinel text":           func(b, a *Session) { b.Hosts[0].MAC, a.Hosts[0].MAC = "needs elevation", "needs elevation" },
+		"zero":                    func(b, a *Session) { b.Hosts[0].MAC, a.Hosts[0].MAC = "00:00:00:00:00:00", "00:00:00:00:00:00" },
+		"different MAC":           func(_, a *Session) { a.Hosts[0].MAC = "00:11:22:33:44:66" },
+		"duplicate in Before":     func(b, _ *Session) { o := other; o.MAC = b.Hosts[0].MAC; b.Hosts = append(b.Hosts, o) },
+		"duplicate in After":      func(_, a *Session) { o := other; o.MAC = a.Hosts[0].MAC; a.Hosts = append(a.Hosts, o) },
+		"old address reused":      func(b, a *Session) { o := other; o.IP = b.Hosts[0].IP; a.Hosts = append(a.Hosts, o) },
+		"new address seen before": func(b, a *Session) { o := other; o.IP = moved; b.Hosts = append(b.Hosts, o) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			for _, change := range move(mutate).Changes {
+				if change.Address || change.Field == MovedField {
+					t.Fatalf("weak evidence was paired: %+v", change)
+				}
+			}
+		})
+	}
+	if c := move(nil); len(c.Changes) != 1 || !c.Changes[0].Address {
+		t.Fatalf("unchanged moved device reported extra differences: %+v", c.Changes)
+	}
+
+	b := fixture()
+	a := b.Clone()
+	a.Hosts[0].IP = moved
+	a.Hosts[0].Name = "secret-new-name"
+	redacted, err := Report(b, a, []int{0, 1}, true, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"192.0.2", "private", "secret", "00:11:22"} {
+		if strings.Contains(redacted, forbidden) {
+			t.Fatalf("redacted move leaked %q:\n%s", forbidden, redacted)
+		}
+	}
+	if !strings.Contains(redacted, "Address-1 | "+MovedField+"\n  Before: Address-2\n  After:  Address-1\n") || !strings.Contains(redacted, "it is not proof") {
+		t.Fatalf("redacted move lost its aliases or caveat:\n%s", redacted)
+	}
+	full, err := Report(b, a, []int{1}, false, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(full, "192.0.2.10 ") || strings.Contains(full, "it is not proof") {
+		t.Fatalf("unselected move leaked into the report:\n%s", full)
+	}
+}
+
 func TestSessionReportSelectionAndRedaction(t *testing.T) {
 	b := fixture()
 	a := b.Clone()

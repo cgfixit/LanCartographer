@@ -33,6 +33,9 @@ func Report(before, after Session, selected []int, redact bool, notes string) (s
 	fmt.Fprintln(&b, "LanCartographer — selected comparison evidence")
 	fmt.Fprintln(&b, "Both scans completed with matching scope, profile and recorded source context.")
 	fmt.Fprintln(&b, "Observations are address-based; they do not establish permanent device identity.")
+	if slices.ContainsFunc(selected, func(i int) bool { return c.Changes[i].Address }) {
+		fmt.Fprintln(&b, "\"Matched by MAC\" pairs two addresses that reported one hardware address; it is not proof.")
+	}
 	fmt.Fprintln(&b, "Not observed does not mean offline. Missing enrichment means not recorded.")
 	fmt.Fprintln(&b, "Names may come from cache. Routes/DNS are not captured; routing is OS-selected.")
 	if redact {
@@ -80,6 +83,9 @@ func Report(before, after Session, selected []int, redact bool, notes string) (s
 		old, new := Value(d.Before), Value(d.After)
 		if redact {
 			ip = alias("ip:"+ip, "Address")
+			if d.Address {
+				old, new = alias("ip:"+d.Before, "Address"), alias("ip:"+d.After, "Address")
+			}
 			if d.Sensitive {
 				if d.Before != "" {
 					old = alias("text:"+d.Before, "Value")
