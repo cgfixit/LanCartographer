@@ -173,8 +173,8 @@ CGO.
 
 ```bash
 bash build/build.sh                          # native package
-python3 build/macos-smoke.py dist             # macOS: packaged CLI + app --cli on loopback
-bash build/ci-gate.sh                         # full local gate (Windows/macOS); only when needed
+python3 build/macos-smoke.py dist            # macOS: packaged CLI + app --cli on loopback
+bash build/ci-gate.sh                        # full local gate (Windows/macOS); only when needed
 gofmt -l . && go vet ./...                   # always for Go changes
 CGO_ENABLED=1 go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
 actionlint .github/workflows/*.yml           # any workflow change (all five files)

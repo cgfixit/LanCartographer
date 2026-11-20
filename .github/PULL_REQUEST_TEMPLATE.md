@@ -28,7 +28,7 @@ formatting, vet, build, or workflow checks. Broad local suites are not required
 when hosted CI provides that coverage. Examples:
 
     bash build/build.sh                         # native package build
-    python3 build/macos-smoke.py dist           # packaged macOS paths
+    python3 build/macos-smoke.py dist            # packaged macOS paths
     actionlint .github/workflows/*.yml           # changed workflows
 -->
 
