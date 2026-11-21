@@ -556,6 +556,32 @@ func TestRun_StopDuringShareProbe(t *testing.T) {
 	}
 }
 
+func TestRun_StopAfterPortScanSkipsEnrichment(t *testing.T) {
+	// Stop lands after the port scan: the host's event would be dropped, so
+	// no name or MAC lookup (an arp subprocess on macOS) may start.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var mu sync.Mutex
+	var lookups []string
+	record := func(what string) {
+		mu.Lock()
+		lookups = append(lookups, what)
+		mu.Unlock()
+	}
+	d := fakeAliveDeps(nil, nil, nil, "", "", "", nil, true)
+	d.scan = func(context.Context, netip.Addr, probe.Options, *probe.Limiter, func(model.Port)) { cancel() }
+	d.nbName = func(context.Context, netip.Addr) string { record("netbios"); return "" }
+	d.lookupMAC = func(netip.Addr) (string, error) { record("mac"); return "", nil }
+
+	evs, err := runCollect(ctx, netip.MustParsePrefix("192.0.2.0/30"), probe.Options{Ports: []int{80}}, d)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+	if len(lookups) != 0 || countKind(evs, EventHostFound) != 0 {
+		t.Fatalf("enrichment ran after Stop: lookups=%v hostEvents=%d", lookups, countKind(evs, EventHostFound))
+	}
+}
+
 func TestRun_ICMPFallbackCancellation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
