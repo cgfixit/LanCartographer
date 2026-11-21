@@ -177,10 +177,13 @@ bash build/build.sh                          # native package
 python3 build/macos-smoke.py dist            # macOS: packaged CLI + app --cli on loopback
 bash build/ci-gate.sh                        # full local gate (Windows/macOS); only when needed
 gofmt -l . && go vet ./...                   # always for Go changes
-CGO_ENABLED=1 go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+GOTOOLCHAIN=$(go env GOVERSION) CGO_ENABLED=1 go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
 actionlint .github/workflows/*.yml           # any workflow change (all five files)
 ```
 
+- Run staticcheck from the repo root. `GOTOOLCHAIN` pins it to the `go.mod`
+  toolchain; otherwise an installed Go older than 1.26 builds it with 1.26,
+  which cannot load this module.
 - Verify per §0, then gofmt, relevant vet/build and a focused package test.
   Hosted CI covers broad and platform regressions. Record any user waiver
   separately from passing evidence.

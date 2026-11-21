@@ -82,8 +82,9 @@ save/reopen cycles. See [OWASP's CSV injection guidance](https://owasp.org/www-c
 
 Session JSON contains full, unredacted inventory and local interface addresses.
 Saving is explicit; the app does not upload or automatically share these files.
-Reads reject unsupported schemas, inconsistent records and files over 8 MiB or
-65,536 hosts. Writes use a temporary file and rename, with modes `0600` for
+Reads reject unsupported schemas, inconsistent records (including certificate
+fields the scan could not have recorded, since redacted reports show expiry
+dates) and files over 8 MiB or 65,536 hosts. Writes use a temporary file and rename, with modes `0600` for
 files and `0700` for new directories on macOS. These permissions are not
 application-level encryption; access also depends on the destination filesystem
 and its permissions.

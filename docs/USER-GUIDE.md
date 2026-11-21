@@ -104,14 +104,15 @@ application version, effective ports/timeouts/concurrency/methods, local source
 addresses/platform, timestamps, completion state and progress. Cancelled,
 failed and incomplete scans may be saved, but cannot form a completed comparison.
 Files use schema version 1, with an 8 MiB and 65,536-host limit; unsupported or
-inconsistent files are rejected. Favorites and CLI JSON cannot be imported as
+inconsistent files are rejected, including a certificate expiry that is not a
+scan-recorded UTC date on an open port. Favorites and CLI JSON cannot be imported as
 sessions. Session save/compare/export is currently GUI-only.
 
 **Redact identifiers and discovered text** is on by default for evidence
 reports. It withholds site/scope/source identifiers and replaces selected
 addresses and discovered values with aliases local to that report. It retains
-timestamps, counts, port numbers and numeric probe settings; this is not
-anonymization. The comparison list and saved JSON remain unredacted. Turning
+timestamps, counts, port numbers, numeric probe settings and certificate
+expiry dates and trust; this is not anonymization. The comparison list and saved JSON remain unredacted. Turning
 redaction off includes selected discovered values and source/site metadata.
 Notes are included as entered (with control characters sanitized); inspect
 notes and screenshots before sharing. Reports are plain text with no remote

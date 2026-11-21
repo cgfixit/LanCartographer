@@ -217,9 +217,23 @@ func (s Session) Validate() error {
 			if port.State != model.PortOpen && port.State != model.PortClosed && port.State != model.PortTimeout {
 				return errors.New("invalid port observation")
 			}
+			if !validCert(port) {
+				return errors.New("invalid certificate observation")
+			}
 		}
 	}
 	return nil
+}
+
+// validCert accepts only what the scan records: no certificate, or an open
+// port's expiry in the engine's UTC RFC 3339 form. Comparison reports show
+// the expiry even when redacting, so it must not carry arbitrary text.
+func validCert(p model.Port) bool {
+	if p.CertExpires == "" {
+		return !p.CertTrusted
+	}
+	t, err := time.Parse(time.RFC3339, p.CertExpires)
+	return err == nil && p.State == model.PortOpen && t.UTC().Format(time.RFC3339) == p.CertExpires
 }
 
 func Read(r io.Reader) (Session, error) {
