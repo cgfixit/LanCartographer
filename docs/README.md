@@ -20,6 +20,7 @@ now live in [`build/`](../build), and the README images in
 | --- | --- |
 | [Scan bounds, 2026-11-21](verification/scan-bounds-2026-11-21.md) | CLI rejects a zero or negative `--timeout` on a loopback fixture; Stop skips name and MAC lookups (focused test fails on `main`, passes here); Stop timing in the native app not measured |
 | [Scan certificate expiry, 2026-11-20](verification/scan-cert-expiry-2026-11-20.md) | Loopback TLS fixtures on Linux: untrusted, expiring, expired and locally trusted certificates, equal connection counts before and after; native GUI not run |
+| [Session certificate validation, 2026-11-21](verification/session-cert-validation-2026-11-21.md) | Crafted certificate text rejected on read instead of printed in a redacted report (focused test fails on `main`, passes here); staticcheck pinned to the `go.mod` toolchain; native GUI not run |
 | [Session address move, 2026-11-20](verification/session-address-move-2026-11-20.md) | Synthetic sessions saved, reloaded, compared and reported on Linux; MAC pairing rules and redaction; native GUI not run |
 | [macOS Connections, 2026-11-20](verification/connections-2026-11-20.md) | Owned IPv4/IPv6 sockets, manual refresh, exact inventory bridge and packaged smoke |
 | [macOS Route & DNS, 2026-11-20](verification/route-dns-2026-11-20.md) | Native IPv4/IPv6 route reads, resolver configuration, observed localhost answers and Check Service |

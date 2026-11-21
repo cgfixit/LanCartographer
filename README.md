@@ -189,7 +189,8 @@ absent address is **not observed**, not proven offline. A device that moved
 to a new address is paired by its MAC only when that match is unambiguous.
 Saved session JSON
 holds the **full unredacted inventory and local interface addresses**; keep it
-private. Report redaction (on by default) uses report-local aliases and is not
+private. Report redaction (on by default) uses report-local aliases, keeps
+timestamps, port numbers and certificate expiry dates, and is not
 anonymization. See
 [what is saved and shared](docs/USER-GUIDE.md#what-is-saved-and-what-is-shared).
 

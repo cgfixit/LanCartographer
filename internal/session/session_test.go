@@ -46,6 +46,18 @@ func TestSessionSaveReadAndAtomicFailure(t *testing.T) {
 	if got.Context != s.Context || got.Hosts[0].Ports[0].Title != "private-title" {
 		t.Fatal("lost session evidence")
 	}
+	// A recorded certificate round-trips through Save and Read.
+	s.Hosts[0].Ports[0].CertExpires, s.Hosts[0].Ports[0].CertTrusted = "2027-12-25T18:34:12Z", true
+	if err := Save(path, s); err != nil {
+		t.Fatalf("rejected a recorded certificate: %v", err)
+	}
+	if data, err = os.ReadFile(path); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = Read(bytes.NewReader(data)); err != nil || got.Hosts[0].Ports[0].CertExpires != "2027-12-25T18:34:12Z" || !got.Hosts[0].Ports[0].CertTrusted {
+		t.Fatalf("certificate did not round-trip: %+v %v", got.Hosts[0].Ports[0], err)
+	}
+	s.Hosts[0].Ports[0].CertExpires, s.Hosts[0].Ports[0].CertTrusted = "", false
 	if runtime.GOOS != "windows" {
 		info, _ := os.Stat(path)
 		dir, _ := os.Stat(filepath.Dir(path))
@@ -110,6 +122,13 @@ func TestSessionReadRejectsUntrustedFiles(t *testing.T) {
 		func(s *Session) { s.Hosts[0].Ports[0].Number = 22 },
 		func(s *Session) { s.Progress = .5 },
 		func(s *Session) { s.FinishedAt = s.StartedAt.Add(-time.Second) },
+		// Certificate fields carry only what the scan records; the expiry is
+		// shown even in a redacted report.
+		func(s *Session) { s.Hosts[0].Ports[0].CertExpires = "private-nas admin:hunter2" },
+		func(s *Session) { s.Hosts[0].Ports[0].CertExpires = "2026-12-01T00:00:00.5Z" },
+		func(s *Session) { s.Hosts[0].Ports[0].CertExpires = "2026-12-01T01:00:00+01:00" },
+		func(s *Session) { s.Hosts[0].Ports[1].CertExpires = "2026-12-01T00:00:00Z" },
+		func(s *Session) { s.Hosts[0].Ports[0].CertTrusted = true },
 	} {
 		s := fixture()
 		mutate(&s)
