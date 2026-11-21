@@ -111,7 +111,7 @@ the original values.
 |---|---|---|
 | `--range CIDR` | IPv4 prefix to scan, e.g. `192.168.1.0/24` | omitted: every local physical subnet |
 | `--ports` | Comma-separated TCP ports to probe (1–65535) | `21,22,23,80,135,139,443,445,515,631,3389,5357,8080,8443,9100` |
-| `--timeout` | Per-host dial timeout; the per-dial probe timeout is 2× this value | `400ms` |
+| `--timeout` | Per-host dial timeout, greater than zero; the per-dial probe timeout is 2× this value | `400ms` |
 | `--concurrency` | Global concurrent-dial budget (engine clamps to 256) | `128` |
 | `--json PATH` | Also write JSON to `PATH`; `-` writes only JSON to stdout | off |
 | `--i-am-authorized` | Confirm authorization for ranges that require confirmation | off |
