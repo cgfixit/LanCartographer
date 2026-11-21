@@ -88,6 +88,21 @@ func TestBadPortsExits2(t *testing.T) {
 	}
 }
 
+func TestNonPositiveTimeoutExits2(t *testing.T) {
+	for _, timeout := range []string{"0s", "-1ms"} {
+		d := fakeDeps([]string{"192.168.1.0/24"})
+		scanned := false
+		d.scanRun = func(context.Context, netip.Prefix, probe.Options, chan<- scan.Event) error {
+			scanned = true
+			return nil
+		}
+		code, _, stderr := runCLI(d, "--range", "192.168.1.0/24", "--timeout", timeout)
+		if code != 2 || scanned || !strings.Contains(stderr, "--timeout must be greater than zero") {
+			t.Fatalf("--timeout %s: exit=%d scanned=%v stderr=%q, want exit 2 before any scan", timeout, code, scanned, stderr)
+		}
+	}
+}
+
 func TestNoLocalInterfacesExits3(t *testing.T) {
 	d := fakeDeps(nil) // no interfaces, no --range
 	code, _, stderr := runCLI(d)
