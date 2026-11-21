@@ -301,6 +301,13 @@ func runHost(ctx context.Context, ip netip.Addr, opts probe.Options, lim *probe.
 		}
 	}
 
+	// A stopped sweep drops this host's event, so skip enrichment rather
+	// than run a MAC lookup (macOS spawns arp, Windows blocks in SendARP)
+	// that Run would wait for.
+	if hctx.Err() != nil {
+		return
+	}
+
 	// Enrichment: failure is an empty field, not an error row.
 	name := resolveName(hctx, ip, d)
 	if mac, err := d.lookupMAC(ip); err == nil {

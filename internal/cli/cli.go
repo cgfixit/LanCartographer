@@ -62,6 +62,14 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 		return 2 // flag package already reported to stderr
 	}
 
+	// net.Dialer treats a zero timeout as none (dials wait for the OS
+	// connect timeout) and a negative one as already expired (every dial
+	// fails, so live hosts vanish from the inventory).
+	if *timeout <= 0 {
+		fmt.Fprintf(stderr, "lancartographer: --timeout must be greater than zero, got %s\n", *timeout)
+		return 2
+	}
+
 	ports, err := probe.ParsePorts(*portsArg)
 	if err != nil {
 		fmt.Fprintf(stderr, "lancartographer: --ports: %v\n", err)
