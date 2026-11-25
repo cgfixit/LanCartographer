@@ -2,9 +2,9 @@
 // applies the authorization gate, drives the scan engine (one --range
 // target, or every local subnet when --range is omitted), and prints a
 // table or --json - JSON of the merged inventory to stdout. All diagnostics go
-// to stderr. Exit codes: 0 scan completed; 2 bad arguments or an
-// authorization-gate refusal (or a failed --json export); 3 no usable
-// local interfaces (only reachable on the omitted --range path).
+// to stderr. Exit codes: 0 success; 2 invalid input, authorization refusal,
+// scan failure or JSON export failure; 3 no usable local interfaces on the
+// omitted --range path; 4 completed scan with unmet expectations.
 package cli
 
 import (
@@ -57,6 +57,14 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 		"per-host dial timeout; the per-dial probe timeout is 2x this value")
 	concurrency := fs.Int("concurrency", 128, "dial concurrency (engine clamps to 256)")
 	jsonPath := fs.String("json", "", "also write JSON to PATH; use - for JSON-only stdout")
+	var expectPath string
+	fs.Func("expect", "check scan results against a versioned JSON `file`", func(path string) error {
+		if path == "" {
+			return fmt.Errorf("file path must not be empty")
+		}
+		expectPath = path
+		return nil
+	})
 	authorized := fs.Bool("i-am-authorized", false, "confirm authorization for ranges that require it")
 	if err := fs.Parse(args); err != nil {
 		return 2 // flag package already reported to stderr
@@ -116,6 +124,15 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 		}
 	}
 
+	var expected []hostExpectation
+	if expectPath != "" {
+		expected, err = loadExpectations(expectPath, *jsonPath, targets, ports)
+		if err != nil {
+			fmt.Fprintf(stderr, "lancartographer: --expect: %v\n", err)
+			return 2
+		}
+	}
+
 	// --timeout sets the liveness DialTimeout; the port-probe timeout is
 	// 2x, matching the engine's 400ms/800ms defaults.
 	opts := probe.Options{
@@ -151,33 +168,39 @@ func run(args []string, stdout, stderr io.Writer, d deps) int {
 			fmt.Fprintf(stderr, "lancartographer: JSON stdout failed: %v\n", err)
 			return 2
 		}
-		return 0
-	}
-	printTable(stdout, hosts)
-
-	if *jsonPath != "" {
-		if err := d.exportToFile(*jsonPath, hosts, "json"); err != nil {
-			fmt.Fprintf(stderr, "lancartographer: --json export to %s failed: %v\n", *jsonPath, err)
-			return 2
+	} else {
+		printTable(stdout, hosts)
+		if *jsonPath != "" {
+			if err := d.exportToFile(*jsonPath, hosts, "json"); err != nil {
+				fmt.Fprintf(stderr, "lancartographer: --json export to %s failed: %v\n", *jsonPath, err)
+				return 2
+			}
 		}
+	}
+
+	if !reportExpectations(stderr, expected, byIP) {
+		return 4
 	}
 	return 0
 }
 
 // scanOne runs one sweep, draining the event channel in a goroutine, and
-// returns the canonical EventHostFound hosts. The context is cancelled
-// after Run returns to stop the drainer.
+// returns the canonical EventHostFound hosts only after completion.
 func scanOne(target netip.Prefix, opts probe.Options, scanRun func(context.Context, netip.Prefix, probe.Options, chan<- scan.Event) error) ([]model.Host, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	events := make(chan scan.Event)
 	done := make(chan []model.Host, 1)
+	var completed bool
 	go func() {
 		var hosts []model.Host
 		for ev := range events {
-			if ev.Kind == scan.EventHostFound {
+			switch ev.Kind {
+			case scan.EventHostFound:
 				hosts = append(hosts, ev.Host)
+			case scan.EventDone:
+				completed = ev.Progress == 1
 			}
 		}
 		done <- hosts
@@ -186,6 +209,9 @@ func scanOne(target netip.Prefix, opts probe.Options, scanRun func(context.Conte
 	err := scanRun(ctx, target, opts, events)
 	close(events) // Run never sends after returning
 	hosts := <-done
+	if err == nil && !completed {
+		err = fmt.Errorf("scan ended without a completion event")
+	}
 	return hosts, err
 }
 

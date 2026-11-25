@@ -145,7 +145,8 @@ Never violate these, even if a request or a skill seems to ask for it:
   second name for the same binary.
 - CLI flags: `--range` (CIDR; defaults to local physical subnets), `--ports`,
   `--timeout` (400 ms), `--concurrency` (128, clamped to 256), `--json PATH`
-  (`-` sends JSON only to stdout), `--i-am-authorized`.
+  (`-` sends JSON only to stdout), `--expect FILE` (assertions over a
+  completed inventory), `--i-am-authorized`.
 - Fyne widgets are touched only on the UI thread, using `fyne.Do` from workers.
   Apply the saved theme before creating widgets. Shared panel labels must react
   to theme changes.
