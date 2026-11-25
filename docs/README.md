@@ -28,6 +28,7 @@ now live in [`build/`](../build), and the README images in
 | [Saved-session size limits, 2026-11-20](verification/session-size-limits-2026-11-20.md) | Native Apple Silicon save/reload, both size ceilings, rejection, selected export, themes and Safari handoff |
 | [golang.org/x update, 2026-11-16](verification/golang-x-2026-11-16.md) | x/sys, x/image, x/net, x/text to current; govulncheck clean, packaged smoke, full gate, native Check Service and loopback scan in light/dark |
 | [Dependency refresh, 2026-11-01](verification/dependencies-2026-11-01.md) | Go 1.27.3/Fyne 2.8.2 package, owned CLI smoke, focused checks and native session dialogs/themes |
+| [Loading IPv4 favorites, 2026-11-25](verification/ipv4-favorites-2026-11-25.md) | Mixed and missing files in the packaged Mac app, light and dark themes, IPv4 browser handoff and session preservation |
 | [Main window flow, 2026-11-15](verification/ui-flow-2026-11-15.md) | Before/after inventory with the same sample data, first-run notice, stop/finish states, favorites/export regressions and the unchanged CLI table |
 | [First-run marker write failure, 2026-11-16](verification/firstrun-marker-2026-11-16.md) | Native light/dark error dialog after a real click (redacted), focused test (fails on `main`, passes here) and Fyne-rendered `main` comparison |
 | [Inventory table refresh, 2026-11-16](verification/inventory-refresh-2026-11-16.md) | Row preparation allocations, native sort and selection, IP-ordered persistence, and packaged loopback smoke |
