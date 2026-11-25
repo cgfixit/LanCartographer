@@ -73,7 +73,7 @@ network data.
 | Route & DNS (macOS) | Read the selected route for a numeric IPv4 or IPv6 destination and inspect configured resolver scopes without sending probes. [Route & DNS guide](docs/USER-GUIDE.md#inspect-routes-and-resolver-configuration-on-macos) |
 | Internet Quality (macOS) | Apple's `networkQuality` capacity and responsiveness test, a Cloudflare speed test handed to your browser, and a Wi-Fi before/after comparison of signal, noise, channel, link rate and gateway latency |
 | Themes and first run | A toolbar toggle switches light/dark and persists. The authorization notice appears on first launch; if the app cannot record that you saw it, it says so and shows the notice again next time. **Help → About** shows the version, license and build target |
-| CLI | The same engine without a window: a table on stdout, `--json PATH` or `--json -` for pipes, and exit codes for scripts. See [CLI reference](#cli-reference) |
+| CLI | Inventory tables or JSON with optional host and port assertions for scripts. See [CLI reference](#cli-reference) |
 | Elevation (Windows) | An unelevated process offers an **Elevate** button and marks MAC lookups that need elevation; macOS reads the ARP cache without it |
 
 ## How it works
@@ -114,6 +114,7 @@ the original values.
 | `--timeout` | Per-host dial timeout, greater than zero; the per-dial probe timeout is 2× this value | `400ms` |
 | `--concurrency` | Global concurrent-dial budget (engine clamps to 256) | `128` |
 | `--json PATH` | Also write JSON to `PATH`; `-` writes only JSON to stdout | off |
+| `--expect FILE` | Check completed inventory against [declared expectations](docs/USER-GUIDE.md#verify-expected-hosts-and-ports) | off |
 | `--i-am-authorized` | Confirm authorization for ranges that require confirmation | off |
 
 A range requires confirmation, and therefore `--i-am-authorized`, when it is
@@ -123,9 +124,10 @@ exits without touching the network.
 
 Exit codes:
 
-- `0` — scan completed (and any requested JSON export succeeded)
+- `0` — scan, any export and any requested expectations succeeded
 - `2` — bad arguments, an authorization refusal, a scan failure, or a failed `--json` export
 - `3` — no usable local interfaces (only when `--range` is omitted)
+- `4` — scan completed with an unmet or unconfirmed expectation
 
 Examples:
 
@@ -156,7 +158,8 @@ Pipe a local development server's open ports into `jq`:
 `--json -` prints one array after a successful scan (`[]` if no hosts were
 observed), with no table and no file named `-` (use `--json ./-` for that
 filename). It is the same unredacted inventory format as a JSON file, without
-session coverage metadata. Scan and authorization failures leave stdout empty
+session coverage metadata. Expectation results go to stderr even on exit `4`.
+Scan and authorization failures leave stdout empty
 and exit nonzero; a write failure can leave partial JSON, so check the exit
 status (`set -o pipefail` helps in pipelines). See the
 [verification record](docs/verification/cli-json-stdout-2026-11-13.md).

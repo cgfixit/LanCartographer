@@ -1,10 +1,7 @@
 # LanCartographer User Guide
 
-Use the native GUI for an authorized inventory, saved before/after sessions,
-and selected evidence reports. The CLI shares the scan engine; its flags and
-examples are in the [README](../README.md#cli-reference). Build and update steps
-are in [README](../README.md#build-from-source) and [update-guide.md](update-guide.md).
-The second half of this guide is a code tour for Python and PowerShell users.
+Use the native GUI to inventory a LAN, compare saved scans and export selected
+evidence. For CLI flags and examples, see the [CLI reference](../README.md#cli-reference).
 
 ## Scan and inspect
 
@@ -38,11 +35,9 @@ The second half of this guide is a code tour for Python and PowerShell users.
 
 ### Choose ports for a development service
 
-Enter comma-separated port numbers from 1 to 65535, such as `3000,5432,8080`
-for a development web server, PostgreSQL and an alternate HTTP service.
-**Default ports** restores the standard inventory list. Empty fields, ranges
-such as `3000-3010` and non-numeric values are rejected before scanning; the
-previous inventory stays visible. The choice lasts for the current app run.
+Enter comma-separated port numbers, such as `3000,5432,8080`.
+**Default ports** restores the standard list. Invalid input keeps the previous
+inventory visible. The choice lasts for the current app run.
 
 The field chooses the ports whose states appear in the inventory. Discovery
 still uses its usual TCP ports plus your selected ports, followed by the
@@ -61,6 +56,43 @@ A successful loopback result does not establish LAN reachability: repeat from
 an authorized LAN client against the server's LAN address to check that path.
 See the [native verification record](verification/developer-ports-2026-11-13.md)
 for the exercised workflow and platform limits.
+
+## Verify expected hosts and ports
+
+Save a version 1 JSON file such as `expectations.json` and pass it with
+`--expect FILE` when running the CLI.
+
+```json
+{
+  "version": 1,
+  "hosts": [
+    {"ip": "192.0.2.5", "open": [443], "closed": [23]},
+    {"ip": "192.0.2.9", "absent": true}
+  ]
+}
+```
+
+```bash
+./lancartographer-cli --range 192.0.2.0/28 --ports 23,443 \
+  --i-am-authorized --expect expectations.json --json -
+```
+
+Use an authorized range and port list that cover every check. If you omit
+`--range`, the CLI uses the local physical subnets. Each IPv4 address must
+be usable in at least one scan range. Declare each host once, with either
+`absent: true` or one or more distinct ports under `open` or `closed`.
+The CLI reads the file before scanning and rejects unknown or duplicate fields,
+files over 256 KiB, and files with more than 4,096 individual checks.
+Use a separate path for any JSON export.
+
+Each verdict and observed state appears on stderr. The inventory still goes
+to stdout or the requested export. A completed scan returns `0` when every
+check is met and `4` for any mismatch, timeout or unconfirmed port. An
+incomplete scan gives no verdict. `absent` means the completed scan did not
+observe the host. A silent device can still be on the network. The port
+checks use the inventory's TCP states and cover reachability from the
+scanning computer. Use [Check Service](#check-a-service) for HTTP or TLS
+diagnostics.
 
 ## Save a baseline and compare a change
 
