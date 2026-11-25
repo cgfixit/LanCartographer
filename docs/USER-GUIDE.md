@@ -355,8 +355,11 @@ The walk below is the actual call chain in the code, starting at
 7. **Share enumeration — only if 445 answered.** `probe.ListShares` calls
    `winutil.NetShareEnum`: the Windows implementation walks native
    `ShareInfo1` records; macOS runs `smbutil view` with a five-second cap.
-   Both return name, type (`disk`/`print`/`ipc`) and remark. The host
-   may answer "access denied" under your existing token/session;
+   LanCartographer reads the macOS table by its byte columns so names such as
+   `Team Files` keep their spaces. A long name with an ambiguous type
+   boundary is skipped. Both platforms return the name, type
+   (`disk`/`print`/`ipc`) and remark, with hidden shares filtered out.
+   A host may answer "access denied" under your existing token/session;
    the engine synthesizes a single marker share with remark
    `"shares: access denied"` so the UI can say so honestly. Other failures
    (RPC refused, host vanished) degrade silently to an empty share list.

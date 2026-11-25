@@ -62,7 +62,7 @@ network data.
 | Inventory table | Sort by status, name, IP, MAC, vendor, ports or shares. The selected row stays highlighted, ports read compactly (`22 SSH, 443 Web`), and values the scan did not learn show a dim `—` |
 | Host details | Open ports first, each with **Check…**; closed and unanswered ports collapse into one line each; action buttons for the selected host |
 | Port states | Every probed port reports `open`, `closed` or `timeout`. Open ports carry a service label (smb, http, rdp, …); web and unrecognized ports get a bounded HTTP/HTTPS title probe that can identify additional web services. Ports 443 and 8443 also show when the presented certificate expires, marked **not trusted** if this computer could not verify it |
-| Share enumeration | Windows `NetShareEnum` or macOS `smbutil`; a host that denies enumeration shows an explicit "access denied" marker instead of an empty list |
+| Share enumeration | Windows `NetShareEnum` or macOS `smbutil` reports full SMB share names, including spaces. A host that denies enumeration shows an "access denied" marker |
 | MAC and vendor | MAC from ARP (Windows `SendARP`, macOS ARP cache); vendor from an OUI database compiled into the binary, with no runtime download |
 | Name resolution | NetBIOS, mDNS and reverse DNS run concurrently; the highest-priority answer wins and cancels the rest. Names persist in a MAC-keyed cache, so silent devices keep them across scans |
 | Quick actions | Right-click a host for Copy IP/MAC/name, Finder/Explorer, Browser on the detected web port (including custom ports identified as Web), Remote Desktop (Windows), Ping, Wake-on-LAN and Check service…; right-click a share to copy its UNC path or name or open it |
