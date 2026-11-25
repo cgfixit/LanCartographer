@@ -39,9 +39,6 @@ func TestBrowserURL(t *testing.T) {
 			t.Errorf("%s: browserURL = %q, want %q", c.name, got, c.want)
 		}
 	}
-	if got := browserURL(host("::1", model.Port{Number: 3000, State: model.PortOpen, Service: "Web"})); got != "http://[::1]:3000" {
-		t.Fatalf("imported IPv6 web endpoint = %q", got)
-	}
 }
 
 func TestThemeModeLabelNamesTheSwitchTarget(t *testing.T) {

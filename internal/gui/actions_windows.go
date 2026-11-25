@@ -17,8 +17,11 @@ func explorerPath(ip netip.Addr, shareName string) string {
 }
 
 // pingArgv builds the argv that opens a visible console window running
-// four pings against ip. ARGV LIST ONLY — never a shell string.
+// four pings. Only a canonical IPv4 literal can enter the cmd command line.
 func pingArgv(ip netip.Addr) []string {
+	if !ip.Is4() {
+		return nil
+	}
 	return []string{"cmd", "/c", "start", "", "cmd", "/c", "ping", "-n", "4", ip.String()}
 }
 

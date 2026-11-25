@@ -78,6 +78,9 @@ func foundViaLabel(v string) string {
 // browserURL selects an open web endpoint in the existing preference order.
 // Preserve non-default ports: opening an 8080 service at port 80 is wrong.
 func browserURL(h model.Host) string {
+	if !h.IP.Is4() {
+		return ""
+	}
 	for _, number := range []int{80, 8080, 443, 8443} {
 		for _, p := range h.Ports {
 			if p.Number != number || p.State != model.PortOpen {

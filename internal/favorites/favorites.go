@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/local/lancartographer/internal/appdata"
 	"github.com/local/lancartographer/internal/model"
@@ -19,26 +20,27 @@ func path() (string, error) {
 	return appdata.Path("favorites.json")
 }
 
-// Load reads the saved favorites. A missing file is not an error and
-// yields (nil, nil); a corrupt file is an error.
-func Load() ([]model.Host, error) {
+// Load returns IPv4 favorites and the number skipped. A missing file is empty.
+func Load() ([]model.Host, int, error) {
 	p, err := path()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	f, err := os.Open(p)
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil
+		return nil, 0, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer f.Close()
 	var hosts []model.Host
 	if err := json.NewDecoder(f).Decode(&hosts); err != nil && !errors.Is(err, io.EOF) {
-		return nil, err
+		return nil, 0, err
 	}
-	return hosts, nil
+	total := len(hosts)
+	hosts = slices.DeleteFunc(hosts, func(h model.Host) bool { return !h.IP.Is4() })
+	return hosts, total - len(hosts), nil
 }
 
 // Save writes hosts as indented JSON, creating the directory if needed.

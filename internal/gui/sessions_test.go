@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/local/lancartographer/internal/favorites"
 	"github.com/local/lancartographer/internal/model"
 	"github.com/local/lancartographer/internal/probe"
 	"github.com/local/lancartographer/internal/scan"
@@ -49,6 +50,45 @@ func TestSessionCaptureCompletionCancellationAndFavorites(t *testing.T) {
 	u.onLoadFavorites()
 	if u.currentSession != nil {
 		t.Fatal("favorites retained scan coverage")
+	}
+}
+
+func TestLoadFavoritesPreservesStateWithoutIPv4Rows(t *testing.T) {
+	u := newTestUI(t)
+	h := host("127.0.0.1")
+	u.store.set([]model.Host{h})
+	u.selectedIP = h.IP.String()
+	s := &session.Session{}
+	u.currentSession = s
+	check := func(message string) {
+		t.Helper()
+		u.onLoadFavorites()
+		if _, ok := u.store.get(h.IP.String()); !ok || u.currentSession != s || u.selectedIP != h.IP.String() || u.statusErr.Text != message {
+			t.Fatalf("load changed inventory, selection or session, or reported %q instead of %q", u.statusErr.Text, message)
+		}
+	}
+	check("No saved favorites")
+	if err := favorites.Save([]model.Host{}); err != nil {
+		t.Fatal(err)
+	}
+	check("No saved favorites")
+	if err := favorites.Save([]model.Host{host("::1")}); err != nil {
+		t.Fatal(err)
+	}
+	check("Skipped 1 non-IPv4 favorite")
+	if err := favorites.Save([]model.Host{h, host("::1")}); err != nil {
+		t.Fatal(err)
+	}
+	u.onLoadFavorites()
+	if u.currentSession != nil || len(u.sorted) != 1 || u.sorted[0].IP != h.IP || u.statusErr.Text != "Skipped 1 non-IPv4 favorite" {
+		t.Fatal("mixed favorites did not replace inventory with IPv4 rows and report the skip")
+	}
+	if err := favorites.Save([]model.Host{h}); err != nil {
+		t.Fatal(err)
+	}
+	u.onLoadFavorites()
+	if u.statusErr.Text != "" {
+		t.Fatal("valid favorites retained a stale skip count")
 	}
 }
 

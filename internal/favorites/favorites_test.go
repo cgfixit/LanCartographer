@@ -38,7 +38,7 @@ func testHosts() []model.Host {
 
 func TestLoadMissingFileReturnsNilNil(t *testing.T) {
 	t.Setenv("APPDATA", t.TempDir())
-	hosts, err := Load()
+	hosts, _, err := Load()
 	if err != nil {
 		t.Fatalf("Load() on missing file: got error %v, want nil", err)
 	}
@@ -61,7 +61,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 		t.Fatalf("expected favorites.json at %s: %v", path, err)
 	}
 
-	got, err := Load()
+	got, _, err := Load()
 	if err != nil {
 		t.Fatalf("Load(): %v", err)
 	}
@@ -80,7 +80,7 @@ func TestSaveOverwritesPrevious(t *testing.T) {
 	if err := Save(second); err != nil {
 		t.Fatalf("Save() second: %v", err)
 	}
-	got, err := Load()
+	got, _, err := Load()
 	if err != nil {
 		t.Fatalf("Load(): %v", err)
 	}
@@ -101,7 +101,27 @@ func TestLoadCorruptJSONReturnsError(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := Load(); err == nil {
+	if _, _, err := Load(); err == nil {
 		t.Fatal("Load() on corrupt JSON: got nil error, want error")
+	}
+}
+
+func TestLoadSkipsNonIPv4Favorites(t *testing.T) {
+	t.Setenv("APPDATA", t.TempDir())
+	want := testHosts()
+	rows := []model.Host{
+		want[0],
+		{IP: netip.MustParseAddr("::1")},
+		{IP: netip.MustParseAddr("fe80::1%fixture")},
+		{IP: netip.MustParseAddr("::ffff:127.0.0.1")},
+		{},
+		want[1],
+	}
+	if err := Save(rows); err != nil {
+		t.Fatal(err)
+	}
+	got, skipped, err := Load()
+	if err != nil || skipped != 4 || !reflect.DeepEqual(got, want) {
+		t.Fatalf("Load = %v, %d, %v", got, skipped, err)
 	}
 }

@@ -216,7 +216,7 @@ func TestTableNameSortKeepsFavoritesInIPOrder(t *testing.T) {
 		t.Fatalf("descending Name order = %v", got)
 	}
 	u.onSaveFavorites()
-	saved, err := favorites.Load()
+	saved, _, err := favorites.Load()
 	if err != nil {
 		t.Fatal(err)
 	}

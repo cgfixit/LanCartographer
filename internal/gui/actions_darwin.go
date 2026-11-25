@@ -21,9 +21,11 @@ func explorerPath(ip netip.Addr, shareName string) string {
 }
 
 // pingArgv builds the argv that opens a visible Terminal window running
-// four pings against ip. ARGV LIST ONLY — never a shell string; osascript
-// receives the AppleScript as one -e argument.
+// four pings. Only a canonical IPv4 literal can enter the Terminal command.
 func pingArgv(ip netip.Addr) []string {
+	if !ip.Is4() {
+		return nil
+	}
 	return []string{"osascript", "-e", `tell application "Terminal" to do script "ping -c 4 ` + ip.String() + `"`}
 }
 
