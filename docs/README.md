@@ -18,6 +18,7 @@ now live in [`build/`](../build), and the README images in
 
 | Record | Coverage |
 | --- | --- |
+| [GUI subnet authorization, 2026-11-24](verification/gui-subnet-scope-2026-11-24.md) | Network changes and failed discovery in the GUI test driver, plus packaged macOS scan and service confirmations on loopback |
 | [Scan bounds, 2026-11-21](verification/scan-bounds-2026-11-21.md) | CLI rejects a zero or negative `--timeout` on a loopback fixture; Stop skips name and MAC lookups (focused test fails on `main`, passes here); Stop timing in the native app not measured |
 | [Scan certificate expiry, 2026-11-20](verification/scan-cert-expiry-2026-11-20.md) | Loopback TLS fixtures on Linux: untrusted, expiring, expired and locally trusted certificates, equal connection counts before and after; native GUI not run |
 | [Session certificate validation, 2026-11-21](verification/session-cert-validation-2026-11-21.md) | Crafted certificate text rejected on read instead of printed in a redacted report (focused test fails on `main`, passes here); staticcheck pinned to the `go.mod` toolchain; native GUI not run |

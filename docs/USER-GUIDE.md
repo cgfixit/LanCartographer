@@ -190,8 +190,8 @@ sends nothing.
    multicast DNS on the local network. Pick one of the returned addresses (at
    most 16 are shown).
 3. Select **Check…** or press Return. The confirmation names the exact address,
-   port and traffic, checks the current local subnets for its scope warning, and repeats the authorization notice. **No** sends
-   nothing.
+   port and traffic, checks the current local subnets for its scope warning,
+   and repeats the authorization notice. **No** sends nothing.
 
 ![Check Service with a resolved name, a connection and an HTTP answer](verification/check-service/resolve-http-light.jpg)
 
