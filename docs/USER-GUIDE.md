@@ -30,9 +30,11 @@ The second half of this guide is a code tour for Python and PowerShell users.
 3. Use **File → Export…** for a raw inventory in CSV or JSON. Enter an absolute
    path ending in `.csv` or `.json` and confirm replacement if it exists. A
    failed write leaves the prior export intact. **File → Save Favorites** and
-   **Load Favorites** keep a host list for later viewing. Neither contains the coverage metadata needed
-   for session comparison; loading favorites also clears the current scan's
-   session snapshot and is blocked while a scan is running.
+   **Load Favorites** keep IPv4 hosts for later viewing. Load reports the number
+   of skipped non-IPv4 entries. If the file is missing, empty, or contains no
+   IPv4 hosts, your inventory, selection and scan snapshot stay in place.
+   Replacing the inventory clears the snapshot because favorites lack scan
+   coverage. Stop an active scan before loading favorites.
 
 ### Choose ports for a development service
 
@@ -484,7 +486,7 @@ review it hard.
   marker is reported without retrying alternate credentials.
 - **Bounded desktop launches.** Actions build argument arrays. Windows Browser
   and Ping use `cmd /c start`; macOS Ping uses a Terminal AppleScript. Their
-  targets are constructed from parsed IP literals and validated ports; macOS
+  targets require an IPv4 literal. Browser also validates the port. On macOS,
   share names are URL-escaped. Passing argv does not itself eliminate every
   shell boundary: preserve the target builders when changing these actions.
 - **No telemetry.** No analytics, crash reporting or runtime OUI download.
@@ -506,7 +508,7 @@ review it hard.
 progress/completion on the UI thread. `endSession` in `internal/gui/sessions.go`
 clones the finished inventory and records complete/cancelled/failed/incomplete
 status. Each Sessions window works on its own copies; importing a file does
-not replace the active table. Loading favorites invalidates the current scan
+not replace the active table. Replacing the inventory with favorites invalidates the current scan
 snapshot so an old coverage claim cannot attach to a different host list.
 
 `internal/session` owns schema validation, bounded reads, explicit file writes,

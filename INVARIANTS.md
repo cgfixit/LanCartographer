@@ -19,8 +19,8 @@
   authentication when you open shares.
 - **Bounded external actions.** Arguments are passed separately. Windows uses
   `cmd /c start` for Browser and Ping; macOS uses `open` for URLs and a
-  Terminal AppleScript for Ping. Ping targets come only from parsed IP
-  literals, macOS share names are URL-escaped, and Wake-on-LAN sends its UDP
+  Terminal AppleScript for Ping. Ping and Browser accept only IPv4 host
+  addresses. macOS share names are URL-escaped, and Wake-on-LAN sends its UDP
   packet only after confirmation.
 - **No phone-home.** No telemetry, analytics or runtime downloads; the OUI
   database is embedded and current as of generation. Traffic beyond the scan

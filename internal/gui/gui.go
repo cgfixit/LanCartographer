@@ -628,9 +628,19 @@ func (u *ui) onLoadFavorites() {
 		dialog.ShowInformation("Scan in progress", "Stop the scan before replacing the inventory.", u.win)
 		return
 	}
-	hosts, err := favorites.Load()
+	hosts, skipped, err := favorites.Load()
 	if err != nil {
 		dialog.ShowError(err, u.win)
+		return
+	}
+	message := ""
+	if skipped > 0 {
+		message = "Skipped " + plural(skipped, "non-IPv4 favorite")
+	} else if len(hosts) == 0 {
+		message = "No saved favorites"
+	}
+	u.statusErr.SetText(message)
+	if len(hosts) == 0 {
 		return
 	}
 	u.table.UnselectAll()
