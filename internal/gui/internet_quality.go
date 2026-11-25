@@ -98,13 +98,14 @@ type qualityView struct {
 }
 
 type qualityJob struct {
-	view       *qualityView
-	ctx        context.Context
-	cancel     context.CancelFunc
-	done       chan struct{}
-	name       string
-	scanAfter  netip.Prefix
-	portsAfter []int
+	view          *qualityView
+	ctx           context.Context
+	cancel        context.CancelFunc
+	done          chan struct{}
+	name          string
+	scanAfter     netip.Prefix
+	portsAfter    []int
+	scanConfirmed bool
 }
 
 func (u *ui) showInternetQuality() {
@@ -271,7 +272,10 @@ func (u *ui) finishInternetQuality(job *qualityJob, err error, render func()) {
 	}
 	job.cancel()
 	if job.scanAfter.IsValid() {
-		u.startScan(job.scanAfter, job.portsAfter)
+		u.scanBtn.Enable()
+		u.ports.Enable()
+		u.resetPorts.Enable()
+		u.startScan(job.scanAfter, job.portsAfter, job.scanConfirmed)
 	}
 	u.refreshQualityControls()
 }
