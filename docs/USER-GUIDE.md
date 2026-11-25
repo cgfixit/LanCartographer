@@ -190,9 +190,8 @@ sends nothing.
    multicast DNS on the local network. Pick one of the returned addresses (at
    most 16 are shown).
 3. Select **Check…** or press Return. The confirmation names the exact address,
-   port and traffic, adds a caution when the address is outside your local
-   subnets or public, and repeats the authorization notice. **No** sends
-   nothing.
+   port and traffic, checks the current local subnets for its scope warning,
+   and repeats the authorization notice. **No** sends nothing.
 
 ![Check Service with a resolved name, a connection and an HTTP answer](verification/check-service/resolve-http-light.jpg)
 
@@ -300,8 +299,10 @@ The walk below is the actual call chain in the code, starting at
 1. **Target selection.** The GUI asks `internal/discover` for your local
    usable subnets through Windows `GetAdaptersAddresses` or macOS
    `net.Interfaces()`, filtering virtual adapters and masking addresses to
-   their on-link prefixes. The GUI uses the selected/entered range; the CLI
-   uses `--range` or, when omitted, all discovered local physical subnets.
+   their on-link prefixes. **Scan** refreshes the suggestions and checks the
+   range you entered against the current interfaces. If discovery fails, every
+   range needs confirmation. The CLI uses `--range` or all discovered local
+   physical subnets when omitted.
 
 2. **Address expansion.** `discover.HostsIn` enumerates every usable host
    address in the prefix — for a `/24`, the 254 addresses between the network

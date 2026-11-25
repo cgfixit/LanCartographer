@@ -56,7 +56,6 @@ type ui struct {
 	win    fyne.Window
 	store  *hostStore
 	sorted []model.Host // snapshot behind the table, ordered per sort state
-	local  []netip.Prefix
 
 	topBar     *fyne.Container
 	subnet     *widget.SelectEntry
@@ -171,7 +170,6 @@ func newUI(a fyne.App, w fyne.Window, deps guiDeps) *ui {
 		throttle: 120 * time.Millisecond,
 	}
 
-	u.captureLocalSubnets()
 	u.settings, _ = LoadSettings()
 	u.progress = widget.NewProgressBar()
 	u.progress.Hide() // shown only while a scan runs
@@ -195,16 +193,21 @@ func newUI(a fyne.App, w fyne.Window, deps guiDeps) *ui {
 	return u
 }
 
-// captureLocalSubnets records the local physical subnets once; they feed
-// both the combo dropdown and the scan confirmation gate.
-func (u *ui) captureLocalSubnets() {
+// refreshLocalSubnets replaces dropdown suggestions without changing the entered
+// target. A failed read leaves no prefix eligible for implicit authorization.
+func (u *ui) refreshLocalSubnets() []netip.Prefix {
 	ifs, err := u.deps.localSubnets(false)
-	if err != nil {
-		return
+	var local []netip.Prefix
+	var options []string
+	if err == nil {
+		for _, i := range ifs {
+			p := i.Prefix.Masked()
+			local = append(local, p)
+			options = append(options, p.String())
+		}
 	}
-	for _, i := range ifs {
-		u.local = append(u.local, i.Prefix.Masked())
-	}
+	u.subnet.SetOptions(options)
+	return local
 }
 
 // buildTopBar lays out the editable subnet combo, Scan/Stop, favorites,
@@ -212,13 +215,8 @@ func (u *ui) captureLocalSubnets() {
 func (u *ui) buildTopBar() {
 	u.subnet = widget.NewSelectEntry(nil)
 	u.subnet.SetPlaceHolder("Subnet, e.g. 10.0.0.0/24")
-	opts := make([]string, 0, len(u.local))
-	for _, p := range u.local {
-		opts = append(opts, p.String())
-	}
-	u.subnet.SetOptions(opts)
-	if len(opts) > 0 {
-		u.subnet.SetText(opts[0])
+	if local := u.refreshLocalSubnets(); len(local) > 0 {
+		u.subnet.SetText(local[0].String())
 	}
 
 	u.scanBtn = widget.NewButtonWithIcon("Scan", theme.MediaPlayIcon(), u.onScan)
@@ -463,30 +461,30 @@ func (u *ui) onScan() {
 		u.statusErr.SetText("TCP ports: " + err.Error())
 		return
 	}
-	target := p.Masked()
-	if authz.NeedsConfirmation(target, u.local) {
+	u.startScan(p.Masked(), ports, false)
+}
+
+// confirmed records an explicit Yes for this exact target. A queued scan
+// without that approval must check the current interfaces again at dispatch.
+func (u *ui) startScan(target netip.Prefix, ports []int, confirmed bool) {
+	if u.scanning {
+		return
+	}
+	if !confirmed && authz.NeedsConfirmation(target, u.refreshLocalSubnets()) {
 		dialog.ShowConfirm("Confirm scan target",
 			authz.Notice+"\n\nYou asked to scan "+target.String()+", which is outside your local subnets, not private space, or broader than a /22.\n\nScan anyway?",
 			func(ok bool) {
 				if ok {
-					u.startScan(target, ports)
+					u.startScan(target, ports, true)
 				}
 			}, u.win)
-		return
-	}
-	u.startScan(target, ports)
-}
-
-// startScan resets the inventory and launches the engine on a goroutine.
-// Events pump back onto the UI thread through fyne.Do.
-func (u *ui) startScan(target netip.Prefix, ports []int) {
-	if u.scanning {
 		return
 	}
 	if job := u.qualityJob; job != nil {
 		if !job.scanAfter.IsValid() {
 			job.scanAfter = target
 			job.portsAfter = ports
+			job.scanConfirmed = confirmed
 			u.scanBtn.Disable()
 			u.ports.Disable()
 			u.resetPorts.Disable()

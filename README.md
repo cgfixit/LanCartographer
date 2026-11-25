@@ -57,7 +57,7 @@ network data.
 | Area | What you get |
 |---|---|
 | Live scan | Scan a selected or entered IPv4 range with an editable TCP port list (**Default ports** restores it; ranges and invalid values are rejected before scanning). Hosts and open ports stream into the table; the status bar counts hosts, open ports and shares next to the progress bar and elapsed time |
-| Authorization gate | Ranges outside your local subnets, outside RFC 1918 space or broader than a `/22` need explicit confirmation (GUI dialog, CLI `--i-am-authorized`); Check Service and Wake-on-LAN confirm each target. No account, telemetry or update check |
+| Authorization gate | The GUI checks current physical subnets when you click **Scan**. Off-subnet, non-RFC 1918 or broader-than-`/22` ranges need confirmation (CLI `--i-am-authorized`). Check Service and Wake-on-LAN confirm each target. No account, telemetry or update check |
 | Host discovery | TCP connect, then ARP, then (macOS) one ICMP echo, so a host with every probed port closed still appears; see [How it works](#how-it-works) |
 | Inventory table | Sort by status, name, IP, MAC, vendor, ports or shares. The selected row stays highlighted, ports read compactly (`22 SSH, 443 Web`), and values the scan did not learn show a dim `—` |
 | Host details | Open ports first, each with **Check…**; closed and unanswered ports collapse into one line each; action buttons for the selected host |

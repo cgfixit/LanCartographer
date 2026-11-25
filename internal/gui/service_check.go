@@ -377,7 +377,7 @@ func (u *ui) confirmServiceCheck(v *serviceView) {
 	}
 	resolveStage := v.resolveStage
 	v.confirming = true
-	dialog.NewConfirm("Check this service?", serviceConfirmText(target, u.local), func(ok bool) {
+	dialog.NewConfirm("Check this service?", serviceConfirmText(target, u.refreshLocalSubnets()), func(ok bool) {
 		v.confirming = false
 		if ok && u.serviceView == v {
 			u.runServiceCheck(v, target, resolveStage)
