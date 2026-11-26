@@ -176,6 +176,8 @@ func (u *ui) buildTable() {
 		if id.Row >= len(u.sorted) {
 			return
 		}
+		// Fyne remembers coordinates, which may point to another host after a sort.
+		u.table.Unselect(id)
 		u.selectedIP = u.sorted[id.Row].IP.String()
 		u.showSelectedHost()
 		u.table.Refresh() // repaint the row highlight on every column

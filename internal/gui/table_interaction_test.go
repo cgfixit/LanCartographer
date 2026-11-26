@@ -189,6 +189,23 @@ func TestTableTapSelectsRowAndUpdatesPanel(t *testing.T) {
 	}
 }
 
+func TestTableTapSelectsNewHostInSameCellAfterSort(t *testing.T) {
+	u := newTestUI(t)
+	setTwoHosts(u)
+	pos := nameCellTapPos(t, u, 0)
+	tapCellAt(t, u, pos)
+
+	u.headerBtns[2].OnTapped() // reverse IP order so bravo replaces alpha in row 0
+	if u.selectedIP != "192.168.1.10" {
+		t.Fatalf("sort changed the selected host to %q", u.selectedIP)
+	}
+
+	tapCellAt(t, u, pos)
+	if title := u.panel.Objects[0].(*widget.Label).Text; title != "bravo" {
+		t.Fatalf("panel title after tapping the same cell = %q, want bravo", title)
+	}
+}
+
 func TestTableNameSortKeepsFavoritesInIPOrder(t *testing.T) {
 	u := newTestUI(t)
 	low := netip.MustParseAddr("192.168.1.2")

@@ -492,7 +492,6 @@ func (u *ui) startScan(target netip.Prefix, ports []int, confirmed bool) {
 		}
 		return
 	}
-	u.table.UnselectAll()
 	u.store = newHostStore()
 	u.selectedIP = ""
 	u.lastPrefix = target
@@ -643,7 +642,6 @@ func (u *ui) onLoadFavorites() {
 	if len(hosts) == 0 {
 		return
 	}
-	u.table.UnselectAll()
 	u.store.set(hosts)
 	u.currentSession = nil // favorites carry no scan coverage or completion metadata
 	u.selectedIP = ""
