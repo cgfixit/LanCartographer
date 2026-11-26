@@ -14,8 +14,9 @@ evidence. For CLI flags and examples, see the [CLI reference](../README.md#cli-r
    you want to inventory, then click **Scan** and confirm if the
    range requires it. **Stop** cancels an active scan; partial results are not
    evidence of complete coverage.
-2. Select a host to inspect it; its whole row stays highlighted. The panel
-   lists open ports first, with page titles where the HTTP probe found one,
+2. Select a host to inspect it. Its whole row stays highlighted when you
+   change the sort order. The panel lists open ports first, with page titles
+   where the HTTP probe found one,
    and each open port has **Check…**, which fills in
    [Check Service](#check-a-service) without contacting anything. Closed and
    unanswered ports are summarized below them. A dim `—` means the scan did
