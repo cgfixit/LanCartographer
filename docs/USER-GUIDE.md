@@ -489,8 +489,9 @@ cgo; other platforms get the `wifi_quality_other.go` stub.
 
 On macOS the same seam exists, filled by different tools. Local subnets come
 from the stdlib `net.Interfaces()` instead of `GetAdaptersAddresses`; peer
-MAC addresses are read from the ARP cache (the equivalent of running
-`arp -a`) instead of `SendARP`; share enumeration shells out to `smbutil`
+MAC addresses come from a numeric ARP cache lookup for the target address.
+macOS 27 can withhold cache entries from applications, leaving MAC and
+vendor fields blank. Share enumeration shells out to `smbutil`
 (argv list, never a shell string) instead of calling `NetShareEnum`; and
 Browser/Finder actions use `open`, Ping uses Terminal via `osascript`, and
 the Windows-only Remote Desktop action is unavailable. Build tags keep the

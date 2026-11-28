@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// parseARPEntry parses one line of macOS `arp -a` output. It handles the
+// parseARPEntry parses one line of macOS `arp` output. It handles the
 // resolved form:
 //
 //	host.example (192.168.1.5) at d8:f2:ca:e0:38:8c on en0 ifscope [ethernet]
