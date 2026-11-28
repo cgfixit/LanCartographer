@@ -33,6 +33,7 @@ now live in [`build/`](../build), and the README images in
 | [macOS SMB share names, 2026-11-25](verification/macos-smb-share-names-2026-11-25.md) | Live loopback SMB scan and CLI JSON before and after, full share names in the native Mac app in both themes, and packaged smoke |
 | [CLI expectations, 2026-11-25](verification/cli-expectations-2026-11-25.md) | Packaged loopback checks for met, unmet, timed-out, refused and interrupted runs, plus the native inventory and Safari handoff |
 | [Inventory row selection, 2026-11-26](verification/inventory-row-selection-2026-11-26.md) | Native before/after selection at the same cell after sorting, light and dark themes, and packaged loopback smoke |
+| [TCP port observation, 2026-11-27](verification/port-observation-2026-11-27.md) | Local socket failure in packaged CLI, refusal controls, native port labels, and session comparison and export |
 | [Main window flow, 2026-11-15](verification/ui-flow-2026-11-15.md) | Before/after inventory with the same sample data, first-run notice, stop/finish states, favorites/export regressions and the unchanged CLI table |
 | [First-run marker write failure, 2026-11-16](verification/firstrun-marker-2026-11-16.md) | Native light/dark error dialog after a real click (redacted), focused test (fails on `main`, passes here) and Fyne-rendered `main` comparison |
 | [Inventory table refresh, 2026-11-16](verification/inventory-refresh-2026-11-16.md) | Row preparation allocations, native sort and selection, IP-ordered persistence, and packaged loopback smoke |

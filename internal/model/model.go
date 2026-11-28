@@ -17,9 +17,10 @@ import (
 
 // Port states observed by a scan.
 const (
-	PortOpen    = "open"
-	PortClosed  = "closed"
-	PortTimeout = "timeout"
+	PortOpen        = "open"
+	PortClosed      = "closed"
+	PortTimeout     = "timeout"
+	PortUnconfirmed = "unconfirmed"
 )
 
 // Share types observed on SMB hosts.

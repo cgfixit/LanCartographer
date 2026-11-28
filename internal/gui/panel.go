@@ -89,15 +89,14 @@ func (u *ui) showHost(h model.Host) {
 		u.showServiceCheck(servicePrefillFor(h))
 	})
 
-	// Ports section: open ports first, each with a prefilled Check action;
-	// closed and unanswered ports collapse into one dim line each.
+	// Open ports have a prefilled Check action. Other outcomes are grouped.
 	ports := container.NewVBox(u.portsSection(h, menu)...)
 
 	// Shares section: never lists files; denial records show their remark.
 	shares := container.NewVBox(sectionHeader("Shares"))
 	switch {
 	case len(h.Shares) == 0:
-		none := widget.NewLabel("None found. Port 445 was closed, or the host did not allow listing.")
+		none := widget.NewLabel("No shares were listed.")
 		none.Wrapping = fyne.TextWrapWord
 		none.TextStyle = fyne.TextStyle{Italic: true}
 		shares.Add(none)
@@ -130,15 +129,17 @@ func (u *ui) showHost(h model.Host) {
 // Check Service) and summarizes the rest.
 func (u *ui) portsSection(h model.Host, menu func(fyne.CanvasObject) fyne.CanvasObject) []fyne.CanvasObject {
 	var open []model.Port
-	var closed, silent []string
+	var closed, silent, unconfirmed []string
 	for _, p := range h.Ports {
 		switch p.State {
 		case model.PortOpen:
 			open = append(open, p)
 		case model.PortTimeout:
 			silent = append(silent, strconv.Itoa(p.Number))
-		default:
+		case model.PortClosed:
 			closed = append(closed, strconv.Itoa(p.Number))
+		default:
+			unconfirmed = append(unconfirmed, strconv.Itoa(p.Number))
 		}
 	}
 	header := "Ports"
@@ -150,7 +151,7 @@ func (u *ui) portsSection(h model.Host, menu func(fyne.CanvasObject) fyne.Canvas
 		return append(out, widget.NewLabel("No ports probed yet."))
 	}
 	if len(open) == 0 {
-		none := widget.NewLabel("No open ports among those probed.")
+		none := widget.NewLabel("No open ports detected.")
 		none.TextStyle = fyne.TextStyle{Italic: true}
 		out = append(out, none)
 	}
@@ -161,7 +162,7 @@ func (u *ui) portsSection(h model.Host, menu func(fyne.CanvasObject) fyne.Canvas
 	for _, group := range []struct {
 		label string
 		ports []string
-	}{{"Closed", closed}, {"No answer", silent}} {
+	}{{"Closed", closed}, {"No answer", silent}, {"Unconfirmed", unconfirmed}} {
 		if len(group.ports) == 0 {
 			continue
 		}

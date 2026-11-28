@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"os"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -103,22 +105,24 @@ func TestScanHost_ClosedPort(t *testing.T) {
 	}
 }
 
-func TestScanHost_TimeoutPort(t *testing.T) {
-	opts := Options{
-		Ports:        []int{80},
-		DialTimeout:  50 * time.Millisecond,
-		ProbeTimeout: 50 * time.Millisecond,
-		Concurrency:  8,
-	}
-	// 192.0.2.1 is TEST-NET-1 (RFC 5737): guaranteed unroutable.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func TestScanPort_ExpiredDeadline(t *testing.T) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer cancel()
-	got := collect(t, ctx, netip.MustParseAddr("192.0.2.1"), opts)
-	if len(got) != 1 {
-		t.Fatalf("emitted %d ports, want 1", len(got))
+	got := scanPort(ctx, netip.MustParseAddr("127.0.0.1"), 8080, Options{ProbeTimeout: time.Second})
+	if got.State != model.PortTimeout {
+		t.Fatalf("got %+v, want state timeout", got)
 	}
-	if got[0].State != model.PortTimeout {
-		t.Fatalf("got %+v, want state timeout", got[0])
+}
+
+func TestDialFailureState(t *testing.T) {
+	for _, err := range []error{syscall.EMFILE, syscall.ENETUNREACH} {
+		dialErr := &net.OpError{Op: "dial", Net: "tcp", Err: &os.SyscallError{Syscall: "connect", Err: err}}
+		if got := dialFailureState(dialErr); got != model.PortUnconfirmed {
+			t.Errorf("%v = %q, want unconfirmed", dialErr, got)
+		}
+	}
+	if got := dialFailureState(context.Canceled); got != model.PortTimeout {
+		t.Errorf("canceled dial = %q, want timeout", got)
 	}
 }
 

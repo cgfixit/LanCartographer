@@ -30,6 +30,7 @@ func TestExpectationsReport(t *testing.T) {
 		Ports: []model.Port{
 			{Number: 22, State: model.PortClosed},
 			{Number: 23, State: model.PortTimeout},
+			{Number: 135, State: model.PortUnconfirmed},
 			{Number: 80, State: model.PortClosed},
 			{Number: 80, State: model.PortOpen},
 			{Number: 443, State: model.PortOpen},
@@ -53,6 +54,12 @@ func TestExpectationsReport(t *testing.T) {
 			body: `{"version":1,"hosts":[{"ip":"192.168.1.5","closed":[23,443,80]},{"ip":"192.168.1.6","closed":[22]}]}`,
 			code: 4,
 			want: []string{"23 closed: NOT MET (scan reported timeout)", "443 closed: NOT MET (scan reported open)", "80 closed: NOT MET (scan reported conflicting observations)", "22 closed: NOT MET (scan reported no port result)"},
+		},
+		{
+			name: "unconfirmed port alone fails a closed expectation",
+			body: `{"version":1,"hosts":[{"ip":"192.168.1.5","closed":[135]}]}`,
+			code: 4,
+			want: []string{"135 closed: NOT MET (scan reported unconfirmed)"},
 		},
 		{
 			name: "unexpected host",
