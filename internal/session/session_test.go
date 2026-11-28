@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/local/lancartographer/internal/model"
+	"github.com/local/lancartographer/internal/probe"
 )
 
 func fixture() Session {
@@ -94,6 +95,48 @@ func TestSessionCloneOwnsNestedEvidence(t *testing.T) {
 	copy.Hosts[0].Shares[0].Name = "other"
 	if original.Profile.Ports[0] != 80 || original.Source.Interfaces[0] == "other" || original.Hosts[0].Ports[0].Title != "private-title" || original.Hosts[0].Shares[0].Name != "private-share" {
 		t.Fatal("snapshot shares mutable storage")
+	}
+}
+
+func TestSessionUnconfirmedPortAndLegacyProfile(t *testing.T) {
+	legacy := fixture()
+	legacy.Profile.Methods = "inventory-v2:tcp+arp;names+cache;smb;http-1s-32KiB-verified-no-redirects+tls-expiry"
+	if runtime.GOOS == "darwin" {
+		legacy.Profile.Methods += ";icmp"
+	}
+	data, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := Read(bytes.NewReader(data))
+	if err != nil || before.Hosts[0].Ports[1].State != model.PortClosed {
+		t.Fatalf("old closed observation did not reopen: %v", err)
+	}
+
+	after := before.Clone()
+	opts := probe.Options{Ports: before.Profile.Ports, DialTimeout: 400 * time.Millisecond, ProbeTimeout: 800 * time.Millisecond}
+	after.Profile = New(before.Target, opts, before.AppVersion).Profile
+	after.Hosts[0].Ports[1].State = model.PortUnconfirmed
+	path := filepath.Join(t.TempDir(), "after.json")
+	if err := Save(path, after); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened, err := Read(bytes.NewReader(saved))
+	if err != nil || opened.Hosts[0].Ports[1].State != model.PortUnconfirmed {
+		t.Fatalf("unconfirmed observation did not round-trip: %v", err)
+	}
+	if diff := Compare(before, opened); !slices.Contains(diff.Reasons, "Probe profiles or application versions differ.") || len(diff.Changes) != 0 {
+		t.Fatalf("legacy and current probe profiles compared: %+v", diff)
+	}
+	sameProfile := opened.Clone()
+	sameProfile.Hosts[0].Ports[1].State = model.PortClosed
+	diff := Compare(sameProfile, opened)
+	if len(diff.Reasons) != 0 || len(diff.Changes) != 1 || diff.Changes[0].After != model.PortUnconfirmed {
+		t.Fatalf("comparison lost the unconfirmed observation: %+v", diff)
 	}
 }
 

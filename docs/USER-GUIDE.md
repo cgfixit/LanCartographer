@@ -18,9 +18,9 @@ evidence. For CLI flags and examples, see the [CLI reference](../README.md#cli-r
    change the sort order. The panel lists open ports first, with page titles
    where the HTTP probe found one,
    and each open port has **Check…**, which fills in
-   [Check Service](#check-a-service) without contacting anything. Closed and
-   unanswered ports are summarized below them. A dim `—` means the scan did
-   not learn that value. Right-click for available Browser, Finder/Explorer,
+   [Check Service](#check-a-service) without contacting anything. Closed,
+   unanswered and unconfirmed ports are summarized below them. A dim `—`
+   means the scan did not learn that value. Right-click for available Browser, Finder/Explorer,
    Ping and Wake-on-LAN actions; Remote Desktop is Windows-only. These actions
    are explicit and may cause network traffic or open another application.
    The status bar shows `Ready`, `Scanning · 3s`, the duration of a finished
@@ -86,14 +86,15 @@ The CLI reads the file before scanning and rejects unknown or duplicate fields,
 files over 256 KiB, and files with more than 4,096 individual checks.
 Use a separate path for any JSON export.
 
-Each verdict and observed state appears on stderr. The inventory still goes
-to stdout or the requested export. A completed scan returns `0` when every
-check is met and `4` for any mismatch, timeout or unconfirmed port. An
-incomplete scan gives no verdict. `absent` means the completed scan did not
-observe the host. A silent device can still be on the network. The port
-checks use the inventory's TCP states and cover reachability from the
-scanning computer. Use [Check Service](#check-a-service) for HTTP or TLS
-diagnostics.
+Verdicts appear on stderr. The inventory still goes to stdout or the
+requested export. A completed scan returns `0` when every check is met.
+A `closed` expectation requires a connection refusal. Any mismatch,
+timeout, or unconfirmed result for an expected port returns `4`. JSON
+records timeouts as `timeout` and other dial failures, such as a missing
+route or a local socket error, as `unconfirmed`. An incomplete scan gives
+no verdict. `absent` means the completed scan did not observe the host.
+A silent device can still be on the network. Use
+[Check Service](#check-a-service) for HTTP or TLS diagnostics.
 
 ## Save a baseline and compare a change
 
@@ -138,10 +139,13 @@ Full session JSON includes the unredacted inventory, target, context/label,
 application version, effective ports/timeouts/concurrency/methods, local source
 addresses/platform, timestamps, completion state and progress. Cancelled,
 failed and incomplete scans may be saved, but cannot form a completed comparison.
-Files use schema version 1, with an 8 MiB and 65,536-host limit; unsupported or
-inconsistent files are rejected, including a certificate expiry that is not a
-scan-recorded UTC date on an open port. Favorites and CLI JSON cannot be imported as
-sessions. Session save/compare/export is currently GUI-only.
+Files use schema version 1, with an 8 MiB and 65,536-host limit. A
+certificate expiry must be a scan-recorded UTC date on an open port.
+Earlier sessions still open. New scans record the `inventory-v3` probe
+profile, which keeps comparisons within the same port-state rules. A
+session containing an `unconfirmed` observation requires a build that
+supports that state. Only saved sessions can be opened in Sessions. Session
+save, compare and export are GUI-only.
 
 **Redact identifiers and discovered text** is on by default for evidence
 reports. It withholds site/scope/source identifiers and replaces selected

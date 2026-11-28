@@ -118,11 +118,12 @@ func TestPanelListsOpenPortsFirstAndSummarizesTheRest(t *testing.T) {
 			{Number: 80, State: model.PortClosed},
 			{Number: 443, State: model.PortOpen, Service: "Web", Title: "Router"},
 			{Number: 445, State: model.PortTimeout},
+			{Number: 8080, State: model.PortUnconfirmed},
 			{Number: 22, State: model.PortOpen, Service: "SSH"},
 		}}})
 	u.selectedIP = "192.168.1.10"
 	u.showSelectedHost()
-	for _, want := range []string{"Ports · 2 open of 4 probed", "22  SSH", "443  Web  —  Router", "Closed: 80", "No answer: 445", "TCP connection", emptyCell} {
+	for _, want := range []string{"Ports · 2 open of 5 probed", "22  SSH", "443  Web  —  Router", "Closed: 80", "No answer: 445", "Unconfirmed: 8080", "TCP connection", emptyCell} {
 		if !findLabel(u.panel, want) {
 			t.Errorf("panel lacks %q", want)
 		}

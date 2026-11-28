@@ -37,7 +37,7 @@ type Options struct {
 // cancelled before its dial starts is skipped silently (not emitted); a
 // dial cancelled in flight reports whatever the dialer observed — a
 // deadline/cancellation surfaces as model.PortTimeout, a refusal as
-// model.PortClosed.
+// model.PortClosed, and other dial failures as model.PortUnconfirmed.
 func ScanHost(ctx context.Context, ip netip.Addr, opts Options, lim *Limiter, emit func(model.Port)) {
 	var wg sync.WaitGroup
 	var emitMu sync.Mutex
@@ -69,14 +69,7 @@ func scanPort(ctx context.Context, ip netip.Addr, port int, opts Options) model.
 	d := net.Dialer{Timeout: opts.ProbeTimeout}
 	conn, err := d.DialContext(ctx, "tcp", netip.AddrPortFrom(ip, uint16(port)).String())
 	if err != nil {
-		var nerr net.Error
-		if errors.As(err, &nerr) && nerr.Timeout() {
-			return model.Port{Number: port, State: model.PortTimeout}
-		}
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			return model.Port{Number: port, State: model.PortTimeout}
-		}
-		return model.Port{Number: port, State: model.PortClosed}
+		return model.Port{Number: port, State: dialFailureState(err)}
 	}
 	conn.Close()
 	p := model.Port{Number: port, State: model.PortOpen, Service: classifyPort(port)}
@@ -100,4 +93,16 @@ func scanPort(ctx context.Context, ip netip.Addr, port int, opts Options) model.
 		}
 	}
 	return p
+}
+
+func dialFailureState(err error) string {
+	var nerr net.Error
+	switch {
+	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled), errors.As(err, &nerr) && nerr.Timeout():
+		return model.PortTimeout
+	case IsConnectionRefused(err):
+		return model.PortClosed
+	default:
+		return model.PortUnconfirmed
+	}
 }

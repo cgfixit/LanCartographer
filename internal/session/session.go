@@ -99,7 +99,7 @@ func New(target netip.Prefix, opts probe.Options, version string) Session {
 		n = probe.DefaultConcurrency
 	}
 	n = min(n, probe.MaxConcurrency)
-	methods := "inventory-v2:tcp+arp;names+cache;smb;http-1s-32KiB-verified-no-redirects+tls-expiry"
+	methods := "inventory-v3:tcp+arp;names+cache;smb;http-1s-32KiB-verified-no-redirects+tls-expiry"
 	if runtime.GOOS == "darwin" {
 		methods += ";icmp"
 	}
@@ -214,7 +214,9 @@ func (s Session) Validate() error {
 				return errors.New("unrequested or duplicate observed port")
 			}
 			observed[port.Number] = true
-			if port.State != model.PortOpen && port.State != model.PortClosed && port.State != model.PortTimeout {
+			switch port.State {
+			case model.PortOpen, model.PortClosed, model.PortTimeout, model.PortUnconfirmed:
+			default:
 				return errors.New("invalid port observation")
 			}
 			if !validCert(port) {

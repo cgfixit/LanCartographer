@@ -60,8 +60,8 @@ network data.
 | Authorization gate | The GUI checks current physical subnets when you click **Scan**. Off-subnet, non-RFC 1918 or broader-than-`/22` ranges need confirmation (CLI `--i-am-authorized`). Check Service and Wake-on-LAN confirm each target. No account, telemetry or update check |
 | Host discovery | TCP connect, then ARP, then (macOS) one ICMP echo, so a host with every probed port closed still appears; see [How it works](#how-it-works) |
 | Inventory table | Sort by status, name, IP, MAC, vendor, ports or shares. The selected row stays highlighted, ports read compactly (`22 SSH, 443 Web`), and values the scan did not learn show a dim `—` |
-| Host details | Open ports first, each with **Check…**; closed and unanswered ports collapse into one line each; action buttons for the selected host |
-| Port states | Every probed port reports `open`, `closed` or `timeout`. Open ports carry a service label (smb, http, rdp, …); web and unrecognized ports get a bounded HTTP/HTTPS title probe that can identify additional web services. Ports 443 and 8443 also show when the presented certificate expires, marked **not trusted** if this computer could not verify it |
+| Host details | Open ports first, each with **Check…**. Closed, unanswered and unconfirmed ports are grouped below |
+| Port states | JSON reports `open`, `closed` (connection refused), `timeout`, or `unconfirmed` (another dial failure). Open ports carry a service label. Bounded HTTP/HTTPS probes can add a title and certificate expiry, with the trust result for ports 443 and 8443 |
 | Share enumeration | Windows `NetShareEnum` or macOS `smbutil` reports full SMB share names, including spaces. A host that denies enumeration shows an "access denied" marker |
 | MAC and vendor | MAC from ARP (Windows `SendARP`, macOS ARP cache); vendor from an OUI database compiled into the binary, with no runtime download |
 | Name resolution | NetBIOS, mDNS and reverse DNS run concurrently; the highest-priority answer wins and cancels the rest. Names persist in a MAC-keyed cache, so silent devices keep them across scans |

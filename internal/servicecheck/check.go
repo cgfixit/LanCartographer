@@ -118,7 +118,7 @@ func connectError(parent context.Context, err error, port uint16) string {
 	switch {
 	case parent.Err() != nil:
 		return "Cancelled."
-	case isRefused(err):
+	case probe.IsConnectionRefused(err):
 		return fmt.Sprintf("Refused. Nothing is listening on port %d at this address, or a firewall rejected the connection.", port)
 	case isUnreachable(err):
 		return "No route to this address from this computer."
